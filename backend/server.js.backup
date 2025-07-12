@@ -1,0 +1,50 @@
+console.log('🚀 Starting Gate Controller Server...');
+
+const http = require('http');
+
+// Mock data for testing
+const users = [
+  { phone: '+972522554743', password: 'admin123', name: 'Admin User', level: 2 },
+  { phone: '+972501234567', password: 'temp123', name: 'Manager User', level: 1 },
+  { phone: '+972587654321', password: 'user123', name: 'Regular User', level: 0 }
+];
+
+const controllers = [
+  { id: 'GC001', name: 'Main Entrance', status: 'online' },
+  { id: 'GC002', name: 'Parking Gate', status: 'online' }
+];
+
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*'
+  });
+  
+  if (req.url === '/') {
+    res.end(JSON.stringify({
+      message: '🚀 Gate Controller API is running!',
+      timestamp: new Date().toISOString(),
+      status: 'online',
+      endpoints: ['/api/users', '/api/controllers']
+    }));
+  } 
+  else if (req.url === '/api/users') {
+    res.end(JSON.stringify(users));
+  }
+  else if (req.url === '/api/controllers') {
+    res.end(JSON.stringify(controllers));
+  }
+  else {
+    res.end(JSON.stringify({ error: 'Not found' }));
+  }
+});
+
+const PORT = 3001;
+server.listen(PORT, () => {
+  console.log('✅ Gate Controller API running on port', PORT);
+  console.log('🔗 Test it: http://localhost:' + PORT);
+  console.log('📱 Available endpoints:');
+  console.log('   GET / - API info');
+  console.log('   GET /api/users - User list');
+  console.log('   GET /api/controllers - Controller list');
+});
