@@ -1,0 +1,12 @@
+{
+  "name": "gate-controller-system",
+  "version": "1.0.0",
+  "description": "Professional Gate Controller Management System",
+  "main": "simple.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

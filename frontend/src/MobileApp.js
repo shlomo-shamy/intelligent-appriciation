@@ -23,6 +23,13 @@ function MobileApp() {
   const [loginData, setLoginData] = useState({ phone_number: '', password: '' });
   const [feedback, setFeedback] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [passwordChangeData, setPasswordChangeData] = useState({
+    phone_number: '',
+    old_password: '',
+    new_password: '',
+    confirm_password: ''
+  });
 
   // Check for existing session on load
   useEffect(() => {
@@ -86,7 +93,13 @@ function MobileApp() {
       
       if (data.success) {
         if (data.passwordChangeRequired) {
-          showFeedback('Password change required. Please contact admin.', 'warning');
+          setPasswordChangeData(prev => ({
+            ...prev,
+            phone_number: loginData.phone_number,
+            old_password: loginData.password
+          }));
+          setShowPasswordChange(true);
+          showFeedback('Password change required before you can access gates.', 'warning');
         } else {
           // Store token and user data
           localStorage.setItem('mobileToken', data.token);
@@ -100,6 +113,60 @@ function MobileApp() {
       }
     } catch (error) {
       console.error('Login error:', error);
+      showFeedback(`Connection error: ${error.message}`, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    
+    if (passwordChangeData.new_password !== passwordChangeData.confirm_password) {
+      showFeedback('New passwords do not match', 'error');
+      return;
+    }
+    
+    if (passwordChangeData.new_password.length < 6 || passwordChangeData.new_password.length > 20) {
+      showFeedback('Password must be 6-20 characters long', 'error');
+      return;
+    }
+    
+    setLoading(true);
+    
+    try {
+      const response = await fetch(`${API_URL}/api/change-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          phone_number: passwordChangeData.phone_number,
+          old_password: passwordChangeData.old_password,
+          new_password: passwordChangeData.new_password
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        showFeedback('Password changed successfully! Please login again.', 'success');
+        setShowPasswordChange(false);
+        setPasswordChangeData({
+          phone_number: '',
+          old_password: '',
+          new_password: '',
+          confirm_password: ''
+        });
+        setLoginData({
+          phone_number: passwordChangeData.phone_number,
+          password: ''
+        });
+      } else {
+        showFeedback(data.error || 'Password change failed', 'error');
+      }
+    } catch (error) {
+      console.error('Password change error:', error);
       showFeedback(`Connection error: ${error.message}`, 'error');
     } finally {
       setLoading(false);
@@ -162,6 +229,180 @@ function MobileApp() {
   const hasRelayAccess = (relayNumber) => {
     return user && (user.relay_mask & (1 << (relayNumber - 1))) !== 0;
   };
+
+  // Password Change Screen
+  if (showPasswordChange) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        fontFamily: 'Arial, sans-serif'
+      }}>
+        <div style={{
+          background: 'white',
+          borderRadius: '20px',
+          padding: '40px',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+          maxWidth: '400px',
+          width: '100%'
+        }}>
+          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+            <h1 style={{ fontSize: '2.5rem', margin: '0 0 10px 0', color: '#333' }}>🔐</h1>
+            <h2 style={{ color: '#333', margin: '0 0 10px 0' }}>Change Password</h2>
+            <p style={{ color: '#666', margin: 0 }}>Required for first-time users</p>
+          </div>
+
+          <form onSubmit={handlePasswordChange}>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', color: '#555', fontWeight: 'bold' }}>
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={passwordChangeData.phone_number}
+                readOnly
+                style={{
+                  width: '100%',
+                  padding: '15px',
+                  fontSize: '16px',
+                  border: '2px solid #e1e5e9',
+                  borderRadius: '10px',
+                  backgroundColor: '#f8f9fa',
+                  boxSizing: 'border-box'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', color: '#555', fontWeight: 'bold' }}>
+                Current Password
+              </label>
+              <input
+                type="password"
+                value={passwordChangeData.old_password}
+                onChange={(e) => setPasswordChangeData({...passwordChangeData, old_password: e.target.value})}
+                placeholder="Enter current password"
+                style={{
+                  width: '100%',
+                  padding: '15px',
+                  fontSize: '16px',
+                  border: '2px solid #e1e5e9',
+                  borderRadius: '10px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+                required
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', color: '#555', fontWeight: 'bold' }}>
+                New Password (6-20 characters)
+              </label>
+              <input
+                type="password"
+                value={passwordChangeData.new_password}
+                onChange={(e) => setPasswordChangeData({...passwordChangeData, new_password: e.target.value})}
+                placeholder="Enter new password"
+                style={{
+                  width: '100%',
+                  padding: '15px',
+                  fontSize: '16px',
+                  border: '2px solid #e1e5e9',
+                  borderRadius: '10px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+                required
+              />
+            </div>
+
+            <div style={{ marginBottom: '25px' }}>
+              <label style={{ display: 'block', marginBottom: '5px', color: '#555', fontWeight: 'bold' }}>
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                value={passwordChangeData.confirm_password}
+                onChange={(e) => setPasswordChangeData({...passwordChangeData, confirm_password: e.target.value})}
+                placeholder="Confirm new password"
+                style={{
+                  width: '100%',
+                  padding: '15px',
+                  fontSize: '16px',
+                  border: '2px solid #e1e5e9',
+                  borderRadius: '10px',
+                  outline: 'none',
+                  boxSizing: 'border-box'
+                }}
+                required
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '15px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                background: loading ? '#ccc' : 'linear-gradient(45deg, #28a745, #20c997)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.3s ease',
+                marginBottom: '15px'
+              }}
+            >
+              {loading ? '🔄 Changing Password...' : '✅ Change Password'}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowPasswordChange(false)}
+              style={{
+                width: '100%',
+                padding: '15px',
+                fontSize: '16px',
+                fontWeight: 'bold',
+                background: '#6c757d',
+                color: 'white',
+                border: 'none',
+                borderRadius: '10px',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease'
+              }}
+            >
+              Back to Login
+            </button>
+          </form>
+
+          {feedback && (
+            <div style={{
+              marginTop: '20px',
+              padding: '15px',
+              borderRadius: '10px',
+              background: feedback.type === 'success' ? '#d4edda' : 
+                         feedback.type === 'error' ? '#f8d7da' : '#fff3cd',
+              color: feedback.type === 'success' ? '#155724' : 
+                     feedback.type === 'error' ? '#721c24' : '#856404',
+              textAlign: 'center',
+              fontWeight: 'bold',
+              fontSize: '14px'
+            }}>
+              {feedback.message}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   // Login Screen
   if (!isLoggedIn) {
@@ -277,7 +518,11 @@ function MobileApp() {
           <div style={{ marginTop: '30px', fontSize: '14px', color: '#666', textAlign: 'center' }}>
             <p><strong>Demo Accounts:</strong></p>
             <p>User: +972587654321 / user123</p>
-            <p>Manager: +972501234567 / temp123</p>
+            <p style={{ color: '#dc3545', fontWeight: 'bold' }}>
+              Manager: +972501234567 / temp123 
+              <br />
+              <small>(requires password change)</small>
+            </p>
             <p>Admin: +972522554743 / admin123</p>
           </div>
         </div>
@@ -423,7 +668,7 @@ function MobileApp() {
                   <div style={{ fontSize: '24px', marginBottom: '5px' }}>
                     {relay.name === 'Open' ? '🔓' : 
                      relay.name === 'Close' ? '🔒' :
-                     relay.name === 'Stop' ? '⏹️' : '��'}
+                     relay.name === 'Stop' ? '⏹️' : '⚡'}
                   </div>
                   <div>{relay.name.toUpperCase()}</div>
                 </button>
