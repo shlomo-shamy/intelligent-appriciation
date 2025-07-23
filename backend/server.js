@@ -763,7 +763,7 @@ setInterval(() => {
 }, 30000); // Check every 30 seconds
 
 const PORT = process.env.PORT || 3001;
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log('✅ Gate Controller API - Full Device Integration');
   console.log(`🔗 Running on: http://localhost:${PORT}`);
   console.log('');
