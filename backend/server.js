@@ -14,6 +14,19 @@ const server = http.createServer((req, res) => {
     return;
   }
   
+  if (req.url === '/' || req.url === '/health') {
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      message: '✅ Railway test server is working!',
+      timestamp: new Date().toISOString(),
+      url: req.url,
+      method: req.method,
+      port: PORT,
+      headers: req.headers
+    }));
+    return;
+  }
+  
   res.writeHead(200);
   res.end(JSON.stringify({
     message: '✅ Railway test server is working!',
@@ -24,6 +37,11 @@ const server = http.createServer((req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
+console.log(`🔍 Environment check:`, {
+  PORT: process.env.PORT,
+  NODE_ENV: process.env.NODE_ENV,
+  RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT
+});
 
 server.on('error', (err) => {
   console.error('❌ Server error:', err);
