@@ -2,9 +2,9 @@
   "name": "gate-controller-api",
   "version": "2.1.0",
   "description": "ESP32 Gate Controller API with Device Integration",
-  "main": "server.js",
+"main": "backend/server.js",
   "scripts": {
-    "start": "node server.js",
+"start": "node backend/server.js",
     "dev": "node server.js"
   },
   "keywords": ["esp32", "gate-controller", "iot", "api"],
