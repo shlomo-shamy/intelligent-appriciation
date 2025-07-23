@@ -763,9 +763,15 @@ setInterval(() => {
 }, 30000); // Check every 30 seconds
 
 const PORT = process.env.PORT || 3001;
+
+server.on('error', (err) => {
+  console.error('❌ Server error:', err);
+});
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log('✅ Gate Controller API - Full Device Integration');
-  console.log(`🔗 Running on: http://localhost:${PORT}`);
+  console.log(`🔗 Server bound to 0.0.0.0:${PORT}`);
+  console.log(`🌐 Railway URL: https://${process.env.RAILWAY_PUBLIC_DOMAIN || 'localhost:' + PORT}`);
   console.log('');
   console.log('📱 MOBILE MODE: /api/mobile/login');
   console.log('💻 DASHBOARD MODE: /api/dashboard/login');
