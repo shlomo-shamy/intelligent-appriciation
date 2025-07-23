@@ -1,16 +1,36 @@
 {
-  "name": "gate-controller-api",
-  "version": "2.1.0",
-  "description": "ESP32 Gate Controller API with Device Integration",
-  "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js"
+  "name": "gate-controller-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-scripts": "5.0.1",
+    "web-vitals": "^2.1.4",
+    "serve": "^14.2.4"
   },
-  "keywords": ["esp32", "gate-controller", "iot", "api"],
-  "author": "Your Name",
-  "license": "MIT",
-  "engines": {
-    "node": "18.x"
+  "scripts": {
+    "start": "serve -s build -p 3000",
+    "build": "react-scripts build",
+    "dev": "react-scripts start",
+    "test": "react-scripts test"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }

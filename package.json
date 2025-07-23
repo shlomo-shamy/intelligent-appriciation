@@ -1,12 +1,16 @@
 {
-  "name": "gate-controller-system",
-  "version": "1.0.0",
-  "description": "Professional Gate Controller Management System",
-  "main": "simple.js",
+  "name": "gate-controller-api",
+  "version": "2.1.0",
+  "description": "ESP32 Gate Controller API with Device Integration",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC"
+  "keywords": ["esp32", "gate-controller", "iot", "api"],
+  "author": "Your Name",
+  "license": "MIT",
+  "engines": {
+    "node": "18.x"
+  }
 }
