@@ -1,23 +1,19 @@
 const http = require('http');
 
-console.log('🚀 Starting minimal test server...');
-console.log('📁 Current working directory:', process.cwd());
-console.log('📝 Script path:', __filename);
+console.log('🚀 Starting Railway server...');
 
-// More robust port handling
-const PORT = process.env.PORT || process.env.RAILWAY_PORT || 3000;
+// Let Railway assign the port - don't force 3000
+const PORT = process.env.PORT || 3001;
 
-console.log(`🔍 Environment check:`, {
-  PORT: process.env.PORT,
-  RAILWAY_PORT: process.env.RAILWAY_PORT,
-  NODE_ENV: process.env.NODE_ENV,
-  RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT,
-  RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID,
-  'Final PORT': PORT
+console.log(`🔍 Full Environment check:`, {
+  'process.env.PORT': process.env.PORT,
+  'process.env.RAILWAY_ENVIRONMENT': process.env.RAILWAY_ENVIRONMENT,
+  'Final PORT being used': PORT,
+  'All env vars': Object.keys(process.env).filter(key => key.includes('RAILWAY'))
 });
 
 const server = http.createServer((req, res) => {
-  console.log(`${req.method} ${req.url} - ${new Date().toISOString()}`);
+  console.log(`📡 ${req.method} ${req.url} - ${new Date().toISOString()}`);
   
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -28,52 +24,50 @@ const server = http.createServer((req, res) => {
     return;
   }
   
-  if (req.url === '/' || req.url === '/health') {
-    res.writeHead(200);
-    res.end(JSON.stringify({
-      message: '✅ Railway test server is working!',
-      timestamp: new Date().toISOString(),
-      url: req.url,
-      method: req.method,
-      port: PORT,
-      env: {
-        PORT: process.env.PORT,
-        RAILWAY_PORT: process.env.RAILWAY_PORT,
-        NODE_ENV: process.env.NODE_ENV
-      }
-    }));
-    return;
-  }
-  
-  res.writeHead(200);
-  res.end(JSON.stringify({
-    message: '✅ Railway test server is working!',
+  const responseData = {
+    message: '🎉 Railway server is working perfectly!',
     timestamp: new Date().toISOString(),
     url: req.url,
-    method: req.method
-  }));
+    method: req.method,
+    port: PORT,
+    server_info: {
+      actual_port: PORT,
+      railway_env: process.env.RAILWAY_ENVIRONMENT || 'not_set',
+      node_env: process.env.NODE_ENV || 'not_set'
+    }
+  };
+  
+  res.writeHead(200);
+  res.end(JSON.stringify(responseData, null, 2));
 });
 
 server.on('error', (err) => {
   console.error('❌ Server error:', err);
-  process.exit(1);
+  console.error('Error details:', {
+    code: err.code,
+    message: err.message,
+    port: PORT
+  });
 });
 
 server.on('listening', () => {
   const addr = server.address();
-  console.log('🎉 Server is listening!');
-  console.log(`✅ Test server running on port ${PORT}`);
-  console.log(`🌐 Server bound to ${addr.address}:${addr.port}`);
-  console.log(`🔗 Railway URL should be accessible now`);
+  console.log('🎉 Server successfully listening!');
+  console.log(`✅ Port: ${addr.port}`);
+  console.log(`✅ Address: ${addr.address}`);
+  console.log(`🌐 Railway should now be able to route traffic`);
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`💫 Listen callback executed - server should be ready on ${PORT}`);
+// Start server
+server.listen(PORT, '0.0.0.0', (err) => {
+  if (err) {
+    console.error('❌ Failed to start server:', err);
+    process.exit(1);
+  }
+  console.log(`💫 Server started on ${PORT}`);
 });
 
-console.log('📝 Server listen command executed');
-
-// Keep the process alive and log periodically
+// Health check endpoint logging
 setInterval(() => {
-  console.log(`💓 Server heartbeat - ${new Date().toISOString()} - Port: ${PORT}`);
+  console.log(`💓 Server heartbeat - Port: ${PORT} - ${new Date().toISOString()}`);
 }, 30000);
