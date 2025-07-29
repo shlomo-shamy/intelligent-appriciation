@@ -4,13 +4,16 @@ console.log('🚀 Starting minimal test server...');
 console.log('📁 Current working directory:', process.cwd());
 console.log('📝 Script path:', __filename);
 
-const PORT = process.env.PORT || 3001;
+// More robust port handling
+const PORT = process.env.PORT || process.env.RAILWAY_PORT || 3000;
 
 console.log(`🔍 Environment check:`, {
   PORT: process.env.PORT,
+  RAILWAY_PORT: process.env.RAILWAY_PORT,
   NODE_ENV: process.env.NODE_ENV,
   RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT,
-  RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID
+  RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID,
+  'Final PORT': PORT
 });
 
 const server = http.createServer((req, res) => {
@@ -33,7 +36,11 @@ const server = http.createServer((req, res) => {
       url: req.url,
       method: req.method,
       port: PORT,
-      headers: req.headers
+      env: {
+        PORT: process.env.PORT,
+        RAILWAY_PORT: process.env.RAILWAY_PORT,
+        NODE_ENV: process.env.NODE_ENV
+      }
     }));
     return;
   }
@@ -53,19 +60,20 @@ server.on('error', (err) => {
 });
 
 server.on('listening', () => {
+  const addr = server.address();
   console.log('🎉 Server is listening!');
   console.log(`✅ Test server running on port ${PORT}`);
-  console.log(`🌐 Server bound to 0.0.0.0:${PORT}`);
+  console.log(`🌐 Server bound to ${addr.address}:${addr.port}`);
   console.log(`🔗 Railway URL should be accessible now`);
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`💫 Listen callback executed - server should be ready`);
+  console.log(`💫 Listen callback executed - server should be ready on ${PORT}`);
 });
 
 console.log('📝 Server listen command executed');
 
 // Keep the process alive and log periodically
 setInterval(() => {
-  console.log(`💓 Server heartbeat - ${new Date().toISOString()}`);
+  console.log(`💓 Server heartbeat - ${new Date().toISOString()} - Port: ${PORT}`);
 }, 30000);
