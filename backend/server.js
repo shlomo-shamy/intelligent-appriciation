@@ -33,6 +33,25 @@ const server = http.createServer((req, res) => {
   }));
   return;
 }
+// Add this new endpoint for commands
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
+  console.log(`📥 Command check from ESP32: ${req.method} ${req.url}`);
+  res.writeHead(200);
+  res.end(JSON.stringify([])); // Empty commands array for now
+  return;
+}
+
+// Add device authentication endpoint too
+if (req.url === '/api/device/auth' && req.method === 'POST') {
+  console.log(`🔐 Auth request from ESP32: ${req.method} ${req.url}`);
+  res.writeHead(200);
+  res.end(JSON.stringify({
+    success: true,
+    token: "dummy_token_" + Date.now(),
+    message: "Device authenticated"
+  }));
+  return;
+}
 
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
   console.log(`📥 Command check from ESP32: ${req.method} ${req.url}`);
@@ -56,7 +75,20 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.m
   res.writeHead(200);
   res.end(JSON.stringify(responseData, null, 2));
 });
-
+// Command injection endpoint (for React frontend later)
+if (req.url.startsWith('/api/device/') && req.url.includes('/send-command') && req.method === 'POST') {
+  console.log(`🎮 Command sent to ESP32: ${req.method} ${req.url}`);
+  
+  // Here we'd normally store the command in a database/queue
+  // For now, just acknowledge receipt
+  res.writeHead(200);
+  res.end(JSON.stringify({
+    success: true,
+    message: "Command queued for device",
+    timestamp: new Date().toISOString()
+  }));
+  return;
+}
 server.on('error', (err) => {
   console.error('❌ Server error:', err);
   console.error('Error details:', {
