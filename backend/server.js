@@ -23,7 +23,23 @@ const server = http.createServer((req, res) => {
     res.end();
     return;
   }
-  
+  if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
+  console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
+  res.writeHead(200);
+  res.end(JSON.stringify({
+    success: true,
+    message: "Heartbeat received",
+    timestamp: new Date().toISOString()
+  }));
+  return;
+}
+
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
+  console.log(`📥 Command check from ESP32: ${req.method} ${req.url}`);
+  res.writeHead(200);
+  res.end(JSON.stringify([])); // Empty commands for now
+  return;
+}
   const responseData = {
     message: '🎉 Railway server is working perfectly!',
     timestamp: new Date().toISOString(),
