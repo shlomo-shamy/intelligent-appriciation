@@ -1,6 +1,6 @@
 const http = require('http');
 
-console.log('🚀 Starting Railway server with ESP32 support...');
+console.log('🚀 Starting Railway server with ESP32 support and User Management...');
 
 // Let Railway assign the port - don't force 3000
 const PORT = process.env.PORT || 3001;
@@ -125,6 +125,42 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // User registration endpoint - POST /api/device/{deviceId}/register-user
+  if (req.url.includes('/register-user') && req.method === 'POST') {
+    const urlParts = req.url.split('/');
+    const deviceId = urlParts[3];
+    
+    console.log(`👤 User registration for device: ${deviceId}`);
+    
+    readBody((data) => {
+      const registrationCommand = {
+        id: 'reg_' + Date.now(),
+        action: 'register_user',
+        phone: data.phone,
+        name: data.name || 'New User',
+        relayMask: data.relayMask || 1,
+        userLevel: data.userLevel || 0,
+        timestamp: Date.now()
+      };
+      
+      if (!deviceCommands.has(deviceId)) {
+        deviceCommands.set(deviceId, []);
+      }
+      deviceCommands.get(deviceId).push(registrationCommand);
+      
+      console.log(`📝 Registration queued for device ${deviceId}:`, registrationCommand);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: "User registration queued",
+        phone: data.phone,
+        deviceId: deviceId
+      }));
+    });
+    return;
+  }
+
   // Command injection endpoint - POST /api/device/{deviceId}/send-command
   if (req.url.includes('/send-command') && req.method === 'POST') {
     const urlParts = req.url.split('/');
@@ -139,6 +175,7 @@ const server = http.createServer((req, res) => {
         relay: data.relay || 1,
         duration: data.duration || 2000,
         user: data.user || 'server',
+        user_id: data.user_id || null,
         timestamp: Date.now()
       };
       
@@ -172,19 +209,26 @@ const server = http.createServer((req, res) => {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 800px; margin: 0 auto; }
+        .container { max-width: 1000px; margin: 0 auto; }
         .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .device { border-left: 4px solid #28a745; }
         .device.offline { border-left-color: #dc3545; }
-        .controls { display: flex; gap: 10px; margin-top: 10px; }
+        .controls { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
+        .device-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .open { background: #28a745; color: white; }
         .stop { background: #ffc107; color: black; }
         .close { background: #dc3545; color: white; }
         .partial { background: #6f42c1; color: white; }
+        .register { background: #17a2b8; color: white; }
         .status { font-size: 0.9em; color: #666; }
         h1 { color: #333; }
         .refresh { background: #007bff; color: white; margin-bottom: 20px; }
+        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%; margin-bottom: 10px; }
+        .form-grid { display: grid; gap: 10px; max-width: 400px; }
+        .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
+        .checkbox-group label { display: flex; align-items: center; gap: 5px; margin: 0; }
+        .user-management { border-left: 4px solid #17a2b8; }
     </style>
 </head>
 <body>
@@ -206,6 +250,18 @@ const server = http.createServer((req, res) => {
         const devices = ${JSON.stringify(Array.from(connectedDevices.entries()))};
         
         function sendCommand(deviceId, relay, action) {
+            const userId = prompt("Enter your registered phone number:");
+            if (!userId) return;
+            
+            if (!/^\\d{10}$/.test(userId)) {
+                alert('Please enter a valid 10-digit phone number');
+                return;
+            }
+            
+            if (!confirm('Send ' + action + ' command with user ID: ' + userId + '?')) {
+                return;
+            }
+            
             fetch('/api/device/' + deviceId + '/send-command', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -214,7 +270,8 @@ const server = http.createServer((req, res) => {
                     action: 'relay_activate',
                     relay: relay,
                     duration: 2000,
-                    user: 'dashboard'
+                    user: 'dashboard',
+                    user_id: parseInt(userId)
                 })
             })
             .then(r => r.json())
@@ -223,6 +280,55 @@ const server = http.createServer((req, res) => {
                     alert('✅ Command sent: ' + action);
                 } else {
                     alert('❌ Command failed');
+                }
+            })
+            .catch(e => alert('❌ Error: ' + e.message));
+        }
+        
+        function registerUser(deviceId) {
+            const phone = document.getElementById('phone-' + deviceId).value;
+            const name = document.getElementById('name-' + deviceId).value;
+            const userLevel = parseInt(document.getElementById('userLevel-' + deviceId).value);
+            
+            // Calculate relay mask from checkboxes
+            let relayMask = 0;
+            if (document.getElementById('relay1-' + deviceId).checked) relayMask |= 1;
+            if (document.getElementById('relay2-' + deviceId).checked) relayMask |= 2;
+            if (document.getElementById('relay3-' + deviceId).checked) relayMask |= 4;
+            if (document.getElementById('relay4-' + deviceId).checked) relayMask |= 8;
+            
+            if (!phone || !name) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            if (!/^\\d{10}$/.test(phone)) {
+                alert('Please enter a valid 10-digit phone number');
+                return;
+            }
+            
+            fetch('/api/device/' + deviceId + '/register-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: parseInt(phone),
+                    name: name,
+                    relayMask: relayMask,
+                    userLevel: userLevel
+                })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    alert('✅ User registered: ' + name + ' (' + phone + ')');
+                    // Clear form
+                    document.getElementById('phone-' + deviceId).value = '';
+                    document.getElementById('name-' + deviceId).value = '';
+                    document.getElementById('userLevel-' + deviceId).value = '0';
+                    document.querySelectorAll('input[type="checkbox"][id*="' + deviceId + '"]').forEach(cb => cb.checked = false);
+                    document.getElementById('relay1-' + deviceId).checked = true;
+                } else {
+                    alert('❌ Registration failed');
                 }
             })
             .catch(e => alert('❌ Error: ' + e.message));
@@ -246,11 +352,45 @@ const server = http.createServer((req, res) => {
                             ⏱️ Uptime: \${Math.floor(info.uptime / 1000)}s<br>
                             🔄 Last Heartbeat: \${new Date(info.lastHeartbeat).toLocaleTimeString()}
                         </div>
-                        <div class="controls">
-                            <button class="open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                            <button class="stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                            <button class="close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                            <button class="partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                        
+                        <div class="device-controls">
+                            <div>
+                                <h4>🎮 Device Controls</h4>
+                                <div class="controls">
+                                    <button class="open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                                    <button class="stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                                    <button class="close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                                    <button class="partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                                </div>
+                                <p style="font-size: 0.8em; color: #666; margin-top: 10px;">
+                                    🔐 Commands require registered phone number authentication
+                                </p>
+                            </div>
+                            
+                            <div class="user-management">
+                                <h4>👤 Register New User</h4>
+                                <div class="form-grid">
+                                    <input type="tel" id="phone-\${deviceId}" placeholder="Phone Number (1234567890)" maxlength="10" required>
+                                    <input type="text" id="name-\${deviceId}" placeholder="User Name" required>
+                                    <select id="userLevel-\${deviceId}">
+                                        <option value="0">👤 Basic User</option>
+                                        <option value="1">👔 Manager</option>
+                                        <option value="2">🔐 Admin</option>
+                                    </select>
+                                    <div>
+                                        <label style="font-weight: bold; margin-bottom: 5px; display: block;">🔑 Permissions:</label>
+                                        <div class="checkbox-group">
+                                            <label><input type="checkbox" id="relay1-\${deviceId}" checked> 🔓 OPEN</label>
+                                            <label><input type="checkbox" id="relay2-\${deviceId}"> ⏸️ STOP</label>
+                                            <label><input type="checkbox" id="relay3-\${deviceId}"> 🔒 CLOSE</label>
+                                            <label><input type="checkbox" id="relay4-\${deviceId}"> ↗️ PARTIAL</label>
+                                        </div>
+                                    </div>
+                                    <button class="register" onclick="registerUser('\${deviceId}')">
+                                        ➕ Register User
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 \`;
@@ -291,7 +431,7 @@ const server = http.createServer((req, res) => {
   // API endpoints list
   if (req.url === '/api' || req.url === '/api/') {
     const responseData = {
-      message: '🎉 Gate Controller API',
+      message: '🎉 Gate Controller API with User Management',
       timestamp: new Date().toISOString(),
       connectedDevices: connectedDevices.size,
       endpoints: [
@@ -301,7 +441,8 @@ const server = http.createServer((req, res) => {
         'POST /api/device/heartbeat',
         'GET /api/device/{deviceId}/commands',
         'POST /api/device/auth',
-        'POST /api/device/{deviceId}/send-command'
+        'POST /api/device/{deviceId}/send-command',
+        'POST /api/device/{deviceId}/register-user'
       ],
       devices: Array.from(connectedDevices.keys())
     };
@@ -313,7 +454,7 @@ const server = http.createServer((req, res) => {
 
   // Default response for other endpoints
   const responseData = {
-    message: '🎉 Railway Gate Controller Server',
+    message: '🎉 Railway Gate Controller Server with User Management',
     timestamp: new Date().toISOString(),
     url: req.url,
     method: req.method,
@@ -336,7 +477,7 @@ server.on('error', (err) => {
 
 server.on('listening', () => {
   const addr = server.address();
-  console.log('🎉 Server successfully listening!');
+  console.log('🎉 Server successfully listening with User Management!');
   console.log(`✅ Port: ${addr.port}`);
   console.log(`✅ Address: ${addr.address}`);
   console.log(`🌐 Railway should now be able to route traffic`);
@@ -349,7 +490,7 @@ server.listen(PORT, '0.0.0.0', (err) => {
     console.error('❌ Failed to start server:', err);
     process.exit(1);
   }
-  console.log(`💫 Server started on ${PORT}`);
+  console.log(`💫 Server started on ${PORT} with User Management`);
 });
 
 // Health check endpoint logging
