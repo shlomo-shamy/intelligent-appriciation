@@ -48,7 +48,11 @@ const server = http.createServer((req, res) => {
       }
     });
   }
-
+// In your Railway backend API
+app.use((req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  next();
+});
   // ESP32 Heartbeat endpoint
   if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
     console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
