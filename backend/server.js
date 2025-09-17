@@ -43,7 +43,8 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
   
   if (req.method === 'OPTIONS') {
-    res.writeHead(200);
+    //res.writeHead(200);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end();
     return;
   }
@@ -361,7 +362,8 @@ const server = http.createServer((req, res) => {
         res.end(loginHtml);
         return;
       } else {
-        res.writeHead(401);
+        //res.writeHead(401);
+        res.writeHead(401, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(JSON.stringify({ error: 'Authentication required' }));
         return;
       }
@@ -437,7 +439,8 @@ const server = http.createServer((req, res) => {
         
         console.log(`📝 Command queued for device ${deviceId}:`, command);
         
-        res.writeHead(200);
+        //res.writeHead(200);
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(JSON.stringify({
           success: true,
           message: "Command queued for device",
@@ -459,6 +462,7 @@ const server = http.createServer((req, res) => {
 <head>
     <title>🚪 Gate Controller Dashboard</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
         .container { max-width: 1000px; margin: 0 auto; }
