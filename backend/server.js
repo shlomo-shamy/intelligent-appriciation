@@ -148,7 +148,10 @@ const server = http.createServer((req, res) => {
       
       console.log(`💓 Device ${deviceId} heartbeat received:`, connectedDevices.get(deviceId));
       
-      res.writeHead(200);
+     // res.writeHead(200);
+      res.writeHead(200, { 
+  'Content-Type': 'text/html; charset=utf-8'
+});
       res.end(JSON.stringify({
         success: true,
         message: "Heartbeat received",
@@ -171,7 +174,10 @@ const server = http.createServer((req, res) => {
     
     console.log(`📋 Sending ${deviceCommandQueue.length} commands to device ${deviceId}`);
     
-    res.writeHead(200);
+    //res.writeHead(200);
+    res.writeHead(200, { 
+  'Content-Type': 'text/html; charset=utf-8'
+});
     res.end(JSON.stringify(deviceCommandQueue));
     return;
   }
@@ -187,7 +193,10 @@ const server = http.createServer((req, res) => {
       
       console.log(`🔐 Authenticating device: ${deviceId} (${deviceType}) v${firmwareVersion}`);
       
-      res.writeHead(200);
+      //res.writeHead(200);
+      res.writeHead(200, { 
+  'Content-Type': 'text/html; charset=utf-8'
+});
       res.end(JSON.stringify({
         success: true,
         token: "device_token_" + deviceId + "_" + Date.now(),
@@ -210,6 +219,7 @@ const server = http.createServer((req, res) => {
 <head>
     <title>🔐 Gate Controller Login</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
     <style>
         body { 
             font-family: Arial, sans-serif; 
