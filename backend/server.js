@@ -584,11 +584,14 @@ const server = http.createServer((req, res) => {
             <div id="controllers-screen" class="screen active">
                 <h2>Your Authorized Controllers</h2>
                 <div style="margin-bottom: 1rem;">
+                    <button onclick="testAlert()" style="background: #28a745; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+                        Test JS
+                    </button>
                     <button onclick="createTestDevice()" style="background: #17a2b8; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
                         Create Test Device
                     </button>
                     <button onclick="showDebugInfo()" style="background: #6c757d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-left: 0.5rem;">
-                        Show Debug Info
+                        Debug Info
                     </button>
                 </div>
                 <div id="devices-container" class="devices-grid">
