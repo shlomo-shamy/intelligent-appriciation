@@ -15,6 +15,9 @@ console.log(`🔍 Full Environment check:`, {
 // Store connected devices
 const connectedDevices = new Map();
 const deviceCommands = new Map(); // Store commands for each device
+const registeredUsers = new Map(); // Store registered users by deviceId
+const deviceLogs = new Map(); // Store device logs
+const deviceSchedules = new Map(); // Store device schedules
 
 // Simple dashboard authentication
 const DASHBOARD_USERS = new Map([
@@ -31,6 +34,31 @@ function generateSessionToken() {
 
 function validateSession(sessionToken) {
   return activeSessions.has(sessionToken);
+}
+
+// Helper function to add device log
+function addDeviceLog(deviceId, action, user, details = '') {
+  if (!deviceLogs.has(deviceId)) {
+    deviceLogs.set(deviceId, []);
+  }
+  
+  const log = {
+    timestamp: new Date().toISOString(),
+    action: action,
+    user: user,
+    details: details,
+    id: 'log_' + Date.now() + '_' + Math.random().toString(36).substring(2)
+  };
+  
+  const logs = deviceLogs.get(deviceId);
+  logs.unshift(log); // Add to beginning
+  
+  // Keep only last 100 logs per device
+  if (logs.length > 100) {
+    logs.splice(100);
+  }
+  
+  deviceLogs.set(deviceId, logs);
 }
 
 const server = http.createServer((req, res) => {
@@ -146,6 +174,9 @@ const server = http.createServer((req, res) => {
         connectionType: data.connectionType || 'wifi'
       });
       
+      // Add log entry
+      addDeviceLog(deviceId, 'heartbeat', 'system', `Signal: ${data.signalStrength}dBm, Battery: ${data.batteryLevel}%`);
+      
       console.log(`💓 Device ${deviceId} heartbeat received:`, connectedDevices.get(deviceId));
       
       res.writeHead(200);
@@ -187,6 +218,9 @@ const server = http.createServer((req, res) => {
       
       console.log(`🔐 Authenticating device: ${deviceId} (${deviceType}) v${firmwareVersion}`);
       
+      // Add log entry
+      addDeviceLog(deviceId, 'authentication', 'system', `Device type: ${deviceType}, Firmware: ${firmwareVersion}`);
+      
       res.writeHead(200);
       res.end(JSON.stringify({
         success: true,
@@ -213,7 +247,7 @@ const server = http.createServer((req, res) => {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             margin: 0; 
             padding: 0;
@@ -286,20 +320,6 @@ const server = http.createServer((req, res) => {
             font-size: 14px;
             border-left: 4px solid #17a2b8;
         }
-        .signup-link {
-            text-align: center;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid #eee;
-        }
-        .signup-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .signup-link a:hover {
-            text-decoration: underline;
-        }
     </style>
 </head>
 <body>
@@ -329,11 +349,6 @@ const server = http.createServer((req, res) => {
             <strong>Demo Credentials:</strong><br>
             Username: <code>admin</code> / Password: <code>admin123</code><br>
             Username: <code>manager</code> / Password: <code>gate2024</code>
-        </div>
-        
-        <div class="signup-link">
-            <p>Need to register a new user?</p>
-            <a href="/signup">➕ Sign Up New User</a>
         </div>
     </div>
 
@@ -381,300 +396,44 @@ const server = http.createServer((req, res) => {
     callback(session);
   }
 
-  // Sign-up page (requires login to access)
-  if (req.url === '/signup') {
+  // Get device users endpoint
+  if (req.url.startsWith('/api/device/') && req.url.endsWith('/users') && req.method === 'GET') {
     requireAuth((session) => {
-      const signupHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>➕ Register New User - Gate Controller</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
-            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
-            margin: 0; 
-            padding: 20px;
-            min-height: 100vh;
-        }
-        .container { 
-            max-width: 600px; 
-            margin: 0 auto; 
-            background: white; 
-            padding: 30px; 
-            border-radius: 15px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        }
-        .header { 
-            text-align: center; 
-            margin-bottom: 30px;
-            color: #333;
-        }
-        .header h1 {
-            margin: 0;
-            font-size: 2em;
-            color: #17a2b8;
-        }
-        .user-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid #17a2b8;
-        }
-        .device-section {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            border-left: 4px solid #28a745;
-        }
-        .device-section.offline {
-            border-left-color: #dc3545;
-            opacity: 0.7;
-        }
-        .form-grid { 
-            display: grid; 
-            gap: 15px; 
-            margin-bottom: 20px;
-        }
-        .form-group { 
-            display: flex; 
-            flex-direction: column;
-        }
-        label { 
-            margin-bottom: 5px; 
-            font-weight: bold;
-            color: #555;
-        }
-        input, select { 
-            padding: 12px; 
-            border: 2px solid #ddd; 
-            border-radius: 8px; 
-            font-size: 16px;
-        }
-        input:focus, select:focus {
-            outline: none;
-            border-color: #17a2b8;
-        }
-        .checkbox-group { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 10px; 
-            margin: 10px 0; 
-        }
-        .checkbox-group label { 
-            display: flex; 
-            align-items: center; 
-            gap: 8px; 
-            margin: 0;
-            font-weight: normal;
-        }
-        .checkbox-group input[type="checkbox"] {
-            width: auto;
-            padding: 0;
-        }
-        button { 
-            padding: 12px 24px; 
-            border: none; 
-            border-radius: 8px; 
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-            margin-right: 10px;
-            margin-bottom: 10px;
-        }
-        .register { 
-            background: #17a2b8; 
-            color: white; 
-        }
-        .register:hover { 
-            background: #138496; 
-        }
-        .back { 
-            background: #6c757d; 
-            color: white; 
-        }
-        .back:hover { 
-            background: #5a6268; 
-        }
-        .success { 
-            color: #28a745; 
-            margin-top: 10px; 
-            font-weight: bold;
-        }
-        .error { 
-            color: #dc3545; 
-            margin-top: 10px; 
-            font-weight: bold;
-        }
-        .device-status {
-            font-size: 0.9em;
-            color: #666;
-            margin-top: 5px;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>➕ Register New User</h1>
-            <p>Gate Controller User Management</p>
-        </div>
-        
-        <div class="user-info">
-            <strong>👤 Logged in as:</strong> ${session.name} (${session.username})
-        </div>
-        
-        <div id="devices-container">
-            <!-- Devices will be loaded here -->
-        </div>
-        
-        <div style="text-align: center; margin-top: 30px;">
-            <button class="back" onclick="window.location.href='/dashboard'">
-                ⬅️ Back to Dashboard
-            </button>
-        </div>
-    </div>
-
-    <script>
-        function loadDevices() {
-            // Get devices from the current connection data
-            const devices = ${JSON.stringify(Array.from(connectedDevices.entries()))};
-            const container = document.getElementById('devices-container');
-            
-            console.log('Raw devices data:', devices);
-            console.log('Devices length:', devices.length);
-            console.log('Devices type:', typeof devices);
-            
-            if (!devices || devices.length === 0) {
-                console.log('No devices found, showing empty message');
-                container.innerHTML = '<div class="device-section"><p>📭 No devices connected. Please ensure your ESP32 gate controllers are online.</p><p>Debug: devices.length = ' + devices.length + '</p></div>';
-                return;
-            }
-            
-            console.log('Rendering', devices.length, 'devices');
-            
-            container.innerHTML = devices.map(([deviceId, info]) => {
-                console.log('Processing device:', deviceId, info);
-                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-                return '<div class="device-section ' + (isOnline ? '' : 'offline') + '">' +
-                    '<h3>🎛️ ' + deviceId + ' ' + (isOnline ? '🟢 Online' : '🔴 Offline') + '</h3>' +
-                    '<div class="device-status">' +
-                        '📶 Signal: ' + info.signalStrength + 'dBm | ' +
-                        '🔋 Battery: ' + info.batteryLevel + '% | ' +
-                        '⏱️ Uptime: ' + Math.floor(info.uptime / 1000) + 's<br>' +
-                        '🔄 Last Heartbeat: ' + new Date(info.lastHeartbeat).toLocaleTimeString() +
-                    '</div>' +
-                    '<div class="form-grid">' +
-                        '<div class="form-group">' +
-                            '<label for="phone-' + deviceId + '">📱 Phone Number:</label>' +
-                            '<input type="tel" id="phone-' + deviceId + '" placeholder="1234567890" maxlength="10" required>' +
-                        '</div>' +
-                        '<div class="form-group">' +
-                            '<label for="name-' + deviceId + '">👤 User Name:</label>' +
-                            '<input type="text" id="name-' + deviceId + '" placeholder="Enter full name" required>' +
-                        '</div>' +
-                        '<div class="form-group">' +
-                            '<label for="userLevel-' + deviceId + '">🎭 User Level:</label>' +
-                            '<select id="userLevel-' + deviceId + '">' +
-                                '<option value="0">👤 Basic User</option>' +
-                                '<option value="1">👔 Manager</option>' +
-                                '<option value="2">🔐 Admin</option>' +
-                            '</select>' +
-                        '</div>' +
-                        '<div class="form-group">' +
-                            '<label style="font-weight: bold; margin-bottom: 10px;">🔑 Gate Permissions:</label>' +
-                            '<div class="checkbox-group">' +
-                                '<label><input type="checkbox" id="relay1-' + deviceId + '" checked> 🔓 OPEN</label>' +
-                                '<label><input type="checkbox" id="relay2-' + deviceId + '"> ⏸️ STOP</label>' +
-                                '<label><input type="checkbox" id="relay3-' + deviceId + '"> 🔒 CLOSE</label>' +
-                                '<label><input type="checkbox" id="relay4-' + deviceId + '"> ↗️ PARTIAL</label>' +
-                            '</div>' +
-                        '</div>' +
-                        '<div>' +
-                            '<button class="register" onclick="registerUser(\'' + deviceId + '\')" ' + (!isOnline ? 'disabled' : '') + '>' +
-                                '➕ Register User for ' + deviceId +
-                            '</button>' +
-                            '<div id="message-' + deviceId + '"></div>' +
-                        '</div>' +
-                    '</div>' +
-                '</div>';
-            }).join('');
-            
-            console.log('Finished rendering devices');
-        }
-        
-        async function registerUser(deviceId) {
-            const phone = document.getElementById('phone-' + deviceId).value;
-            const name = document.getElementById('name-' + deviceId).value;
-            const userLevel = parseInt(document.getElementById('userLevel-' + deviceId).value);
-            const messageDiv = document.getElementById('message-' + deviceId);
-            
-            let relayMask = 0;
-            if (document.getElementById('relay1-' + deviceId).checked) relayMask |= 1;
-            if (document.getElementById('relay2-' + deviceId).checked) relayMask |= 2;
-            if (document.getElementById('relay3-' + deviceId).checked) relayMask |= 4;
-            if (document.getElementById('relay4-' + deviceId).checked) relayMask |= 8;
-            
-            // Validation
-            if (!phone || !name) {
-                messageDiv.innerHTML = '<div class="error">❌ Please fill in all required fields</div>';
-                return;
-            }
-            
-            if (!/^\d{10}$/.test(phone)) {
-                messageDiv.innerHTML = '<div class="error">❌ Please enter a valid 10-digit phone number</div>';
-                return;
-            }
-            
-            if (relayMask === 0) {
-                messageDiv.innerHTML = '<div class="error">❌ Please select at least one permission</div>';
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/device/' + deviceId + '/register-user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                    body: JSON.stringify({
-                        phone: parseInt(phone),
-                        name: name,
-                        relayMask: relayMask,
-                        userLevel: userLevel
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    messageDiv.innerHTML = '<div class="success">✅ User registered successfully: ' + name + ' (' + phone + ')</div>';
-                    
-                    // Clear form
-                    document.getElementById('phone-' + deviceId).value = '';
-                    document.getElementById('name-' + deviceId).value = '';
-                    document.getElementById('userLevel-' + deviceId).value = '0';
-                    document.querySelectorAll('input[type="checkbox"][id*="' + deviceId + '"]').forEach(cb => cb.checked = false);
-                    document.getElementById('relay1-' + deviceId).checked = true;
-                } else {
-                    messageDiv.innerHTML = '<div class="error">❌ Registration failed: ' + (data.message || 'Unknown error')</div>';
-                }
-            } catch (error) {
-                messageDiv.innerHTML = '<div class="error">❌ Connection error: ' + error.message + '</div>';
-            }
-        }
-        
-        // Load devices on page load
-        loadDevices();
-    </script>
-</body>
-</html>`;
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
       
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(signupHtml);
+      const users = registeredUsers.get(deviceId) || [];
+      
+      res.writeHead(200);
+      res.end(JSON.stringify(users));
+    });
+    return;
+  }
+
+  // Get device logs endpoint
+  if (req.url.startsWith('/api/device/') && req.url.endsWith('/logs') && req.method === 'GET') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      const logs = deviceLogs.get(deviceId) || [];
+      
+      res.writeHead(200);
+      res.end(JSON.stringify(logs));
+    });
+    return;
+  }
+
+  // Get device schedules endpoint
+  if (req.url.startsWith('/api/device/') && req.url.endsWith('/schedules') && req.method === 'GET') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      const schedules = deviceSchedules.get(deviceId) || [];
+      
+      res.writeHead(200);
+      res.end(JSON.stringify(schedules));
     });
     return;
   }
@@ -699,10 +458,46 @@ const server = http.createServer((req, res) => {
           registeredBy: session.username
         };
         
+        // Store user in registered users
+        if (!registeredUsers.has(deviceId)) {
+          registeredUsers.set(deviceId, []);
+        }
+        
+        const users = registeredUsers.get(deviceId);
+        
+        // Check if user already exists
+        const existingUserIndex = users.findIndex(u => u.phone === data.phone);
+        if (existingUserIndex >= 0) {
+          users[existingUserIndex] = {
+            phone: data.phone,
+            name: data.name || 'New User',
+            relayMask: data.relayMask || 1,
+            userLevel: data.userLevel || 0,
+            registeredBy: session.username,
+            registeredAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString()
+          };
+        } else {
+          users.push({
+            phone: data.phone,
+            name: data.name || 'New User',
+            relayMask: data.relayMask || 1,
+            userLevel: data.userLevel || 0,
+            registeredBy: session.username,
+            registeredAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString()
+          });
+        }
+        
+        registeredUsers.set(deviceId, users);
+        
         if (!deviceCommands.has(deviceId)) {
           deviceCommands.set(deviceId, []);
         }
         deviceCommands.get(deviceId).push(registrationCommand);
+        
+        // Add log entry
+        addDeviceLog(deviceId, 'user_registered', session.username, `User: ${data.name} (${data.phone})`);
         
         console.log(`📝 Registration queued for device ${deviceId}:`, registrationCommand);
         
@@ -743,6 +538,9 @@ const server = http.createServer((req, res) => {
         }
         deviceCommands.get(deviceId).push(command);
         
+        // Add log entry
+        addDeviceLog(deviceId, 'command_sent', session.username, `Action: ${command.action}, Relay: ${command.relay}, User ID: ${command.user_id}`);
+        
         console.log(`📝 Command queued for device ${deviceId}:`, command);
         
         res.writeHead(200);
@@ -769,16 +567,18 @@ const server = http.createServer((req, res) => {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
+        * { box-sizing: border-box; }
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
-            margin: 20px; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; 
+            margin: 0; 
             background: #f5f5f5; 
+            font-size: 14px;
         }
-        .container { max-width: 1000px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .header { 
             background: white; 
             padding: 20px; 
-            margin: 10px 0; 
+            margin-bottom: 20px; 
             border-radius: 8px; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
             display: flex; 
@@ -786,21 +586,210 @@ const server = http.createServer((req, res) => {
             align-items: center; 
         }
         .user-info { color: #666; }
-        .header-buttons { display: flex; gap: 10px; }
         .logout { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-        .signup-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; text-decoration: none; }
-        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .device { border-left: 4px solid #28a745; }
+        .card { 
+            background: white; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .device { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-left: 4px solid #28a745; 
+            padding: 15px 20px;
+        }
         .device.offline { border-left-color: #dc3545; }
-        .controls { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .device-info h3 { margin: 0 0 5px 0; color: #333; }
+        .device-status { font-size: 12px; color: #666; }
+        .device-actions { display: flex; gap: 10px; align-items: center; }
+        .control-btn { 
+            padding: 8px 15px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 12px;
+        }
         .open { background: #28a745; color: white; }
         .stop { background: #ffc107; color: black; }
         .close { background: #dc3545; color: white; }
         .partial { background: #6f42c1; color: white; }
-        .status { font-size: 0.9em; color: #666; }
+        .settings-btn { 
+            background: #6c757d; 
+            color: white; 
+            padding: 8px 12px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 18px;
+        }
+        .settings-btn:hover { background: #5a6268; }
         h1 { color: #333; margin: 0; }
-        .refresh { background: #007bff; color: white; margin-bottom: 20px; }
+        .refresh { background: #007bff; color: white; margin-bottom: 20px; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 { margin: 0; }
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn.active {
+            border-bottom-color: #667eea;
+            background: white;
+            color: #667eea;
+        }
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        /* Form Styles */
+        .form-grid { display: grid; gap: 15px; max-width: 500px; }
+        input, select { 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            width: 100%; 
+            font-size: 14px;
+        }
+        .checkbox-group { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px; 
+            margin: 10px 0; 
+        }
+        .checkbox-group label { 
+            display: flex; 
+            align-items: center; 
+            gap: 5px; 
+            margin: 0; 
+            font-weight: normal;
+        }
+        .register-btn { 
+            background: #17a2b8; 
+            color: white; 
+            padding: 12px 20px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
+        
+        /* Users List */
+        .users-list { margin-top: 30px; }
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+        }
+        .user-info { flex: 1; }
+        .user-name { font-weight: bold; color: #333; }
+        .user-details { font-size: 12px; color: #666; }
+        
+        /* Logs */
+        .log-item {
+            padding: 10px;
+            border-left: 3px solid #007bff;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 0 4px 4px 0;
+        }
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .log-action { font-weight: bold; color: #333; }
+        .log-time { font-size: 12px; color: #666; }
+        .log-details { font-size: 12px; color: #666; }
+        
+        /* Status */
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .status-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #28a745;
+        }
+        .status-label { font-weight: bold; color: #333; margin-bottom: 5px; }
+        .status-value { color: #666; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .device { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .device-actions { width: 100%; justify-content: space-between; }
+            .modal-content { width: 95%; margin: 5% auto; }
+            .status-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -810,10 +799,7 @@ const server = http.createServer((req, res) => {
                 <h1>🚪 Gate Controller Dashboard</h1>
                 <div class="user-info">Logged in as: <strong>${session.name}</strong> (${session.username})</div>
             </div>
-            <div class="header-buttons">
-                <a href="/signup" class="signup-btn">➕ Register Users</a>
-                <button class="logout" onclick="logout()">🚪 Logout</button>
-            </div>
+            <button class="logout" onclick="logout()">🚪 Logout</button>
         </div>
         
         <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
@@ -829,18 +815,94 @@ const server = http.createServer((req, res) => {
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">⚙️ Device Settings</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <div class="modal-tabs">
+                <button class="tab-btn active" onclick="switchTab('users')">👥 Users</button>
+                <button class="tab-btn" onclick="switchTab('status')">📊 Status</button>
+                <button class="tab-btn" onclick="switchTab('logs')">📝 Logs</button>
+                <button class="tab-btn" onclick="switchTab('schedules')">⏰ Schedules</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Users Tab -->
+                <div id="users-tab" class="tab-content active">
+                    <h3>➕ Add New User</h3>
+                    <div class="form-grid">
+                        <input type="tel" id="modalPhone" placeholder="Phone Number (1234567890)" maxlength="10" required>
+                        <input type="text" id="modalName" placeholder="User Name" required>
+                        <select id="modalUserLevel">
+                            <option value="0">👤 Basic User</option>
+                            <option value="1">👔 Manager</option>
+                            <option value="2">🔐 Admin</option>
+                        </select>
+                        <div>
+                            <label style="font-weight: bold; margin-bottom: 5px; display: block;">🔑 Permissions:</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" id="modalRelay1" checked> 🔓 OPEN</label>
+                                <label><input type="checkbox" id="modalRelay2"> ⏸️ STOP</label>
+                                <label><input type="checkbox" id="modalRelay3"> 🔒 CLOSE</label>
+                                <label><input type="checkbox" id="modalRelay4"> ↗️ PARTIAL</label>
+                            </div>
+                        </div>
+                        <button class="register-btn" onclick="registerUserModal()">
+                            ➕ Register User
+                        </button>
+                    </div>
+                    
+                    <div class="users-list">
+                        <h3>👥 Registered Users</h3>
+                        <div id="usersList">
+                            <p>Loading users...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Status Tab -->
+                <div id="status-tab" class="tab-content">
+                    <h3>📊 Device Status</h3>
+                    <div id="deviceStatus">
+                        <p>Loading status...</p>
+                    </div>
+                </div>
+                
+                <!-- Logs Tab -->
+                <div id="logs-tab" class="tab-content">
+                    <h3>📝 Device Logs</h3>
+                    <div id="deviceLogs">
+                        <p>Loading logs...</p>
+                    </div>
+                </div>
+                
+                <!-- Schedules Tab -->
+                <div id="schedules-tab" class="tab-content">
+                    <h3>⏰ Device Schedules</h3>
+                    <div id="deviceSchedules">
+                        <p>Schedules feature coming soon...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Global variable to store devices data  
-        window.dashboardDevices = ${JSON.stringify(Array.from(connectedDevices.entries()))};
+        const devices = ${JSON.stringify(Array.from(connectedDevices.entries()))};
+        const registeredUsers = ${JSON.stringify(Array.from(registeredUsers.entries()))};
+        let currentDeviceId = null;
         
-        function logout() {
-            fetch('/dashboard/logout', { method: 'POST' })
-            .then(function() {
+        async function logout() {
+            try {
+                await fetch('/dashboard/logout', { method: 'POST' });
                 window.location.href = '/dashboard';
-            })
-            .catch(function(error) {
+            } catch (error) {
                 alert('Logout error: ' + error.message);
-            });
+            }
         }
         
         function sendCommand(deviceId, relay, action) {
@@ -868,62 +930,296 @@ const server = http.createServer((req, res) => {
                     user_id: parseInt(userId)
                 })
             })
-            .then(function(r) { return r.json(); })
-            .then(function(d) {
+            .then(r => r.json())
+            .then(d => {
                 if (d.success) {
                     alert('✅ Command sent: ' + action);
                 } else {
                     alert('❌ Command failed');
                 }
             })
-            .catch(function(e) {
-                alert('❌ Error: ' + e.message);
-            });
+            .catch(e => alert('❌ Error: ' + e.message));
+        }
+        
+        function openSettings(deviceId) {
+            currentDeviceId = deviceId;
+            document.getElementById('modalTitle').textContent = '⚙️ Settings - ' + deviceId;
+            document.getElementById('settingsModal').style.display = 'block';
+            
+            // Switch to users tab and load data
+            switchTab('users');
+            loadUsers();
+        }
+        
+        function closeModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+            currentDeviceId = null;
+        }
+        
+        function switchTab(tabName) {
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to selected tab
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // Load data based on tab
+            switch(tabName) {
+                case 'users':
+                    loadUsers();
+                    break;
+                case 'status':
+                    loadStatus();
+                    break;
+                case 'logs':
+                    loadLogs();
+                    break;
+                case 'schedules':
+                    loadSchedules();
+                    break;
+            }
+        }
+        
+        async function loadUsers() {
+            if (!currentDeviceId) return;
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/users');
+                const users = await response.json();
+                
+                const usersList = document.getElementById('usersList');
+                
+                if (users.length === 0) {
+                    usersList.innerHTML = '<p style="color: #666;">No users registered yet.</p>';
+                    return;
+                }
+                
+                usersList.innerHTML = users.map(user => {
+                    const permissions = [];
+                    if (user.relayMask & 1) permissions.push('🔓 OPEN');
+                    if (user.relayMask & 2) permissions.push('⏸️ STOP');
+                    if (user.relayMask & 4) permissions.push('🔒 CLOSE');
+                    if (user.relayMask & 8) permissions.push('↗️ PARTIAL');
+                    
+                    const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
+                    
+                    return \`
+                        <div class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">\${user.name}</div>
+                                <div class="user-details">
+                                    📱 \${user.phone} | \${userLevelText} | 
+                                    Permissions: \${permissions.join(', ')} |
+                                    Registered: \${new Date(user.registeredAt).toLocaleDateString()}
+                                </div>
+                            </div>
+                        </div>
+                    \`;
+                }).join('');
+                
+            } catch (error) {
+                document.getElementById('usersList').innerHTML = '<p style="color: #dc3545;">Error loading users: ' + error.message + '</p>';
+            }
+        }
+        
+        async function loadStatus() {
+            if (!currentDeviceId) return;
+            
+            const device = devices.find(([id]) => id === currentDeviceId);
+            if (!device) return;
+            
+            const [deviceId, info] = device;
+            const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+            
+            document.getElementById('deviceStatus').innerHTML = \`
+                <div class="status-grid">
+                    <div class="status-item">
+                        <div class="status-label">🌐 Connection Status</div>
+                        <div class="status-value">\${isOnline ? '🟢 Online' : '🔴 Offline'}</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">📶 Signal Strength</div>
+                        <div class="status-value">\${info.signalStrength} dBm</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">🔋 Battery Level</div>
+                        <div class="status-value">\${info.batteryLevel}%</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">⏱️ Uptime</div>
+                        <div class="status-value">\${Math.floor(info.uptime / 1000)} seconds</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">🧠 Free Memory</div>
+                        <div class="status-value">\${info.freeHeap} bytes</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">🔄 Last Heartbeat</div>
+                        <div class="status-value">\${new Date(info.lastHeartbeat).toLocaleString()}</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">📱 Firmware Version</div>
+                        <div class="status-value">\${info.firmwareVersion}</div>
+                    </div>
+                    <div class="status-item">
+                        <div class="status-label">🌐 Connection Type</div>
+                        <div class="status-value">\${info.connectionType}</div>
+                    </div>
+                </div>
+            \`;
+        }
+        
+        async function loadLogs() {
+            if (!currentDeviceId) return;
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/logs');
+                const logs = await response.json();
+                
+                const logsContainer = document.getElementById('deviceLogs');
+                
+                if (logs.length === 0) {
+                    logsContainer.innerHTML = '<p style="color: #666;">No logs available.</p>';
+                    return;
+                }
+                
+                logsContainer.innerHTML = logs.map(log => \`
+                    <div class="log-item">
+                        <div class="log-header">
+                            <span class="log-action">📝 \${log.action.replace('_', ' ').toUpperCase()}</span>
+                            <span class="log-time">\${new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div class="log-details">
+                            👤 User: \${log.user} | \${log.details}
+                        </div>
+                    </div>
+                \`).join('');
+                
+            } catch (error) {
+                document.getElementById('deviceLogs').innerHTML = '<p style="color: #dc3545;">Error loading logs: ' + error.message + '</p>';
+            }
+        }
+        
+        async function loadSchedules() {
+            if (!currentDeviceId) return;
+            
+            document.getElementById('deviceSchedules').innerHTML = \`
+                <div style="text-align: center; padding: 40px; color: #666;">
+                    <h4>⏰ Schedules Feature</h4>
+                    <p>This feature will allow you to:</p>
+                    <ul style="text-align: left; max-width: 300px; margin: 0 auto;">
+                        <li>📅 Schedule automatic gate operations</li>
+                        <li>🕐 Set recurring time-based commands</li>
+                        <li>👥 Assign user-specific schedules</li>
+                        <li>🎯 Configure conditional triggers</li>
+                    </ul>
+                    <p><strong>Coming in the next update!</strong></p>
+                </div>
+            \`;
+        }
+        
+        async function registerUserModal() {
+            if (!currentDeviceId) return;
+            
+            const phone = document.getElementById('modalPhone').value;
+            const name = document.getElementById('modalName').value;
+            const userLevel = parseInt(document.getElementById('modalUserLevel').value);
+            
+            let relayMask = 0;
+            if (document.getElementById('modalRelay1').checked) relayMask |= 1;
+            if (document.getElementById('modalRelay2').checked) relayMask |= 2;
+            if (document.getElementById('modalRelay3').checked) relayMask |= 4;
+            if (document.getElementById('modalRelay4').checked) relayMask |= 8;
+            
+            if (!phone || !name) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            if (!/^\\d{10}$/.test(phone)) {
+                alert('Please enter a valid 10-digit phone number');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/register-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({
+                        phone: parseInt(phone),
+                        name: name,
+                        relayMask: relayMask,
+                        userLevel: userLevel
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User registered: ' + name + ' (' + phone + ')');
+                    
+                    // Clear form
+                    document.getElementById('modalPhone').value = '';
+                    document.getElementById('modalName').value = '';
+                    document.getElementById('modalUserLevel').value = '0';
+                    document.querySelectorAll('#settingsModal input[type="checkbox"]').forEach(cb => cb.checked = false);
+                    document.getElementById('modalRelay1').checked = true;
+                    
+                    // Reload users list
+                    loadUsers();
+                } else {
+                    alert('❌ Registration failed');
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
         }
         
         function renderDevices() {
             const container = document.getElementById('devices');
-            if (!window.dashboardDevices || window.dashboardDevices.length === 0) {
+            if (devices.length === 0) {
                 container.innerHTML = '<div class="card"><p>📭 No devices connected yet. Waiting for ESP32 heartbeat...</p></div>';
                 return;
             }
             
-            let html = '';
-            for (let i = 0; i < window.dashboardDevices.length; i++) {
-                const deviceId = window.dashboardDevices[i][0];
-                const info = window.dashboardDevices[i][1];
+            container.innerHTML = devices.map(([deviceId, info]) => {
                 const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+                const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
+                const userCount = deviceUsers ? deviceUsers[1].length : 0;
                 
-                html += '<div class="card device ' + (isOnline ? '' : 'offline') + '">';
-                html += '<h3>🎛️ ' + deviceId + ' ' + (isOnline ? '🟢' : '🔴') + '</h3>';
-                html += '<div class="status">';
-                html += '📶 Signal: ' + info.signalStrength + 'dBm | ';
-                html += '🔋 Battery: ' + info.batteryLevel + '% | ';
-                html += '⏱️ Uptime: ' + Math.floor(info.uptime / 1000) + 's<br>';
-                html += '🔄 Last Heartbeat: ' + new Date(info.lastHeartbeat).toLocaleTimeString();
-                html += '</div>';
-                html += '<h4>🎮 Device Controls</h4>';
-                html += '<div class="controls">';
-                html += '<button class="open" onclick="sendCommand(\'' + deviceId + '\', 1, \'OPEN\')"';
-                if (!isOnline) html += ' disabled';
-                html += '>🔓 OPEN</button>';
-                html += '<button class="stop" onclick="sendCommand(\'' + deviceId + '\', 2, \'STOP\')"';
-                if (!isOnline) html += ' disabled';
-                html += '>⏸️ STOP</button>';
-                html += '<button class="close" onclick="sendCommand(\'' + deviceId + '\', 3, \'CLOSE\')"';
-                if (!isOnline) html += ' disabled';
-                html += '>🔒 CLOSE</button>';
-                html += '<button class="partial" onclick="sendCommand(\'' + deviceId + '\', 4, \'PARTIAL\')"';
-                if (!isOnline) html += ' disabled';
-                html += '>↗️ PARTIAL</button>';
-                html += '</div>';
-                html += '<p style="font-size: 0.8em; color: #666; margin-top: 10px;">';
-                html += '🔐 Commands require registered phone number authentication';
-                html += '</p>';
-                html += '</div>';
+                return \`
+                    <div class="card device \${isOnline ? '' : 'offline'}">
+                        <div class="device-info">
+                            <h3>🎛️ \${deviceId} \${isOnline ? '🟢' : '🔴'}</h3>
+                            <div class="device-status">
+                                📶 Signal: \${info.signalStrength}dBm | 
+                                🔋 Battery: \${info.batteryLevel}% | 
+                                ⏱️ Uptime: \${Math.floor(info.uptime / 1000)}s |
+                                👥 Users: \${userCount}<br>
+                                🔄 Last Heartbeat: \${new Date(info.lastHeartbeat).toLocaleTimeString()}
+                            </div>
+                        </div>
+                        
+                        <div class="device-actions">
+                            <button class="control-btn open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                            <button class="control-btn stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                            <button class="control-btn close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                            <button class="control-btn partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                            <button class="settings-btn" onclick="openSettings('\${deviceId}')" title="Device Settings">⚙️</button>
+                        </div>
+                    </div>
+                \`;
+            }).join('');
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('settingsModal');
+            if (event.target === modal) {
+                closeModal();
             }
-            
-            container.innerHTML = html;
         }
         
         renderDevices();
@@ -969,7 +1265,6 @@ const server = http.createServer((req, res) => {
       endpoints: [
         'GET /',
         'GET /dashboard (requires login)',
-        'GET /signup (requires login)',
         'POST /dashboard/login',
         'POST /dashboard/logout', 
         'GET /health', 
@@ -977,7 +1272,10 @@ const server = http.createServer((req, res) => {
         'GET /api/device/{deviceId}/commands',
         'POST /api/device/auth',
         'POST /api/device/{deviceId}/send-command (requires login)',
-        'POST /api/device/{deviceId}/register-user (requires login)'
+        'POST /api/device/{deviceId}/register-user (requires login)',
+        'GET /api/device/{deviceId}/users (requires login)',
+        'GET /api/device/{deviceId}/logs (requires login)',
+        'GET /api/device/{deviceId}/schedules (requires login)'
       ],
       devices: Array.from(connectedDevices.keys())
     };
@@ -1024,7 +1322,6 @@ server.on('listening', () => {
   console.log(`✅ Address: ${addr.address}`);
   console.log(`🌐 Railway should now be able to route traffic`);
   console.log(`📱 Dashboard: https://gate-controller-system-production.up.railway.app/dashboard`);
-  console.log(`➕ Sign Up: https://gate-controller-system-production.up.railway.app/signup`);
   console.log(`🔐 Demo Login: admin/admin123 or manager/gate2024`);
 });
 
@@ -1034,7 +1331,7 @@ server.listen(PORT, '0.0.0.0', (err) => {
     console.error('❌ Failed to start server:', err);
     process.exit(1);
   }
-  console.log(`💫 Server started on ${PORT} with Authentication and Sign-up`);
+  console.log(`💫 Server started on ${PORT} with Authentication`);
 });
 
 // Health check endpoint logging
@@ -1048,6 +1345,9 @@ setInterval(() => {
       console.log(`🗑️ Removing offline device: ${deviceId}`);
       connectedDevices.delete(deviceId);
       deviceCommands.delete(deviceId);
+      deviceLogs.delete(deviceId);
+      registeredUsers.delete(deviceId);
+      deviceSchedules.delete(deviceId);
     }
   }
   
