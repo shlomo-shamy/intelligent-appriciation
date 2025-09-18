@@ -36,8 +36,8 @@ function validateSession(sessionToken) {
 const server = http.createServer((req, res) => {
   console.log(`📡 ${req.method} ${req.url} - ${new Date().toISOString()}`);
   
-  // Set CORS headers for all requests
-  res.setHeader('Content-Type', 'application/json');
+  // Set CORS headers for all requests with UTF-8 support
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
@@ -52,7 +52,7 @@ const server = http.createServer((req, res) => {
   function readBody(callback) {
     let body = '';
     req.on('data', chunk => {
-      body += chunk.toString();
+      body += chunk.toString('utf8');
     });
     req.on('end', () => {
       try {
@@ -89,7 +89,7 @@ const server = http.createServer((req, res) => {
         console.log(`🔐 Dashboard login successful: ${username}`);
         
         res.writeHead(200, {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Set-Cookie': `session=${sessionToken}; HttpOnly; Path=/; Max-Age=86400` // 24 hours
         });
         res.end(JSON.stringify({
@@ -119,7 +119,7 @@ const server = http.createServer((req, res) => {
     }
     
     res.writeHead(200, {
-      'Content-Type': 'application/json',
+      'Content-Type': 'application/json; charset=utf-8',
       'Set-Cookie': 'session=; HttpOnly; Path=/; Max-Age=0'
     });
     res.end(JSON.stringify({ success: true, message: 'Logged out' }));
@@ -209,10 +209,11 @@ const server = http.createServer((req, res) => {
 <html>
 <head>
     <title>🔐 Gate Controller Login</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { 
-            font-family: Arial, sans-serif; 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             margin: 0; 
             padding: 0;
@@ -285,6 +286,20 @@ const server = http.createServer((req, res) => {
             font-size: 14px;
             border-left: 4px solid #17a2b8;
         }
+        .signup-link {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        .signup-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -315,6 +330,11 @@ const server = http.createServer((req, res) => {
             Username: <code>admin</code> / Password: <code>admin123</code><br>
             Username: <code>manager</code> / Password: <code>gate2024</code>
         </div>
+        
+        <div class="signup-link">
+            <p>Need to register a new user?</p>
+            <a href="/signup">➕ Sign Up New User</a>
+        </div>
     </div>
 
     <script>
@@ -328,7 +348,7 @@ const server = http.createServer((req, res) => {
             try {
                 const response = await fetch('/dashboard/login', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
                     body: JSON.stringify({ username, password })
                 });
                 
@@ -347,7 +367,7 @@ const server = http.createServer((req, res) => {
 </body>
 </html>`;
         
-        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
         res.end(loginHtml);
         return;
       } else {
@@ -359,6 +379,301 @@ const server = http.createServer((req, res) => {
     
     const session = activeSessions.get(sessionToken);
     callback(session);
+  }
+
+  // Sign-up page (requires login to access)
+  if (req.url === '/signup') {
+    requireAuth((session) => {
+      const signupHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>➕ Register New User - Gate Controller</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
+            background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+            margin: 0; 
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { 
+            max-width: 600px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        .header { 
+            text-align: center; 
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 2em;
+            color: #17a2b8;
+        }
+        .user-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #17a2b8;
+        }
+        .device-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #28a745;
+        }
+        .device-section.offline {
+            border-left-color: #dc3545;
+            opacity: 0.7;
+        }
+        .form-grid { 
+            display: grid; 
+            gap: 15px; 
+            margin-bottom: 20px;
+        }
+        .form-group { 
+            display: flex; 
+            flex-direction: column;
+        }
+        label { 
+            margin-bottom: 5px; 
+            font-weight: bold;
+            color: #555;
+        }
+        input, select { 
+            padding: 12px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            font-size: 16px;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #17a2b8;
+        }
+        .checkbox-group { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px; 
+            margin: 10px 0; 
+        }
+        .checkbox-group label { 
+            display: flex; 
+            align-items: center; 
+            gap: 8px; 
+            margin: 0;
+            font-weight: normal;
+        }
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+            padding: 0;
+        }
+        button { 
+            padding: 12px 24px; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .register { 
+            background: #17a2b8; 
+            color: white; 
+        }
+        .register:hover { 
+            background: #138496; 
+        }
+        .back { 
+            background: #6c757d; 
+            color: white; 
+        }
+        .back:hover { 
+            background: #5a6268; 
+        }
+        .success { 
+            color: #28a745; 
+            margin-top: 10px; 
+            font-weight: bold;
+        }
+        .error { 
+            color: #dc3545; 
+            margin-top: 10px; 
+            font-weight: bold;
+        }
+        .device-status {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>➕ Register New User</h1>
+            <p>Gate Controller User Management</p>
+        </div>
+        
+        <div class="user-info">
+            <strong>👤 Logged in as:</strong> ${session.name} (${session.username})
+        </div>
+        
+        <div id="devices-container">
+            <!-- Devices will be loaded here -->
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <button class="back" onclick="window.location.href='/dashboard'">
+                ⬅️ Back to Dashboard
+            </button>
+        </div>
+    </div>
+
+    <script>
+        async function loadDevices() {
+            // Get devices from the current connection data
+            const devices = ${JSON.stringify(Array.from(connectedDevices.entries()))};
+            const container = document.getElementById('devices-container');
+            
+            if (devices.length === 0) {
+                container.innerHTML = '<div class="device-section"><p>📭 No devices connected. Please ensure your ESP32 gate controllers are online.</p></div>';
+                return;
+            }
+            
+            container.innerHTML = devices.map(([deviceId, info]) => {
+                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+                return \`
+                    <div class="device-section \${isOnline ? '' : 'offline'}">
+                        <h3>🎛️ \${deviceId} \${isOnline ? '🟢 Online' : '🔴 Offline'}</h3>
+                        <div class="device-status">
+                            📶 Signal: \${info.signalStrength}dBm | 
+                            🔋 Battery: \${info.batteryLevel}% | 
+                            ⏱️ Uptime: \${Math.floor(info.uptime / 1000)}s<br>
+                            🔄 Last Heartbeat: \${new Date(info.lastHeartbeat).toLocaleTimeString()}
+                        </div>
+                        
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="phone-\${deviceId}">📱 Phone Number:</label>
+                                <input type="tel" id="phone-\${deviceId}" placeholder="1234567890" maxlength="10" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="name-\${deviceId}">👤 User Name:</label>
+                                <input type="text" id="name-\${deviceId}" placeholder="Enter full name" required>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="userLevel-\${deviceId}">🎭 User Level:</label>
+                                <select id="userLevel-\${deviceId}">
+                                    <option value="0">👤 Basic User</option>
+                                    <option value="1">👔 Manager</option>
+                                    <option value="2">🔐 Admin</option>
+                                </select>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label style="font-weight: bold; margin-bottom: 10px;">🔑 Gate Permissions:</label>
+                                <div class="checkbox-group">
+                                    <label><input type="checkbox" id="relay1-\${deviceId}" checked> 🔓 OPEN</label>
+                                    <label><input type="checkbox" id="relay2-\${deviceId}"> ⏸️ STOP</label>
+                                    <label><input type="checkbox" id="relay3-\${deviceId}"> 🔒 CLOSE</label>
+                                    <label><input type="checkbox" id="relay4-\${deviceId}"> ↗️ PARTIAL</label>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <button class="register" onclick="registerUser('\${deviceId}')" \${!isOnline ? 'disabled' : ''}>
+                                    ➕ Register User for \${deviceId}
+                                </button>
+                                <div id="message-\${deviceId}"></div>
+                            </div>
+                        </div>
+                    </div>
+                \`;
+            }).join('');
+        }
+        
+        async function registerUser(deviceId) {
+            const phone = document.getElementById('phone-' + deviceId).value;
+            const name = document.getElementById('name-' + deviceId).value;
+            const userLevel = parseInt(document.getElementById('userLevel-' + deviceId).value);
+            const messageDiv = document.getElementById('message-' + deviceId);
+            
+            let relayMask = 0;
+            if (document.getElementById('relay1-' + deviceId).checked) relayMask |= 1;
+            if (document.getElementById('relay2-' + deviceId).checked) relayMask |= 2;
+            if (document.getElementById('relay3-' + deviceId).checked) relayMask |= 4;
+            if (document.getElementById('relay4-' + deviceId).checked) relayMask |= 8;
+            
+            // Validation
+            if (!phone || !name) {
+                messageDiv.innerHTML = '<div class="error">❌ Please fill in all required fields</div>';
+                return;
+            }
+            
+            if (!/^\\d{10}$/.test(phone)) {
+                messageDiv.innerHTML = '<div class="error">❌ Please enter a valid 10-digit phone number</div>';
+                return;
+            }
+            
+            if (relayMask === 0) {
+                messageDiv.innerHTML = '<div class="error">❌ Please select at least one permission</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/' + deviceId + '/register-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({
+                        phone: parseInt(phone),
+                        name: name,
+                        relayMask: relayMask,
+                        userLevel: userLevel
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    messageDiv.innerHTML = '<div class="success">✅ User registered successfully: ' + name + ' (' + phone + ')</div>';
+                    
+                    // Clear form
+                    document.getElementById('phone-' + deviceId).value = '';
+                    document.getElementById('name-' + deviceId).value = '';
+                    document.getElementById('userLevel-' + deviceId).value = '0';
+                    document.querySelectorAll('input[type="checkbox"][id*="' + deviceId + '"]').forEach(cb => cb.checked = false);
+                    document.getElementById('relay1-' + deviceId).checked = true;
+                } else {
+                    messageDiv.innerHTML = '<div class="error">❌ Registration failed: ' + (data.message || 'Unknown error')</div>';
+                }
+            } catch (error) {
+                messageDiv.innerHTML = '<div class="error">❌ Connection error: ' + error.message + '</div>';
+            }
+        }
+        
+        // Load devices on page load
+        loadDevices();
+    </script>
+</body>
+</html>`;
+      
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(signupHtml);
+    });
+    return;
   }
 
   // User registration endpoint - require auth
@@ -448,32 +763,41 @@ const server = http.createServer((req, res) => {
 <html>
 <head>
     <title>🚪 Gate Controller Dashboard</title>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5; 
+        }
         .container { max-width: 1000px; margin: 0 auto; }
-        .header { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .header { 
+            background: white; 
+            padding: 20px; 
+            margin: 10px 0; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
         .user-info { color: #666; }
+        .header-buttons { display: flex; gap: 10px; }
         .logout { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .signup-btn { background: #17a2b8; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; text-decoration: none; }
         .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         .device { border-left: 4px solid #28a745; }
         .device.offline { border-left-color: #dc3545; }
         .controls { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-        .device-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
         .open { background: #28a745; color: white; }
         .stop { background: #ffc107; color: black; }
         .close { background: #dc3545; color: white; }
         .partial { background: #6f42c1; color: white; }
-        .register { background: #17a2b8; color: white; }
         .status { font-size: 0.9em; color: #666; }
         h1 { color: #333; margin: 0; }
         .refresh { background: #007bff; color: white; margin-bottom: 20px; }
-        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%; margin-bottom: 10px; }
-        .form-grid { display: grid; gap: 10px; max-width: 400px; }
-        .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
-        .checkbox-group label { display: flex; align-items: center; gap: 5px; margin: 0; }
-        .user-management { border-left: 4px solid #17a2b8; }
     </style>
 </head>
 <body>
@@ -483,7 +807,10 @@ const server = http.createServer((req, res) => {
                 <h1>🚪 Gate Controller Dashboard</h1>
                 <div class="user-info">Logged in as: <strong>${session.name}</strong> (${session.username})</div>
             </div>
-            <button class="logout" onclick="logout()">🚪 Logout</button>
+            <div class="header-buttons">
+                <a href="/signup" class="signup-btn">➕ Register Users</a>
+                <button class="logout" onclick="logout()">🚪 Logout</button>
+            </div>
         </div>
         
         <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
@@ -526,7 +853,7 @@ const server = http.createServer((req, res) => {
             
             fetch('/api/device/' + deviceId + '/send-command', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
                 body: JSON.stringify({
                     id: 'web_' + Date.now(),
                     action: 'relay_activate',
@@ -542,53 +869,6 @@ const server = http.createServer((req, res) => {
                     alert('✅ Command sent: ' + action);
                 } else {
                     alert('❌ Command failed');
-                }
-            })
-            .catch(e => alert('❌ Error: ' + e.message));
-        }
-        
-        function registerUser(deviceId) {
-            const phone = document.getElementById('phone-' + deviceId).value;
-            const name = document.getElementById('name-' + deviceId).value;
-            const userLevel = parseInt(document.getElementById('userLevel-' + deviceId).value);
-            
-            let relayMask = 0;
-            if (document.getElementById('relay1-' + deviceId).checked) relayMask |= 1;
-            if (document.getElementById('relay2-' + deviceId).checked) relayMask |= 2;
-            if (document.getElementById('relay3-' + deviceId).checked) relayMask |= 4;
-            if (document.getElementById('relay4-' + deviceId).checked) relayMask |= 8;
-            
-            if (!phone || !name) {
-                alert('Please fill in all fields');
-                return;
-            }
-            
-            if (!/^\\d{10}$/.test(phone)) {
-                alert('Please enter a valid 10-digit phone number');
-                return;
-            }
-            
-            fetch('/api/device/' + deviceId + '/register-user', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phone: parseInt(phone),
-                    name: name,
-                    relayMask: relayMask,
-                    userLevel: userLevel
-                })
-            })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) {
-                    alert('✅ User registered: ' + name + ' (' + phone + ')');
-                    document.getElementById('phone-' + deviceId).value = '';
-                    document.getElementById('name-' + deviceId).value = '';
-                    document.getElementById('userLevel-' + deviceId).value = '0';
-                    document.querySelectorAll('input[type="checkbox"][id*="' + deviceId + '"]').forEach(cb => cb.checked = false);
-                    document.getElementById('relay1-' + deviceId).checked = true;
-                } else {
-                    alert('❌ Registration failed');
                 }
             })
             .catch(e => alert('❌ Error: ' + e.message));
@@ -613,45 +893,16 @@ const server = http.createServer((req, res) => {
                             🔄 Last Heartbeat: \${new Date(info.lastHeartbeat).toLocaleTimeString()}
                         </div>
                         
-                        <div class="device-controls">
-                            <div>
-                                <h4>🎮 Device Controls</h4>
-                                <div class="controls">
-                                    <button class="open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                                    <button class="stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                                    <button class="close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                                    <button class="partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                                </div>
-                                <p style="font-size: 0.8em; color: #666; margin-top: 10px;">
-                                    🔐 Commands require registered phone number authentication
-                                </p>
-                            </div>
-                            
-                            <div class="user-management">
-                                <h4>👤 Register New User</h4>
-                                <div class="form-grid">
-                                    <input type="tel" id="phone-\${deviceId}" placeholder="Phone Number (1234567890)" maxlength="10" required>
-                                    <input type="text" id="name-\${deviceId}" placeholder="User Name" required>
-                                    <select id="userLevel-\${deviceId}">
-                                        <option value="0">👤 Basic User</option>
-                                        <option value="1">👔 Manager</option>
-                                        <option value="2">🔐 Admin</option>
-                                    </select>
-                                    <div>
-                                        <label style="font-weight: bold; margin-bottom: 5px; display: block;">🔑 Permissions:</label>
-                                        <div class="checkbox-group">
-                                            <label><input type="checkbox" id="relay1-\${deviceId}" checked> 🔓 OPEN</label>
-                                            <label><input type="checkbox" id="relay2-\${deviceId}"> ⏸️ STOP</label>
-                                            <label><input type="checkbox" id="relay3-\${deviceId}"> 🔒 CLOSE</label>
-                                            <label><input type="checkbox" id="relay4-\${deviceId}"> ↗️ PARTIAL</label>
-                                        </div>
-                                    </div>
-                                    <button class="register" onclick="registerUser('\${deviceId}')">
-                                        ➕ Register User
-                                    </button>
-                                </div>
-                            </div>
+                        <h4>🎮 Device Controls</h4>
+                        <div class="controls">
+                            <button class="open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')" \${!isOnline ? 'disabled' : ''}>🔓 OPEN</button>
+                            <button class="stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')" \${!isOnline ? 'disabled' : ''}>⏸️ STOP</button>
+                            <button class="close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')" \${!isOnline ? 'disabled' : ''}>🔒 CLOSE</button>
+                            <button class="partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')" \${!isOnline ? 'disabled' : ''}>↗️ PARTIAL</button>
                         </div>
+                        <p style="font-size: 0.8em; color: #666; margin-top: 10px;">
+                            🔐 Commands require registered phone number authentication
+                        </p>
                     </div>
                 \`;
             }).join('');
@@ -662,7 +913,7 @@ const server = http.createServer((req, res) => {
 </body>
 </html>`;
       
-      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(dashboardHtml);
     });
     return;
@@ -700,6 +951,7 @@ const server = http.createServer((req, res) => {
       endpoints: [
         'GET /',
         'GET /dashboard (requires login)',
+        'GET /signup (requires login)',
         'POST /dashboard/login',
         'POST /dashboard/logout', 
         'GET /health', 
@@ -754,6 +1006,7 @@ server.on('listening', () => {
   console.log(`✅ Address: ${addr.address}`);
   console.log(`🌐 Railway should now be able to route traffic`);
   console.log(`📱 Dashboard: https://gate-controller-system-production.up.railway.app/dashboard`);
+  console.log(`➕ Sign Up: https://gate-controller-system-production.up.railway.app/signup`);
   console.log(`🔐 Demo Login: admin/admin123 or manager/gate2024`);
 });
 
@@ -763,7 +1016,7 @@ server.listen(PORT, '0.0.0.0', (err) => {
     console.error('❌ Failed to start server:', err);
     process.exit(1);
   }
-  console.log(`💫 Server started on ${PORT} with Authentication`);
+  console.log(`💫 Server started on ${PORT} with Authentication and Sign-up`);
 });
 
 // Health check endpoint logging
