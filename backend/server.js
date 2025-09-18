@@ -286,79 +286,77 @@ const server = http.createServer((req, res) => {
             
             container.innerHTML = devices.map(([deviceId, info]) => {
                 const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-                return \`
-                    <div class="device-card \${isOnline ? 'online' : 'offline'}">
-                        <h3>\${deviceId} <span style="color: \${isOnline ? '#28a745' : '#dc3545'};">(\${isOnline ? 'ONLINE' : 'OFFLINE'})</span></h3>
-                        
-                        <div class="status-grid">
-                            <div class="status-item">
-                                <div class="status-label">Signal Strength</div>
-                                <div class="status-value">\${info.signalStrength}dBm</div>
-                            </div>
-                            <div class="status-item">
-                                <div class="status-label">Battery Level</div>
-                                <div class="status-value">\${info.batteryLevel}%</div>
-                            </div>
-                            <div class="status-item">
-                                <div class="status-label">Uptime</div>
-                                <div class="status-value">\${Math.floor(info.uptime / 1000)}s</div>
-                            </div>
-                            <div class="status-item">
-                                <div class="status-label">Last Heartbeat</div>
-                                <div class="status-value">\${new Date(info.lastHeartbeat).toLocaleTimeString()}</div>
-                            </div>
-                        </div>
-
-                        <div class="controls">
-                            <button class="btn-open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')">OPEN</button>
-                            <button class="btn-stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')">STOP</button>
-                            <button class="btn-close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')">CLOSE</button>
-                            <button class="btn-partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')">PARTIAL</button>
-                        </div>
-                        
-                        <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
-                            Commands require registered phone number authentication
-                        </div>
-                    </div>
-                \`;
+                const statusColor = isOnline ? '#28a745' : '#dc3545';
+                const statusText = isOnline ? 'ONLINE' : 'OFFLINE';
+                
+                return '<div class="device-card ' + (isOnline ? 'online' : 'offline') + '">' +
+                    '<h3>' + deviceId + ' <span style="color: ' + statusColor + ';">(' + statusText + ')</span></h3>' +
+                    '<div class="status-grid">' +
+                        '<div class="status-item">' +
+                            '<div class="status-label">Signal Strength</div>' +
+                            '<div class="status-value">' + info.signalStrength + 'dBm</div>' +
+                        '</div>' +
+                        '<div class="status-item">' +
+                            '<div class="status-label">Battery Level</div>' +
+                            '<div class="status-value">' + info.batteryLevel + '%</div>' +
+                        '</div>' +
+                        '<div class="status-item">' +
+                            '<div class="status-label">Uptime</div>' +
+                            '<div class="status-value">' + Math.floor(info.uptime / 1000) + 's</div>' +
+                        '</div>' +
+                        '<div class="status-item">' +
+                            '<div class="status-label">Last Heartbeat</div>' +
+                            '<div class="status-value">' + new Date(info.lastHeartbeat).toLocaleTimeString() + '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="controls">' +
+                        '<button class="btn-open" onclick="sendCommand(\'' + deviceId + '\', 1, \'OPEN\')">OPEN</button>' +
+                        '<button class="btn-stop" onclick="sendCommand(\'' + deviceId + '\', 2, \'STOP\')">STOP</button>' +
+                        '<button class="btn-close" onclick="sendCommand(\'' + deviceId + '\', 3, \'CLOSE\')">CLOSE</button>' +
+                        '<button class="btn-partial" onclick="sendCommand(\'' + deviceId + '\', 4, \'PARTIAL\')">PARTIAL</button>' +
+                    '</div>' +
+                    '<div style="margin-top: 15px; font-size: 0.9em; color: #666;">' +
+                        'Commands require registered phone number authentication' +
+                    '</div>' +
+                '</div>';
             }).join('');
         }
 
         function renderUserManagement() {
             const container = document.getElementById('user-management-content');
-            container.innerHTML = devices.map(([deviceId, info]) => \`
-                <div class="device-card">
-                    <h3>Register User for \${deviceId}</h3>
-                    <div style="max-width: 400px;">
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Phone Number:</label>
-                            <input type="tel" id="phone-\${deviceId}" placeholder="1234567890" maxlength="10" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                        </div>
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">User Name:</label>
-                            <input type="text" id="name-\${deviceId}" placeholder="User Name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                        </div>
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">User Level:</label>
-                            <select id="userLevel-\${deviceId}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                                <option value="0">Basic User</option>
-                                <option value="1">Manager</option>
-                                <option value="2">Admin</option>
-                            </select>
-                        </div>
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Permissions:</label>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                                <label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay1-\${deviceId}" checked> OPEN</label>
-                                <label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay2-\${deviceId}"> STOP</label>
-                                <label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay3-\${deviceId}"> CLOSE</label>
-                                <label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay4-\${deviceId}"> PARTIAL</label>
-                            </div>
-                        </div>
-                        <button onclick="registerUser('\${deviceId}')" style="background: #17a2b8; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Register User</button>
-                    </div>
-                </div>
-            \`).join('');
+            container.innerHTML = devices.map(([deviceId, info]) => 
+                '<div class="device-card">' +
+                    '<h3>Register User for ' + deviceId + '</h3>' +
+                    '<div style="max-width: 400px;">' +
+                        '<div style="margin-bottom: 15px;">' +
+                            '<label style="display: block; margin-bottom: 5px; font-weight: bold;">Phone Number:</label>' +
+                            '<input type="tel" id="phone-' + deviceId + '" placeholder="1234567890" maxlength="10" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">' +
+                        '</div>' +
+                        '<div style="margin-bottom: 15px;">' +
+                            '<label style="display: block; margin-bottom: 5px; font-weight: bold;">User Name:</label>' +
+                            '<input type="text" id="name-' + deviceId + '" placeholder="User Name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">' +
+                        '</div>' +
+                        '<div style="margin-bottom: 15px;">' +
+                            '<label style="display: block; margin-bottom: 5px; font-weight: bold;">User Level:</label>' +
+                            '<select id="userLevel-' + deviceId + '" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">' +
+                                '<option value="0">Basic User</option>' +
+                                '<option value="1">Manager</option>' +
+                                '<option value="2">Admin</option>' +
+                            '</select>' +
+                        '</div>' +
+                        '<div style="margin-bottom: 15px;">' +
+                            '<label style="display: block; margin-bottom: 5px; font-weight: bold;">Permissions:</label>' +
+                            '<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">' +
+                                '<label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay1-' + deviceId + '" checked> OPEN</label>' +
+                                '<label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay2-' + deviceId + '"> STOP</label>' +
+                                '<label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay3-' + deviceId + '"> CLOSE</label>' +
+                                '<label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay4-' + deviceId + '"> PARTIAL</label>' +
+                            '</div>' +
+                        '</div>' +
+                        '<button onclick="registerUser(\'' + deviceId + '\')" style="background: #17a2b8; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Register User</button>' +
+                    '</div>' +
+                '</div>'
+            ).join('');
         }
 
         function registerUser(deviceId) {
