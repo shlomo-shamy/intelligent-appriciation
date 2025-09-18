@@ -625,7 +625,7 @@ const server = http.createServer((req, res) => {
                 return;
             }
             
-            if (!/^\\d{10}$/.test(phone)) {
+            if (!/^\\\\d{10}$/.test(phone)) {
                 messageDiv.innerHTML = '<div class="error">❌ Please enter a valid 10-digit phone number</div>';
                 return;
             }
@@ -844,7 +844,7 @@ const server = http.createServer((req, res) => {
             const userId = prompt("Enter your registered phone number:");
             if (!userId) return;
             
-            if (!/^\\d{10}$/.test(userId)) {
+            if (!/^\\\\d{10}$/.test(userId)) {
                 alert('Please enter a valid 10-digit phone number');
                 return;
             }
