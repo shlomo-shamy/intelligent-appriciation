@@ -546,14 +546,20 @@ const server = http.createServer((req, res) => {
             const devices = ${JSON.stringify(Array.from(connectedDevices.entries()))};
             const container = document.getElementById('devices-container');
             
-            console.log('Loading devices:', devices); // Debug log
+            console.log('Raw devices data:', devices);
+            console.log('Devices length:', devices.length);
+            console.log('Devices type:', typeof devices);
             
-            if (devices.length === 0) {
-                container.innerHTML = '<div class="device-section"><p>📭 No devices connected. Please ensure your ESP32 gate controllers are online.</p></div>';
+            if (!devices || devices.length === 0) {
+                console.log('No devices found, showing empty message');
+                container.innerHTML = '<div class="device-section"><p>📭 No devices connected. Please ensure your ESP32 gate controllers are online.</p><p>Debug: devices.length = ' + devices.length + '</p></div>';
                 return;
             }
             
+            console.log('Rendering', devices.length, 'devices');
+            
             container.innerHTML = devices.map(([deviceId, info]) => {
+                console.log('Processing device:', deviceId, info);
                 const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
                 return '<div class="device-section ' + (isOnline ? '' : 'offline') + '">' +
                     '<h3>🎛️ ' + deviceId + ' ' + (isOnline ? '🟢 Online' : '🔴 Offline') + '</h3>' +
@@ -598,6 +604,8 @@ const server = http.createServer((req, res) => {
                     '</div>' +
                 '</div>';
             }).join('');
+            
+            console.log('Finished rendering devices');
         }
         
         async function registerUser(deviceId) {
