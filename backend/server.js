@@ -541,10 +541,12 @@ const server = http.createServer((req, res) => {
     </div>
 
     <script>
-        async function loadDevices() {
+        function loadDevices() {
             // Get devices from the current connection data
             const devices = ${JSON.stringify(Array.from(connectedDevices.entries()))};
             const container = document.getElementById('devices-container');
+            
+            console.log('Loading devices:', devices); // Debug log
             
             if (devices.length === 0) {
                 container.innerHTML = '<div class="device-section"><p>📭 No devices connected. Please ensure your ESP32 gate controllers are online.</p></div>';
