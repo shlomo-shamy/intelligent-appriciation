@@ -555,55 +555,48 @@ const server = http.createServer((req, res) => {
             
             container.innerHTML = devices.map(([deviceId, info]) => {
                 const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-                return \`
-                    <div class="device-section \${isOnline ? '' : 'offline'}">
-                        <h3>🎛️ \${deviceId} \${isOnline ? '🟢 Online' : '🔴 Offline'}</h3>
-                        <div class="device-status">
-                            📶 Signal: \${info.signalStrength}dBm | 
-                            🔋 Battery: \${info.batteryLevel}% | 
-                            ⏱️ Uptime: \${Math.floor(info.uptime / 1000)}s<br>
-                            🔄 Last Heartbeat: \${new Date(info.lastHeartbeat).toLocaleTimeString()}
-                        </div>
-                        
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="phone-\${deviceId}">📱 Phone Number:</label>
-                                <input type="tel" id="phone-\${deviceId}" placeholder="1234567890" maxlength="10" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="name-\${deviceId}">👤 User Name:</label>
-                                <input type="text" id="name-\${deviceId}" placeholder="Enter full name" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="userLevel-\${deviceId}">🎭 User Level:</label>
-                                <select id="userLevel-\${deviceId}">
-                                    <option value="0">👤 Basic User</option>
-                                    <option value="1">👔 Manager</option>
-                                    <option value="2">🔐 Admin</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label style="font-weight: bold; margin-bottom: 10px;">🔑 Gate Permissions:</label>
-                                <div class="checkbox-group">
-                                    <label><input type="checkbox" id="relay1-\${deviceId}" checked> 🔓 OPEN</label>
-                                    <label><input type="checkbox" id="relay2-\${deviceId}"> ⏸️ STOP</label>
-                                    <label><input type="checkbox" id="relay3-\${deviceId}"> 🔒 CLOSE</label>
-                                    <label><input type="checkbox" id="relay4-\${deviceId}"> ↗️ PARTIAL</label>
-                                </div>
-                            </div>
-                            
-                            <div>
-                                <button class="register" onclick="registerUser('\${deviceId}')" \${!isOnline ? 'disabled' : ''}>
-                                    ➕ Register User for \${deviceId}
-                                </button>
-                                <div id="message-\${deviceId}"></div>
-                            </div>
-                        </div>
-                    </div>
-                \`;
+                return '<div class="device-section ' + (isOnline ? '' : 'offline') + '">' +
+                    '<h3>🎛️ ' + deviceId + ' ' + (isOnline ? '🟢 Online' : '🔴 Offline') + '</h3>' +
+                    '<div class="device-status">' +
+                        '📶 Signal: ' + info.signalStrength + 'dBm | ' +
+                        '🔋 Battery: ' + info.batteryLevel + '% | ' +
+                        '⏱️ Uptime: ' + Math.floor(info.uptime / 1000) + 's<br>' +
+                        '🔄 Last Heartbeat: ' + new Date(info.lastHeartbeat).toLocaleTimeString() +
+                    '</div>' +
+                    '<div class="form-grid">' +
+                        '<div class="form-group">' +
+                            '<label for="phone-' + deviceId + '">📱 Phone Number:</label>' +
+                            '<input type="tel" id="phone-' + deviceId + '" placeholder="1234567890" maxlength="10" required>' +
+                        '</div>' +
+                        '<div class="form-group">' +
+                            '<label for="name-' + deviceId + '">👤 User Name:</label>' +
+                            '<input type="text" id="name-' + deviceId + '" placeholder="Enter full name" required>' +
+                        '</div>' +
+                        '<div class="form-group">' +
+                            '<label for="userLevel-' + deviceId + '">🎭 User Level:</label>' +
+                            '<select id="userLevel-' + deviceId + '">' +
+                                '<option value="0">👤 Basic User</option>' +
+                                '<option value="1">👔 Manager</option>' +
+                                '<option value="2">🔐 Admin</option>' +
+                            '</select>' +
+                        '</div>' +
+                        '<div class="form-group">' +
+                            '<label style="font-weight: bold; margin-bottom: 10px;">🔑 Gate Permissions:</label>' +
+                            '<div class="checkbox-group">' +
+                                '<label><input type="checkbox" id="relay1-' + deviceId + '" checked> 🔓 OPEN</label>' +
+                                '<label><input type="checkbox" id="relay2-' + deviceId + '"> ⏸️ STOP</label>' +
+                                '<label><input type="checkbox" id="relay3-' + deviceId + '"> 🔒 CLOSE</label>' +
+                                '<label><input type="checkbox" id="relay4-' + deviceId + '"> ↗️ PARTIAL</label>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div>' +
+                            '<button class="register" onclick="registerUser(\'' + deviceId + '\')" ' + (!isOnline ? 'disabled' : '') + '>' +
+                                '➕ Register User for ' + deviceId +
+                            '</button>' +
+                            '<div id="message-' + deviceId + '"></div>' +
+                        '</div>' +
+                    '</div>' +
+                '</div>';
             }).join('');
         }
         
@@ -625,7 +618,7 @@ const server = http.createServer((req, res) => {
                 return;
             }
             
-            if (!/^\\\\d{10}$/.test(phone)) {
+            if (!/^\d{10}$/.test(phone)) {
                 messageDiv.innerHTML = '<div class="error">❌ Please enter a valid 10-digit phone number</div>';
                 return;
             }
@@ -844,7 +837,7 @@ const server = http.createServer((req, res) => {
             const userId = prompt("Enter your registered phone number:");
             if (!userId) return;
             
-            if (!/^\\\\d{10}$/.test(userId)) {
+            if (!/^\d{10}$/.test(userId)) {
                 alert('Please enter a valid 10-digit phone number');
                 return;
             }
