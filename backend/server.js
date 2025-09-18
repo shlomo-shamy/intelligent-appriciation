@@ -54,33 +54,32 @@ const DASHBOARD_USERS = new Map([
   }]
 ]);
 
-// Sample device data with locations and details
-const DEVICE_REGISTRY = new Map([
-  ['device_001', {
-    id: 'device_001',
-    name: 'Main Gate A1',
-    location: 'Building A - Main Entrance',
-    type: 'Sliding Gate',
-    coordinates: { lat: 32.0853, lng: 34.7818 },
-    status: 'offline'
-  }],
-  ['device_002', {
-    id: 'device_002',
-    name: 'Parking Gate B2',
-    location: 'Building B - Parking Lot',
-    type: 'Barrier Gate',
-    coordinates: { lat: 32.0855, lng: 34.7820 },
-    status: 'offline'
-  }],
-  ['device_003', {
-    id: 'device_003',
-    name: 'Service Gate C1',
-    location: 'Building C - Service Area',
-    type: 'Swing Gate',
-    coordinates: { lat: 32.0850, lng: 34.7815 },
-    status: 'offline'
-  }]
-]);
+// Sample device data with locations and details - these will be populated dynamically
+const DEVICE_REGISTRY = new Map();
+
+// Helper function to create or update device in registry
+function registerDevice(deviceId, heartbeatData = {}) {
+  if (!DEVICE_REGISTRY.has(deviceId)) {
+    // Create new device entry
+    DEVICE_REGISTRY.set(deviceId, {
+      id: deviceId,
+      name: heartbeatData.name || `Gate Controller ${deviceId.slice(-3)}`,
+      location: heartbeatData.location || `Location ${deviceId.slice(-3)}`,
+      type: heartbeatData.deviceType || 'Smart Gate',
+      coordinates: { lat: 32.0853 + Math.random() * 0.001, lng: 34.7818 + Math.random() * 0.001 },
+      status: 'online'
+    });
+    
+    console.log(`📝 New device registered: ${deviceId}`);
+  } else {
+    // Update existing device status
+    const device = DEVICE_REGISTRY.get(deviceId);
+    device.status = 'online';
+    if (heartbeatData.name) device.name = heartbeatData.name;
+    if (heartbeatData.location) device.location = heartbeatData.location;
+    if (heartbeatData.deviceType) device.type = heartbeatData.deviceType;
+  }
+}
 
 // Store device logs
 const deviceLogs = new Map();
@@ -103,10 +102,24 @@ function getUserAuthorizedDevices(username) {
   if (!user) return [];
   
   if (user.authorizedDevices.includes('*')) {
+    // Admin gets access to all discovered devices
     return Array.from(DEVICE_REGISTRY.keys());
   }
   
-  return user.authorizedDevices.filter(deviceId => DEVICE_REGISTRY.has(deviceId));
+  // For specific device lists, filter by what actually exists and what user is authorized for
+  const existingAuthorizedDevices = user.authorizedDevices.filter(deviceId => DEVICE_REGISTRY.has(deviceId));
+  
+  // If no specific devices are authorized but user has role-based access, give access to all discovered devices
+  if (existingAuthorizedDevices.length === 0 && user.role === 'manager') {
+    return Array.from(DEVICE_REGISTRY.keys());
+  }
+  
+  // Operators with no specific authorization get access to all devices too (for demo purposes)
+  if (existingAuthorizedDevices.length === 0 && user.role === 'operator') {
+    return Array.from(DEVICE_REGISTRY.keys());
+  }
+  
+  return existingAuthorizedDevices;
 }
 
 function addDeviceLog(deviceId, action, user, details = '') {
@@ -1181,19 +1194,113 @@ const server = http.createServer((req, res) => {
   if (req.url === '/api/device/auth' && req.method === 'POST') {
     readBody((data) => {
       const deviceId = data.deviceId || 'unknown';
-      addDeviceLog(deviceId, 'auth', 'system', 'Device authentication request');
+      const deviceType = data.deviceType || 'Smart Gate';
+      const firmwareVersion = data.firmwareVersion || '1.0.0';
+      
+      console.log(`🔐 Authenticating device: ${deviceId} (${deviceType}) v${firmwareVersion}`);
+      
+      // Register device on authentication
+      registerDevice(deviceId, {
+        name: data.name,
+        location: data.location,
+        deviceType: deviceType
+      });
+      
+      addDeviceLog(deviceId, 'auth', 'system', `Device authentication: ${deviceType} v${firmwareVersion}`);
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         success: true,
         token: "device_token_" + deviceId + "_" + Date.now(),
-        message: "Device authenticated"
+        message: "Device authenticated",
+        deviceId: deviceId
       }));
     });
     return;
   }
 
-  // Health check
+  // Legacy ESP32 command endpoints for backward compatibility
+  if (req.url.includes('/send-command') && req.method === 'POST') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      console.log(`🎮 Legacy command sent to ESP32 device: ${deviceId} by ${session.username}`);
+      
+      readBody((data) => {
+        const command = {
+          id: data.id || 'cmd_' + Date.now(),
+          action: data.action || 'relay_activate',
+          relay: data.relay || 1,
+          duration: data.duration || 2000,
+          user: data.user || session.username,
+          user_id: data.user_id || null,
+          timestamp: Date.now(),
+          sentBy: session.username
+        };
+        
+        if (!deviceCommands.has(deviceId)) {
+          deviceCommands.set(deviceId, []);
+        }
+        deviceCommands.get(deviceId).push(command);
+        
+        addDeviceLog(deviceId, command.action, session.username, `Legacy command: ${command.action} relay ${command.relay}`);
+        
+        console.log(`📝 Legacy command queued for device ${deviceId}:`, command);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          message: "Command queued for device",
+          commandId: command.id,
+          deviceId: deviceId,
+          timestamp: new Date().toISOString()
+        }));
+      });
+    });
+    return;
+  }
+
+  // Legacy user registration endpoint
+  if (req.url.includes('/register-user') && req.method === 'POST') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      console.log(`👤 Legacy user registration for device: ${deviceId} by ${session.username}`);
+      
+      readBody((data) => {
+        const registrationCommand = {
+          id: 'reg_' + Date.now(),
+          action: 'register_user',
+          phone: data.phone,
+          name: data.name || 'New User',
+          relayMask: data.relayMask || 1,
+          userLevel: data.userLevel || 0,
+          timestamp: Date.now(),
+          registeredBy: session.username
+        };
+        
+        if (!deviceCommands.has(deviceId)) {
+          deviceCommands.set(deviceId, []);
+        }
+        deviceCommands.get(deviceId).push(registrationCommand);
+        
+        addDeviceLog(deviceId, 'register_user', session.username, `User registered: ${data.name} (${data.phone})`);
+        
+        console.log(`📝 Legacy registration queued for device ${deviceId}:`, registrationCommand);
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          message: "User registration queued",
+          phone: data.phone,
+          deviceId: deviceId
+        }));
+      });
+    });
+    return;
+  }
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({
@@ -1242,6 +1349,7 @@ setInterval(() => {
   // Clean up offline devices
   for (const [deviceId, info] of connectedDevices.entries()) {
     if (new Date(info.lastHeartbeat).getTime() < fiveMinutesAgo) {
+      console.log(`🗑️ Device ${deviceId} went offline (timeout)`);
       connectedDevices.delete(deviceId);
       deviceCommands.delete(deviceId);
       
@@ -1263,5 +1371,5 @@ setInterval(() => {
     }
   }
   
-  console.log(`🧹 Cleanup: ${connectedDevices.size} devices online, ${activeSessions.size} active sessions`);
+  console.log(`🧹 Cleanup: ${connectedDevices.size} devices online, ${activeSessions.size} active sessions, ${DEVICE_REGISTRY.size} total registered devices`);
 }, 30000); // Run every 30 seconds
