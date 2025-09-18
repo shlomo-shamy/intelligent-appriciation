@@ -1,6 +1,6 @@
 const http = require('http');
 
-console.log('🚀 Starting Railway server with enhanced multi-screen dashboard...');
+console.log('🚀 מאתחל Starting Railway server with enhanced multi-screen dashboard...');
 
 const PORT = process.env.PORT || 3001;
 
