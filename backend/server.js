@@ -663,35 +663,35 @@ const server = http.createServer((req, res) => {
             }
             
             container.innerHTML = devices.map(device => `
-                <div class="device-card \${device.status}">
+                <div class="device-card ${device.status}">
                     <div class="device-header">
                         <div class="device-info">
-                            <h3>\${device.name}</h3>
-                            <p><strong>ID:</strong> \${device.id}</p>
-                            <p><strong>Location:</strong> \${device.location}</p>
-                            <p><strong>Type:</strong> \${device.type}</p>
+                            <h3>${device.name}</h3>
+                            <p><strong>ID:</strong> ${device.id}</p>
+                            <p><strong>Location:</strong> ${device.location}</p>
+                            <p><strong>Type:</strong> ${device.type}</p>
                         </div>
                     </div>
                     
                     <div class="device-status">
-                        <div class="status-dot \${device.status}"></div>
-                        <span><strong>Status:</strong> \${device.status.toUpperCase()}</span>
-                        \${device.status === 'online' ? 
-                            \`<span style="margin-left: auto;">Signal: \${device.signalStrength}% | Battery: \${device.batteryLevel}%</span>\`
+                        <div class="status-dot ${device.status}"></div>
+                        <span><strong>Status:</strong> ${device.status.toUpperCase()}</span>
+                        ${device.status === 'online' ? 
+                            `<span style="margin-left: auto;">Signal: ${device.signalStrength}% | Battery: ${device.batteryLevel}%</span>`
                             : ''
                         }
                     </div>
                     
                     <div class="device-controls">
-                        \${Object.entries(buttonMasks).map(([action, enabled]) => 
-                            enabled ? \`<button class="control-btn btn-\${action}" 
-                                onclick="sendCommand('\${device.id}', '\${action}')" 
-                                \${device.status === 'offline' ? 'disabled' : ''}
-                            >\${action.toUpperCase()}</button>\` : ''
+                        ${Object.entries(buttonMasks).map(([action, enabled]) => 
+                            enabled ? `<button class="control-btn btn-${action}" 
+                                onclick="sendCommand('${device.id}', '${action}')" 
+                                ${device.status === 'offline' ? 'disabled' : ''}
+                            >${action.toUpperCase()}</button>` : ''
                         ).join('')}
                     </div>
                     
-                    <button class="settings-btn" onclick="openDeviceSettings('\${device.id}')">
+                    <button class="settings-btn" onclick="openDeviceSettings('${device.id}')">
                         ⚙️ Settings
                     </button>
                 </div>
@@ -709,10 +709,10 @@ const server = http.createServer((req, res) => {
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert(\`Command \${command} sent successfully to \${deviceId}\`);
+                    alert(`Command ${command} sent successfully to ${deviceId}`);
                     loadDevices(); // Refresh device list
                 } else {
-                    alert(\`Error: \${data.message}\`);
+                    alert(`Error: ${data.message}`);
                 }
             } catch (error) {
                 alert('Failed to send command');
@@ -723,7 +723,7 @@ const server = http.createServer((req, res) => {
         function openDeviceSettings(deviceId) {
             currentDeviceId = deviceId;
             const device = devices.find(d => d.id === deviceId);
-            document.getElementById('device-settings-title').textContent = \`Settings - \${device.name}\`;
+            document.getElementById('device-settings-title').textContent = `Settings - ${device.name}`;
             showScreen('device-settings-screen');
             loadDeviceStatus(deviceId);
         }
