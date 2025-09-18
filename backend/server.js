@@ -878,28 +878,25 @@ const server = http.createServer((req, res) => {
             
             container.innerHTML = devices.map(([deviceId, info]) => {
                 const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-                return \`
-                    <div class="card device \${isOnline ? '' : 'offline'}">
-                        <h3>🎛️ \${deviceId} \${isOnline ? '🟢' : '🔴'}</h3>
-                        <div class="status">
-                            📶 Signal: \${info.signalStrength}dBm | 
-                            🔋 Battery: \${info.batteryLevel}% | 
-                            ⏱️ Uptime: \${Math.floor(info.uptime / 1000)}s<br>
-                            🔄 Last Heartbeat: \${new Date(info.lastHeartbeat).toLocaleTimeString()}
-                        </div>
-                        
-                        <h4>🎮 Device Controls</h4>
-                        <div class="controls">
-                            <button class="open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')" \${!isOnline ? 'disabled' : ''}>🔓 OPEN</button>
-                            <button class="stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')" \${!isOnline ? 'disabled' : ''}>⏸️ STOP</button>
-                            <button class="close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')" \${!isOnline ? 'disabled' : ''}>🔒 CLOSE</button>
-                            <button class="partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')" \${!isOnline ? 'disabled' : ''}>↗️ PARTIAL</button>
-                        </div>
-                        <p style="font-size: 0.8em; color: #666; margin-top: 10px;">
-                            🔐 Commands require registered phone number authentication
-                        </p>
-                    </div>
-                \`;
+                return '<div class="card device ' + (isOnline ? '' : 'offline') + '">' +
+                    '<h3>🎛️ ' + deviceId + ' ' + (isOnline ? '🟢' : '🔴') + '</h3>' +
+                    '<div class="status">' +
+                        '📶 Signal: ' + info.signalStrength + 'dBm | ' +
+                        '🔋 Battery: ' + info.batteryLevel + '% | ' +
+                        '⏱️ Uptime: ' + Math.floor(info.uptime / 1000) + 's<br>' +
+                        '🔄 Last Heartbeat: ' + new Date(info.lastHeartbeat).toLocaleTimeString() +
+                    '</div>' +
+                    '<h4>🎮 Device Controls</h4>' +
+                    '<div class="controls">' +
+                        '<button class="open" onclick="sendCommand(\'' + deviceId + '\', 1, \'OPEN\')" ' + (!isOnline ? 'disabled' : '') + '>🔓 OPEN</button>' +
+                        '<button class="stop" onclick="sendCommand(\'' + deviceId + '\', 2, \'STOP\')" ' + (!isOnline ? 'disabled' : '') + '>⏸️ STOP</button>' +
+                        '<button class="close" onclick="sendCommand(\'' + deviceId + '\', 3, \'CLOSE\')" ' + (!isOnline ? 'disabled' : '') + '>🔒 CLOSE</button>' +
+                        '<button class="partial" onclick="sendCommand(\'' + deviceId + '\', 4, \'PARTIAL\')" ' + (!isOnline ? 'disabled' : '') + '>↗️ PARTIAL</button>' +
+                    '</div>' +
+                    '<p style="font-size: 0.8em; color: #666; margin-top: 10px;">' +
+                        '🔐 Commands require registered phone number authentication' +
+                    '</p>' +
+                '</div>';
             }).join('');
         }
         
