@@ -662,40 +662,44 @@ const server = http.createServer((req, res) => {
                 return;
             }
             
-            container.innerHTML = devices.map(device => 
-                '<div class="device-card ' + device.status + '">' +
-                    '<div class="device-header">' +
-                        '<div class="device-info">' +
-                            '<h3>' + device.name + '</h3>' +
-                            '<p><strong>ID:</strong> ' + device.id + '</p>' +
-                            '<p><strong>Location:</strong> ' + device.location + '</p>' +
-                            '<p><strong>Type:</strong> ' + device.type + '</p>' +
-                        '</div>' +
-                    '</div>' +
-                    
-                    '<div class="device-status">' +
-                        '<div class="status-dot ' + device.status + '"></div>' +
-                        '<span><strong>Status:</strong> ' + device.status.toUpperCase() + '</span>' +
-                        (device.status === 'online' ? 
-                            '<span style="margin-left: auto;">Signal: ' + device.signalStrength + '% | Battery: ' + device.batteryLevel + '%</span>'
-                            : ''
-                        ) +
-                    '</div>' +
-                    
-                    '<div class="device-controls">' +
-                        Object.entries(buttonMasks).map(([action, enabled]) => 
-                            enabled ? '<button class="control-btn btn-' + action + '" ' +
-                                'onclick="sendCommand(\'' + device.id + '\', \'' + action + '\')" ' +
-                                (device.status === 'offline' ? 'disabled' : '') +
-                            '>' + action.toUpperCase() + '</button>' : ''
-                        ).join('') +
-                    '</div>' +
-                    
-                    '<button class="settings-btn" onclick="openDeviceSettings(\'' + device.id + '\')">' +
-                        '⚙️ Settings' +
-                    '</button>' +
-                '</div>'
-            ).join('');
+            let html = '';
+            devices.forEach(device => {
+                html += '<div class="device-card ' + device.status + '">';
+                html += '<div class="device-header">';
+                html += '<div class="device-info">';
+                html += '<h3>' + device.name + '</h3>';
+                html += '<p><strong>ID:</strong> ' + device.id + '</p>';
+                html += '<p><strong>Location:</strong> ' + device.location + '</p>';
+                html += '<p><strong>Type:</strong> ' + device.type + '</p>';
+                html += '</div></div>';
+                
+                html += '<div class="device-status">';
+                html += '<div class="status-dot ' + device.status + '"></div>';
+                html += '<span><strong>Status:</strong> ' + device.status.toUpperCase() + '</span>';
+                if (device.status === 'online') {
+                    html += '<span style="margin-left: auto;">Signal: ' + device.signalStrength + '% | Battery: ' + device.batteryLevel + '%</span>';
+                }
+                html += '</div>';
+                
+                html += '<div class="device-controls">';
+                Object.entries(buttonMasks).forEach(([action, enabled]) => {
+                    if (enabled) {
+                        html += '<button class="control-btn btn-' + action + '" ';
+                        html += 'onclick="sendCommand(\'' + device.id + '\', \'' + action + '\')" ';
+                        if (device.status === 'offline') {
+                            html += 'disabled ';
+                        }
+                        html += '>' + action.toUpperCase() + '</button>';
+                    }
+                });
+                html += '</div>';
+                
+                html += '<button class="settings-btn" onclick="openDeviceSettings(\'' + device.id + '\')">';
+                html += '⚙️ Settings</button>';
+                html += '</div>';
+            });
+            
+            container.innerHTML = html;
         }
         
         async function sendCommand(deviceId, command) {
@@ -774,34 +778,27 @@ const server = http.createServer((req, res) => {
             const device = devices.find(d => d.id === deviceId);
             const statusContent = document.getElementById('device-status-content');
             
-            statusContent.innerHTML = `
-                <div class="status-item">
-                    <h4>Connection Status</h4>
-                    <p class="${device.status === 'online' ? 'text-success' : 'text-danger'}">
-                        ${device.status.toUpperCase()}
-                    </p>
-                </div>
-                <div class="status-item">
-                    <h4>Signal Strength</h4>
-                    <p>${device.signalStrength || 0}%</p>
-                </div>
-                <div class="status-item">
-                    <h4>Battery Level</h4>
-                    <p>${device.batteryLevel || 0}%</p>
-                </div>
-                <div class="status-item">
-                    <h4>Last Heartbeat</h4>
-                    <p>${device.lastHeartbeat ? new Date(device.lastHeartbeat).toLocaleString() : 'Never'}</p>
-                </div>
-                <div class="status-item">
-                    <h4>Device Type</h4>
-                    <p>${device.type}</p>
-                </div>
-                <div class="status-item">
-                    <h4>Location</h4>
-                    <p>${device.location}</p>
-                </div>
-            `;
+            let html = '';
+            html += '<div class="status-item"><h4>Connection Status</h4>';
+            html += '<p class="' + (device.status === 'online' ? 'text-success' : 'text-danger') + '">';
+            html += device.status.toUpperCase() + '</p></div>';
+            
+            html += '<div class="status-item"><h4>Signal Strength</h4>';
+            html += '<p>' + (device.signalStrength || 0) + '%</p></div>';
+            
+            html += '<div class="status-item"><h4>Battery Level</h4>';
+            html += '<p>' + (device.batteryLevel || 0) + '%</p></div>';
+            
+            html += '<div class="status-item"><h4>Last Heartbeat</h4>';
+            html += '<p>' + (device.lastHeartbeat ? new Date(device.lastHeartbeat).toLocaleString() : 'Never') + '</p></div>';
+            
+            html += '<div class="status-item"><h4>Device Type</h4>';
+            html += '<p>' + device.type + '</p></div>';
+            
+            html += '<div class="status-item"><h4>Location</h4>';
+            html += '<p>' + device.location + '</p></div>';
+            
+            statusContent.innerHTML = html;
         }
         
         async function loadDeviceUsers(deviceId) {
@@ -817,40 +814,34 @@ const server = http.createServer((req, res) => {
                 { username: 'operator', name: 'Gate Operator', role: 'operator', hasAccess: deviceId !== 'device_003' }
             ];
             
-            usersContent.innerHTML = `
-                <div class="alert alert-info">Users authorized for this device:</div>
-                ${mockUsers.filter(user => user.hasAccess).map(user => `
-                    <div class="log-item">
-                        <div>
-                            <strong>${user.name}</strong> (${user.username})
-                            <br><small>Role: ${user.role}</small>
-                        </div>
-                        <div class="user-badge" style="background: #e9ecef; padding: 0.25rem 0.5rem; border-radius: 12px;">
-                            ${user.role}
-                        </div>
-                    </div>
-                `).join('')}
-            `;
+            let html = '<div class="alert alert-info">Users authorized for this device:</div>';
+            mockUsers.filter(user => user.hasAccess).forEach(user => {
+                html += '<div class="log-item">';
+                html += '<div><strong>' + user.name + '</strong> (' + user.username + ')';
+                html += '<br><small>Role: ' + user.role + '</small></div>';
+                html += '<div class="user-badge" style="background: #e9ecef; padding: 0.25rem 0.5rem; border-radius: 12px;">';
+                html += user.role + '</div></div>';
+            });
+            
+            usersContent.innerHTML = html;
         }
         
         async function loadDeviceSchedules(deviceId) {
             try {
-                const response = await fetch(`/api/device/${deviceId}/schedules`);
+                const response = await fetch('/api/device/' + deviceId + '/schedules');
                 const data = await response.json();
                 const schedulesContent = document.getElementById('schedules-content');
                 
                 if (data.success && data.schedules.length > 0) {
-                    schedulesContent.innerHTML = data.schedules.map(schedule => `
-                        <div class="log-item">
-                            <div>
-                                <strong>${schedule.name}</strong>
-                                <br><small>${schedule.description}</small>
-                            </div>
-                            <div>
-                                <small>${schedule.time} - ${schedule.days}</small>
-                            </div>
-                        </div>
-                    `).join('');
+                    let html = '';
+                    data.schedules.forEach(schedule => {
+                        html += '<div class="log-item">';
+                        html += '<div><strong>' + schedule.name + '</strong>';
+                        html += '<br><small>' + schedule.description + '</small></div>';
+                        html += '<div><small>' + schedule.time + ' - ' + schedule.days + '</small></div>';
+                        html += '</div>';
+                    });
+                    schedulesContent.innerHTML = html;
                 } else {
                     schedulesContent.innerHTML = '<div class="alert alert-info">No schedules configured for this device.</div>';
                 }
@@ -862,26 +853,24 @@ const server = http.createServer((req, res) => {
         
         async function loadDeviceLogs(deviceId) {
             try {
-                const response = await fetch(`/api/device/${deviceId}/logs`);
+                const response = await fetch('/api/device/' + deviceId + '/logs');
                 const data = await response.json();
                 const logsContent = document.getElementById('logs-content');
                 
                 if (data.success && data.logs.length > 0) {
-                    logsContent.innerHTML = `
-                        <div style="max-height: 400px; overflow-y: auto;">
-                            ${data.logs.map(log => `
-                                <div class="log-item">
-                                    <div>
-                                        <strong>${log.action}</strong> by ${log.user}
-                                        ${log.details ? `<br><small>${log.details}</small>` : ''}
-                                    </div>
-                                    <div>
-                                        <small>${new Date(log.timestamp).toLocaleString()}</small>
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
+                    let html = '<div style="max-height: 400px; overflow-y: auto;">';
+                    data.logs.forEach(log => {
+                        html += '<div class="log-item">';
+                        html += '<div><strong>' + log.action + '</strong> by ' + log.user;
+                        if (log.details) {
+                            html += '<br><small>' + log.details + '</small>';
+                        }
+                        html += '</div>';
+                        html += '<div><small>' + new Date(log.timestamp).toLocaleString() + '</small></div>';
+                        html += '</div>';
+                    });
+                    html += '</div>';
+                    logsContent.innerHTML = html;
                 } else {
                     logsContent.innerHTML = '<div class="alert alert-info">No activity logs available for this device.</div>';
                 }
@@ -909,59 +898,45 @@ const server = http.createServer((req, res) => {
                 
                 const adminContent = document.getElementById('admin-content');
                 
-                adminContent.innerHTML = `
-                    <div class="status-grid">
-                        <div class="status-item">
-                            <h4>Total Devices</h4>
-                            <p>${fleetData.stats.total}</p>
-                        </div>
-                        <div class="status-item">
-                            <h4>Online Devices</h4>
-                            <p style="color: #28a745;">${fleetData.stats.online}</p>
-                        </div>
-                        <div class="status-item">
-                            <h4>Offline Devices</h4>
-                            <p style="color: #dc3545;">${fleetData.stats.offline}</p>
-                        </div>
-                        <div class="status-item">
-                            <h4>Total Users</h4>
-                            <p>${usersData.users.length}</p>
-                        </div>
-                    </div>
+                let html = '<div class="status-grid">';
+                html += '<div class="status-item"><h4>Total Devices</h4><p>' + fleetData.stats.total + '</p></div>';
+                html += '<div class="status-item"><h4>Online Devices</h4><p style="color: #28a745;">' + fleetData.stats.online + '</p></div>';
+                html += '<div class="status-item"><h4>Offline Devices</h4><p style="color: #dc3545;">' + fleetData.stats.offline + '</p></div>';
+                html += '<div class="status-item"><h4>Total Users</h4><p>' + usersData.users.length + '</p></div>';
+                html += '</div>';
+                
+                html += '<h4 style="margin-top: 2rem;">Fleet Management</h4>';
+                html += '<div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin: 1rem 0;">';
+                fleetData.fleet.forEach(device => {
+                    html += '<div class="log-item">';
+                    html += '<div><strong>' + device.name + '</strong> (' + device.id + ')';
+                    html += '<br><small>' + device.location + '</small></div>';
+                    html += '<div><span class="status-dot ' + (device.isOnline ? 'online' : 'offline') + '" style="display: inline-block; margin-right: 0.5rem;"></span>';
+                    html += (device.isOnline ? 'Online' : 'Offline');
+                    if (device.isOnline) {
+                        html += '<br><small>Signal: ' + device.signalStrength + '%</small>';
+                    }
+                    html += '</div></div>';
+                });
+                html += '</div>';
+                
+                html += '<h4 style="margin-top: 2rem;">User Management</h4>';
+                html += '<div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin: 1rem 0;">';
+                usersData.users.forEach(user => {
+                    html += '<div class="log-item">';
+                    html += '<div><strong>' + user.name + '</strong> (' + user.username + ')';
+                    html += '<br><small>Role: ' + user.role + '</small>';
+                    html += '<br><small>Devices: ' + (user.authorizedDevices.includes('*') ? 'All' : user.authorizedDevices.length) + '</small></div>';
                     
-                    <h4 style="margin-top: 2rem;">Fleet Management</h4>
-                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin: 1rem 0;">
-                        ${fleetData.fleet.map(device => `
-                            <div class="log-item">
-                                <div>
-                                    <strong>${device.name}</strong> (${device.id})
-                                    <br><small>${device.location}</small>
-                                </div>
-                                <div>
-                                    <span class="status-dot ${device.isOnline ? 'online' : 'offline'}" style="display: inline-block; margin-right: 0.5rem;"></span>
-                                    ${device.isOnline ? 'Online' : 'Offline'}
-                                    ${device.isOnline ? `<br><small>Signal: ${device.signalStrength}%</small>` : ''}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    
-                    <h4 style="margin-top: 2rem;">User Management</h4>
-                    <div style="background: #f8f9fa; padding: 1rem; border-radius: 6px; margin: 1rem 0;">
-                        ${usersData.users.map(user => `
-                            <div class="log-item">
-                                <div>
-                                    <strong>${user.name}</strong> (${user.username})
-                                    <br><small>Role: ${user.role}</small>
-                                    <br><small>Devices: ${user.authorizedDevices.includes('*') ? 'All' : user.authorizedDevices.length}</small>
-                                </div>
-                                <div class="user-badge" style="background: ${user.role === 'admin' ? '#dc3545' : user.role === 'manager' ? '#ffc107' : '#28a745'}; color: ${user.role === 'manager' ? 'black' : 'white'}; padding: 0.25rem 0.5rem; border-radius: 12px;">
-                                    ${user.role.toUpperCase()}
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                `;
+                    let badgeColor = user.role === 'admin' ? '#dc3545' : user.role === 'manager' ? '#ffc107' : '#28a745';
+                    let textColor = user.role === 'manager' ? 'black' : 'white';
+                    html += '<div class="user-badge" style="background: ' + badgeColor + '; color: ' + textColor + '; padding: 0.25rem 0.5rem; border-radius: 12px;">';
+                    html += user.role.toUpperCase() + '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+                
+                adminContent.innerHTML = html;
             } catch (error) {
                 document.getElementById('admin-content').innerHTML = 
                     '<div class="alert alert-warning">Failed to load admin data.</div>';
