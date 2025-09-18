@@ -1,6 +1,6 @@
 const http = require('http');
 
-console.log('🚀 מאתחל Starting Railway server with enhanced multi-screen dashboard...');
+console.log('🚀 Starting Railway server with enhanced multi-screen dashboard...');
 
 const PORT = process.env.PORT || 3001;
 
@@ -583,6 +583,14 @@ const server = http.createServer((req, res) => {
             <!-- Controllers List Screen -->
             <div id="controllers-screen" class="screen active">
                 <h2>Your Authorized Controllers</h2>
+                <div style="margin-bottom: 1rem;">
+                    <button onclick="createTestDevice()" style="background: #17a2b8; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">
+                        Create Test Device
+                    </button>
+                    <button onclick="showDebugInfo()" style="background: #6c757d; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; margin-left: 0.5rem;">
+                        Show Debug Info
+                    </button>
+                </div>
                 <div id="devices-container" class="devices-grid">
                     <div class="alert alert-info">Loading your authorized devices...</div>
                 </div>
@@ -654,16 +662,27 @@ const server = http.createServer((req, res) => {
         
         async function loadDevices() {
             try {
+                console.log('Loading devices...');
                 const response = await fetch('/api/user/devices');
+                console.log('Response status:', response.status);
+                
                 const data = await response.json();
+                console.log('Response data:', data);
                 
                 if (data.success) {
                     devices = data.devices;
                     buttonMasks = data.buttonMasks;
+                    console.log('Devices loaded:', devices.length, 'devices');
                     renderDevices();
+                } else {
+                    console.error('API returned error:', data.message);
+                    document.getElementById('devices-container').innerHTML = 
+                        '<div class="alert alert-warning">Error loading devices: ' + (data.message || 'Unknown error') + '</div>';
                 }
             } catch (error) {
                 console.error('Failed to load devices:', error);
+                document.getElementById('devices-container').innerHTML = 
+                    '<div class="alert alert-warning">Failed to connect to server. Please try refreshing the page.</div>';
             }
         }
         
@@ -965,7 +984,49 @@ const server = http.createServer((req, res) => {
             }
         }
         
-        // Initialize the application
+        async function createTestDevice() {
+            try {
+                const response = await fetch('/api/debug/create-test-device', { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('Test device created: ' + data.deviceId);
+                    loadDevices(); // Refresh the device list
+                } else {
+                    alert('Failed to create test device');
+                }
+            } catch (error) {
+                alert('Error creating test device: ' + error.message);
+            }
+        }
+        
+        async function showDebugInfo() {
+            try {
+                const response = await fetch('/api/debug/status');
+                const data = await response.json();
+                
+                console.log('Debug Info:', data);
+                
+                let info = 'Debug Information:\n\n';
+                info += 'Connected Devices: ' + data.connectedDevices.length + '\n';
+                info += 'Registered Devices: ' + data.deviceRegistry.length + '\n';
+                info += 'Active Sessions: ' + data.activeSessions + '\n';
+                info += 'Available Users: ' + data.users.join(', ') + '\n\n';
+                
+                if (data.deviceRegistry.length > 0) {
+                    info += 'Registered Devices:\n';
+                    data.deviceRegistry.forEach(([id, device]) => {
+                        info += '- ' + id + ': ' + device.name + ' (' + device.status + ')\n';
+                    });
+                } else {
+                    info += 'No devices registered yet.\n';
+                }
+                
+                alert(info);
+            } catch (error) {
+                alert('Error getting debug info: ' + error.message);
+            }
+        }
         loadDevices();
         
         // Auto-refresh devices every 30 seconds
