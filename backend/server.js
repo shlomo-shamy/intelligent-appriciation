@@ -1,28 +1,20 @@
 const http = require('http');
 
-console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
+console.log('🚀 Starting Railway server with improved dashboard structure...');
 
-// Let Railway assign the port - don't force 3000
 const PORT = process.env.PORT || 3001;
 
-console.log(`🔍 Full Environment check:`, {
-  'process.env.PORT': process.env.PORT,
-  'process.env.RAILWAY_ENVIRONMENT': process.env.RAILWAY_ENVIRONMENT,
-  'Final PORT being used': PORT,
-  'All env vars': Object.keys(process.env).filter(key => key.includes('RAILWAY'))
-});
-
-// Store connected devices
+// Store connected devices and commands
 const connectedDevices = new Map();
-const deviceCommands = new Map(); // Store commands for each device
+const deviceCommands = new Map();
 
-// Simple dashboard authentication
+// Dashboard authentication users
 const DASHBOARD_USERS = new Map([
-  ['admin', { password: 'admin123', name: 'Administrator' }],
-  ['manager', { password: 'gate2024', name: 'Gate Manager' }]
+  ['admin', { password: 'admin123', name: 'Administrator', role: 'admin' }],
+  ['manager', { password: 'gate2024', name: 'Gate Manager', role: 'manager' }]
 ]);
 
-// Store active sessions (in production, use Redis or database)
+// Store active sessions
 const activeSessions = new Map();
 
 function generateSessionToken() {
@@ -36,20 +28,18 @@ function validateSession(sessionToken) {
 const server = http.createServer((req, res) => {
   console.log(`📡 ${req.method} ${req.url} - ${new Date().toISOString()}`);
   
-  // Set CORS headers for all requests
-  res.setHeader('Content-Type', 'application/json');
+  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
   
   if (req.method === 'OPTIONS') {
-    //res.writeHead(200);
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.writeHead(200);
     res.end();
     return;
   }
 
-  // Helper function to read request body
+  // Helper functions
   function readBody(callback) {
     let body = '';
     req.on('data', chunk => {
@@ -66,161 +56,378 @@ const server = http.createServer((req, res) => {
     });
   }
 
-  // Helper function to get session token from cookie
   function getSessionFromCookie(cookieHeader) {
     if (!cookieHeader) return null;
     const sessionMatch = cookieHeader.match(/session=([^;]+)/);
     return sessionMatch ? sessionMatch[1] : null;
   }
 
-  // Dashboard login endpoint
-  if (req.url === '/dashboard/login' && req.method === 'POST') {
-    readBody((data) => {
-      const { username, password } = data;
-      const user = DASHBOARD_USERS.get(username);
-      
-      if (user && user.password === password) {
-        const sessionToken = generateSessionToken();
-        activeSessions.set(sessionToken, {
-          username: username,
-          name: user.name,
-          loginTime: new Date().toISOString()
-        });
-        
-        console.log(`🔐 Dashboard login successful: ${username}`);
-        
-        res.writeHead(200, {
-          'Content-Type': 'application/json',
-          'Set-Cookie': `session=${sessionToken}; HttpOnly; Path=/; Max-Age=86400` // 24 hours
-        });
-        res.end(JSON.stringify({
-          success: true,
-          message: 'Login successful',
-          user: { username, name: user.name }
-        }));
-      } else {
-        console.log(`🔐 Dashboard login failed: ${username}`);
-        res.writeHead(401);
-        res.end(JSON.stringify({
-          success: false,
-          message: 'Invalid username or password'
-        }));
-      }
-    });
-    return;
-  }
-
-  // Dashboard logout endpoint
-  if (req.url === '/dashboard/logout' && req.method === 'POST') {
-    const sessionToken = getSessionFromCookie(req.headers.cookie);
-    if (sessionToken && activeSessions.has(sessionToken)) {
-      const session = activeSessions.get(sessionToken);
-      activeSessions.delete(sessionToken);
-      console.log(`🔐 Dashboard logout: ${session.username}`);
-    }
-    
-    res.writeHead(200, {
-      'Content-Type': 'application/json',
-      'Set-Cookie': 'session=; HttpOnly; Path=/; Max-Age=0'
-    });
-    res.end(JSON.stringify({ success: true, message: 'Logged out' }));
-    return;
-  }
-
-  // ESP32 Heartbeat endpoint (no auth required for device communication)
-  if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
-    console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
-    
-    readBody((data) => {
-      const deviceId = data.deviceId || 'unknown';
-      const timestamp = new Date().toISOString();
-      
-      // Store/update device info
-      connectedDevices.set(deviceId, {
-        lastHeartbeat: timestamp,
-        status: data.status || 'online',
-        signalStrength: data.signalStrength || 0,
-        batteryLevel: data.batteryLevel || 0,
-        firmwareVersion: data.firmwareVersion || '1.0.0',
-        uptime: data.uptime || 0,
-        freeHeap: data.freeHeap || 0,
-        connectionType: data.connectionType || 'wifi'
-      });
-      
-      console.log(`💓 Device ${deviceId} heartbeat received:`, connectedDevices.get(deviceId));
-      
-     // res.writeHead(200);
-      res.writeHead(200, { 
-  'Content-Type': 'text/html; charset=utf-8'
-});
-      res.end(JSON.stringify({
-        success: true,
-        message: "Heartbeat received",
-        timestamp: timestamp,
-        deviceId: deviceId
-      }));
-    });
-    return;
-  }
-
-  // ESP32 Command check endpoint - GET /api/device/{deviceId}/commands (no auth required)
-  if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
-    const urlParts = req.url.split('/');
-    const deviceId = urlParts[3];
-    
-    console.log(`📥 Command check from ESP32 device: ${deviceId}`);
-    
-    const deviceCommandQueue = deviceCommands.get(deviceId) || [];
-    deviceCommands.set(deviceId, []);
-    
-    console.log(`📋 Sending ${deviceCommandQueue.length} commands to device ${deviceId}`);
-    
-    //res.writeHead(200);
-    res.writeHead(200, { 
-  'Content-Type': 'text/html; charset=utf-8'
-});
-    res.end(JSON.stringify(deviceCommandQueue));
-    return;
-  }
-
-  // ESP32 Authentication endpoint (no auth required)
-  if (req.url === '/api/device/auth' && req.method === 'POST') {
-    console.log(`🔐 Auth request from ESP32: ${req.method} ${req.url}`);
-    
-    readBody((data) => {
-      const deviceId = data.deviceId || 'unknown';
-      const deviceType = data.deviceType || 'unknown';
-      const firmwareVersion = data.firmwareVersion || '1.0.0';
-      
-      console.log(`🔐 Authenticating device: ${deviceId} (${deviceType}) v${firmwareVersion}`);
-      
-      //res.writeHead(200);
-      res.writeHead(200, { 
-  'Content-Type': 'text/html; charset=utf-8'
-});
-      res.end(JSON.stringify({
-        success: true,
-        token: "device_token_" + deviceId + "_" + Date.now(),
-        message: "Device authenticated",
-        deviceId: deviceId
-      }));
-    });
-    return;
-  }
-
-  // Protected dashboard endpoints - require login
   function requireAuth(callback) {
     const sessionToken = getSessionFromCookie(req.headers.cookie);
     if (!sessionToken || !validateSession(sessionToken)) {
-      // Return login page for dashboard access
-      if (req.url === '/dashboard' || req.url === '/') {
-        const loginHtml = `
+      return false;
+    }
+    const session = activeSessions.get(sessionToken);
+    callback(session);
+    return true;
+  }
+
+  // Dashboard login page
+  if ((req.url === '/dashboard' || req.url === '/') && req.method === 'GET') {
+    const sessionToken = getSessionFromCookie(req.headers.cookie);
+    if (sessionToken && validateSession(sessionToken)) {
+      // User is logged in, show main dashboard
+      const session = activeSessions.get(sessionToken);
+      const dashboardHtml = `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>🔐 Gate Controller Login</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta charset="UTF-8">
+    <title>Gate Controller Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; background: #f5f5f5; }
+        .header { background: white; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .user-info { color: #666; }
+        .logout { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .nav { background: white; margin: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .nav ul { list-style: none; padding: 0; margin: 0; display: flex; }
+        .nav li { flex: 1; }
+        .nav a { display: block; padding: 15px; text-decoration: none; color: #333; text-align: center; border-right: 1px solid #eee; }
+        .nav a:hover, .nav a.active { background: #667eea; color: white; }
+        .nav li:last-child a { border-right: none; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+        .content { background: white; margin: 20px; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .device-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .device-card.online { border-left: 4px solid #28a745; }
+        .device-card.offline { border-left: 4px solid #dc3545; }
+        .controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-top: 15px; }
+        button { padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; transition: background 0.3s; }
+        .btn-open { background: #28a745; color: white; }
+        .btn-stop { background: #ffc107; color: black; }
+        .btn-close { background: #dc3545; color: white; }
+        .btn-partial { background: #6f42c1; color: white; }
+        .btn-open:hover { background: #218838; }
+        .btn-stop:hover { background: #e0a800; }
+        .btn-close:hover { background: #c82333; }
+        .btn-partial:hover { background: #5a32a3; }
+        .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin: 20px 0; }
+        .status-item { background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #667eea; }
+        .status-label { font-weight: bold; color: #495057; margin-bottom: 5px; }
+        .status-value { font-size: 1.1em; color: #333; }
+        .alert { padding: 15px; border-radius: 6px; margin: 10px 0; }
+        .alert-success { background: #d4edda; border-left: 4px solid #28a745; color: #155724; }
+        .alert-warning { background: #fff3cd; border-left: 4px solid #ffc107; color: #856404; }
+        .alert-danger { background: #f8d7da; border-left: 4px solid #dc3545; color: #721c24; }
+        .hidden { display: none; }
+        h1, h2, h3 { color: #333; margin: 0 0 15px 0; }
+        .refresh-btn { background: #007bff; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 20px; }
+        .refresh-btn:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Gate Controller Dashboard</h1>
+            <div class="user-info">Logged in as: <strong>${session.name}</strong> (${session.username})</div>
+        </div>
+        <button class="logout" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="container">
+        <nav class="nav">
+            <ul>
+                <li><a href="#" class="nav-link active" data-section="control">Device Control</a></li>
+                <li><a href="#" class="nav-link" data-section="users">User Management</a></li>
+                <li><a href="#" class="nav-link" data-section="settings">Settings</a></li>
+                <li><a href="#" class="nav-link" data-section="logs">Activity Logs</a></li>
+            </ul>
+        </nav>
+
+        <!-- Device Control Section -->
+        <div id="control-section" class="content">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Device Control Center</h2>
+                <button class="refresh-btn" onclick="refreshDevices()">Refresh Status</button>
+            </div>
+            <div id="devices-container"></div>
+            <div id="system-status"></div>
+        </div>
+
+        <!-- User Management Section -->
+        <div id="users-section" class="content hidden">
+            <h2>User Management</h2>
+            <p>Manage device users and permissions from this centralized interface.</p>
+            <div id="user-management-content"></div>
+        </div>
+
+        <!-- Settings Section -->
+        <div id="settings-section" class="content hidden">
+            <h2>System Settings</h2>
+            <p>Configure system-wide settings and preferences.</p>
+            <div class="status-grid">
+                <div class="status-item">
+                    <div class="status-label">Server Status</div>
+                    <div class="status-value">Running on port ${PORT}</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Connected Devices</div>
+                    <div class="status-value">${connectedDevices.size}</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Active Sessions</div>
+                    <div class="status-value">${activeSessions.size}</div>
+                </div>
+                <div class="status-item">
+                    <div class="status-label">Server Time</div>
+                    <div class="status-value">${new Date().toLocaleString()}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Activity Logs Section -->
+        <div id="logs-section" class="content hidden">
+            <h2>Activity Logs</h2>
+            <p>View recent system activity and command history.</p>
+            <div id="activity-logs">
+                <div class="alert alert-success">Device ESP32_GATE_50:78:7D:14:4D:28 connected</div>
+                <div class="alert alert-warning">User registration queued for device</div>
+                <div class="alert alert-success">Command executed successfully</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const devices = ${JSON.stringify(Array.from(connectedDevices.entries()))};
+
+        // Navigation handling
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = e.target.dataset.section;
+                showSection(section);
+                
+                // Update active nav
+                document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                e.target.classList.add('active');
+            });
+        });
+
+        function showSection(sectionName) {
+            document.querySelectorAll('.content').forEach(section => {
+                section.classList.add('hidden');
+            });
+            document.getElementById(sectionName + '-section').classList.remove('hidden');
+        }
+
+        async function logout() {
+            try {
+                await fetch('/dashboard/logout', { method: 'POST' });
+                window.location.href = '/dashboard';
+            } catch (error) {
+                alert('Logout error: ' + error.message);
+            }
+        }
+
+        function sendCommand(deviceId, relay, action) {
+            const userId = prompt("Enter your registered phone number:");
+            if (!userId) return;
+            
+            if (!/^\\d{10}$/.test(userId)) {
+                alert('Please enter a valid 10-digit phone number');
+                return;
+            }
+            
+            if (!confirm('Send ' + action + ' command with user ID: ' + userId + '?')) {
+                return;
+            }
+            
+            fetch('/api/device/' + deviceId + '/send-command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id: 'web_' + Date.now(),
+                    action: 'relay_activate',
+                    relay: relay,
+                    duration: 2000,
+                    user: 'dashboard',
+                    user_id: parseInt(userId)
+                })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    showAlert('Command sent: ' + action, 'success');
+                } else {
+                    showAlert('Command failed', 'danger');
+                }
+            })
+            .catch(e => showAlert('Error: ' + e.message, 'danger'));
+        }
+
+        function showAlert(message, type) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-' + type;
+            alertDiv.textContent = message;
+            document.getElementById('control-section').insertBefore(alertDiv, document.getElementById('devices-container'));
+            setTimeout(() => alertDiv.remove(), 5000);
+        }
+
+        function refreshDevices() {
+            location.reload();
+        }
+
+        function renderDevices() {
+            const container = document.getElementById('devices-container');
+            if (devices.length === 0) {
+                container.innerHTML = '<div class="alert alert-warning">No devices connected. Waiting for ESP32 heartbeat...</div>';
+                return;
+            }
+            
+            container.innerHTML = devices.map(([deviceId, info]) => {
+                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+                return \`
+                    <div class="device-card \${isOnline ? 'online' : 'offline'}">
+                        <h3>\${deviceId} <span style="color: \${isOnline ? '#28a745' : '#dc3545'};">(\${isOnline ? 'ONLINE' : 'OFFLINE'})</span></h3>
+                        
+                        <div class="status-grid">
+                            <div class="status-item">
+                                <div class="status-label">Signal Strength</div>
+                                <div class="status-value">\${info.signalStrength}dBm</div>
+                            </div>
+                            <div class="status-item">
+                                <div class="status-label">Battery Level</div>
+                                <div class="status-value">\${info.batteryLevel}%</div>
+                            </div>
+                            <div class="status-item">
+                                <div class="status-label">Uptime</div>
+                                <div class="status-value">\${Math.floor(info.uptime / 1000)}s</div>
+                            </div>
+                            <div class="status-item">
+                                <div class="status-label">Last Heartbeat</div>
+                                <div class="status-value">\${new Date(info.lastHeartbeat).toLocaleTimeString()}</div>
+                            </div>
+                        </div>
+
+                        <div class="controls">
+                            <button class="btn-open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')">OPEN</button>
+                            <button class="btn-stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')">STOP</button>
+                            <button class="btn-close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')">CLOSE</button>
+                            <button class="btn-partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')">PARTIAL</button>
+                        </div>
+                        
+                        <div style="margin-top: 15px; font-size: 0.9em; color: #666;">
+                            Commands require registered phone number authentication
+                        </div>
+                    </div>
+                \`;
+            }).join('');
+        }
+
+        function renderUserManagement() {
+            const container = document.getElementById('user-management-content');
+            container.innerHTML = devices.map(([deviceId, info]) => \`
+                <div class="device-card">
+                    <h3>Register User for \${deviceId}</h3>
+                    <div style="max-width: 400px;">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Phone Number:</label>
+                            <input type="tel" id="phone-\${deviceId}" placeholder="1234567890" maxlength="10" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">User Name:</label>
+                            <input type="text" id="name-\${deviceId}" placeholder="User Name" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">User Level:</label>
+                            <select id="userLevel-\${deviceId}" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                                <option value="0">Basic User</option>
+                                <option value="1">Manager</option>
+                                <option value="2">Admin</option>
+                            </select>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: bold;">Permissions:</label>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay1-\${deviceId}" checked> OPEN</label>
+                                <label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay2-\${deviceId}"> STOP</label>
+                                <label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay3-\${deviceId}"> CLOSE</label>
+                                <label style="display: flex; align-items: center; gap: 5px;"><input type="checkbox" id="relay4-\${deviceId}"> PARTIAL</label>
+                            </div>
+                        </div>
+                        <button onclick="registerUser('\${deviceId}')" style="background: #17a2b8; color: white; padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Register User</button>
+                    </div>
+                </div>
+            \`).join('');
+        }
+
+        function registerUser(deviceId) {
+            const phone = document.getElementById('phone-' + deviceId).value;
+            const name = document.getElementById('name-' + deviceId).value;
+            const userLevel = parseInt(document.getElementById('userLevel-' + deviceId).value);
+            
+            let relayMask = 0;
+            if (document.getElementById('relay1-' + deviceId).checked) relayMask |= 1;
+            if (document.getElementById('relay2-' + deviceId).checked) relayMask |= 2;
+            if (document.getElementById('relay3-' + deviceId).checked) relayMask |= 4;
+            if (document.getElementById('relay4-' + deviceId).checked) relayMask |= 8;
+            
+            if (!phone || !name) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            if (!/^\\d{10}$/.test(phone)) {
+                alert('Please enter a valid 10-digit phone number');
+                return;
+            }
+            
+            fetch('/api/device/' + deviceId + '/register-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: parseInt(phone),
+                    name: name,
+                    relayMask: relayMask,
+                    userLevel: userLevel
+                })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    alert('User registered successfully: ' + name + ' (' + phone + ')');
+                    document.getElementById('phone-' + deviceId).value = '';
+                    document.getElementById('name-' + deviceId).value = '';
+                    document.getElementById('userLevel-' + deviceId).value = '0';
+                    document.querySelectorAll('input[type="checkbox"][id*="' + deviceId + '"]').forEach(cb => cb.checked = false);
+                    document.getElementById('relay1-' + deviceId).checked = true;
+                } else {
+                    alert('Registration failed');
+                }
+            })
+            .catch(e => alert('Error: ' + e.message));
+        }
+
+        // Initialize dashboard
+        renderDevices();
+        renderUserManagement();
+    </script>
+</body>
+</html>`;
+      
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(dashboardHtml);
+      return;
+    }
+    
+    // Show login page
+    const loginHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Gate Controller Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         body { 
             font-family: Arial, sans-serif; 
@@ -280,8 +487,21 @@ const server = http.createServer((req, res) => {
             font-weight: bold;
             cursor: pointer;
             transition: background 0.3s;
+            margin-bottom: 15px;
         }
         button:hover { background: #5a6fd8; }
+        .signup-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .signup-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .signup-link a:hover {
+            text-decoration: underline;
+        }
         .error { 
             color: #dc3545; 
             margin-top: 10px; 
@@ -301,7 +521,7 @@ const server = http.createServer((req, res) => {
 <body>
     <div class="login-container">
         <div class="login-header">
-            <h1>🚪 Gate Controller</h1>
+            <h1>Gate Controller</h1>
             <p>Dashboard Login</p>
         </div>
         
@@ -316,10 +536,14 @@ const server = http.createServer((req, res) => {
                 <input type="password" id="password" name="password" required>
             </div>
             
-            <button type="submit">🔐 Login</button>
+            <button type="submit">Login</button>
             
             <div id="error" class="error"></div>
         </form>
+        
+        <div class="signup-link">
+            <a href="/signup">Don't have an account? Sign up for dashboard access</a>
+        </div>
         
         <div class="demo-info">
             <strong>Demo Credentials:</strong><br>
@@ -357,449 +581,127 @@ const server = http.createServer((req, res) => {
     </script>
 </body>
 </html>`;
-        
-        res.writeHead(200, { 'Content-Type': 'text/html' });
-        res.end(loginHtml);
-        return;
-      } else {
-        //res.writeHead(401);
-        res.writeHead(401, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(JSON.stringify({ error: 'Authentication required' }));
-        return;
-      }
-    }
     
-    const session = activeSessions.get(sessionToken);
-    callback(session);
-  }
-
-  // User registration endpoint - require auth
-  if (req.url.includes('/register-user') && req.method === 'POST') {
-    requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
-      
-      console.log(`👤 User registration for device: ${deviceId} by ${session.username}`);
-      
-      readBody((data) => {
-        const registrationCommand = {
-          id: 'reg_' + Date.now(),
-          action: 'register_user',
-          phone: data.phone,
-          name: data.name || 'New User',
-          relayMask: data.relayMask || 1,
-          userLevel: data.userLevel || 0,
-          timestamp: Date.now(),
-          registeredBy: session.username
-        };
-        
-        if (!deviceCommands.has(deviceId)) {
-          deviceCommands.set(deviceId, []);
-        }
-        deviceCommands.get(deviceId).push(registrationCommand);
-        
-        console.log(`📝 Registration queued for device ${deviceId}:`, registrationCommand);
-        
-        res.writeHead(200);
-        res.end(JSON.stringify({
-          success: true,
-          message: "User registration queued",
-          phone: data.phone,
-          deviceId: deviceId
-        }));
-      });
-    });
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(loginHtml);
     return;
   }
 
-  // Command injection endpoint - require auth
-  if (req.url.includes('/send-command') && req.method === 'POST') {
-    requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
-      
-      console.log(`🎮 Command sent to ESP32 device: ${deviceId} by ${session.username}`);
-      
-      readBody((data) => {
-        const command = {
-          id: data.id || 'cmd_' + Date.now(),
-          action: data.action || 'relay_activate',
-          relay: data.relay || 1,
-          duration: data.duration || 2000,
-          user: data.user || session.username,
-          user_id: data.user_id || null,
-          timestamp: Date.now(),
-          sentBy: session.username
-        };
-        
-        if (!deviceCommands.has(deviceId)) {
-          deviceCommands.set(deviceId, []);
-        }
-        deviceCommands.get(deviceId).push(command);
-        
-        console.log(`📝 Command queued for device ${deviceId}:`, command);
-        
-        //res.writeHead(200);
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(JSON.stringify({
-          success: true,
-          message: "Command queued for device",
-          commandId: command.id,
-          deviceId: deviceId,
-          timestamp: new Date().toISOString()
-        }));
-      });
-    });
-    return;
-  }
-
-  // Protected dashboard - require auth
-  if (req.url === '/dashboard') {
-    requireAuth((session) => {
-      const dashboardHtml = `
+  // Signup page
+  if (req.url === '/signup' && req.method === 'GET') {
+    const signupHtml = `
 <!DOCTYPE html>
 <html>
 <head>
-    <title>🚪 Gate Controller Dashboard</title>
+    <meta charset="UTF-8">
+    <title>Gate Controller Signup</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta charset="UTF-8">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1000px; margin: 0 auto; }
-        .header { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
-        .user-info { color: #666; }
-        .logout { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-        .card { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        .device { border-left: 4px solid #28a745; }
-        .device.offline { border-left-color: #dc3545; }
-        .controls { display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap; }
-        .device-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        button { padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .open { background: #28a745; color: white; }
-        .stop { background: #ffc107; color: black; }
-        .close { background: #dc3545; color: white; }
-        .partial { background: #6f42c1; color: white; }
-        .register { background: #17a2b8; color: white; }
-        .status { font-size: 0.9em; color: #666; }
-        h1 { color: #333; margin: 0; }
-        .refresh { background: #007bff; color: white; margin-bottom: 20px; }
-        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%; margin-bottom: 10px; }
-        .form-grid { display: grid; gap: 10px; max-width: 400px; }
-        .checkbox-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 10px 0; }
-        .checkbox-group label { display: flex; align-items: center; gap: 5px; margin: 0; }
-        .user-management { border-left: 4px solid #17a2b8; }
+        body { 
+            font-family: Arial, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0; 
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .signup-container { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 500px;
+            width: 90%;
+        }
+        .signup-header { 
+            text-align: center; 
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .signup-header h1 {
+            margin: 0;
+            font-size: 2em;
+            color: #667eea;
+        }
+        .form-group { margin-bottom: 20px; }
+        label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold;
+            color: #555;
+        }
+        input, select { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button { 
+            width: 100%; 
+            padding: 12px; 
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin-bottom: 15px;
+        }
+        button:hover { background: #218838; }
+        .login-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .login-link a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+        .error, .success { 
+            margin-top: 10px; 
+            text-align: center;
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 6px;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+        }
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+            border-left: 4px solid #17a2b8;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div>
-                <h1>🚪 Gate Controller Dashboard</h1>
-                <div class="user-info">Logged in as: <strong>${session.name}</strong> (${session.username})</div>
-            </div>
-            <button class="logout" onclick="logout()">🚪 Logout</button>
+    <div class="signup-container">
+        <div class="signup-header">
+            <h1>Dashboard Signup</h1>
+            <p>Request access to the Gate Controller Dashboard</p>
         </div>
         
-        <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
-        
-        <div id="devices"></div>
-        
-        <div class="card">
-            <h3>📊 Server Status</h3>
-            <p>✅ Server running on port ${PORT}</p>
-            <p>🕒 Started: ${new Date().toISOString()}</p>
-            <p>📱 Connected Devices: <span id="deviceCount">${connectedDevices.size}</span></p>
-            <p>👤 Active Sessions: ${activeSessions.size}</p>
-        </div>
-    </div>
-
-    <script>
-        const devices = ${JSON.stringify(Array.from(connectedDevices.entries()))};
-        
-        async function logout() {
-            try {
-                await fetch('/dashboard/logout', { method: 'POST' });
-                window.location.href = '/dashboard';
-            } catch (error) {
-                alert('Logout error: ' + error.message);
-            }
-        }
-        
-        function sendCommand(deviceId, relay, action) {
-            const userId = prompt("Enter your registered phone number:");
-            if (!userId) return;
-            
-            if (!/^\\d{10}$/.test(userId)) {
-                alert('Please enter a valid 10-digit phone number');
-                return;
-            }
-            
-            if (!confirm('Send ' + action + ' command with user ID: ' + userId + '?')) {
-                return;
-            }
-            
-            fetch('/api/device/' + deviceId + '/send-command', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    id: 'web_' + Date.now(),
-                    action: 'relay_activate',
-                    relay: relay,
-                    duration: 2000,
-                    user: 'dashboard',
-                    user_id: parseInt(userId)
-                })
-            })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) {
-                    alert('✅ Command sent: ' + action);
-                } else {
-                    alert('❌ Command failed');
-                }
-            })
-            .catch(e => alert('❌ Error: ' + e.message));
-        }
-        
-        function registerUser(deviceId) {
-            const phone = document.getElementById('phone-' + deviceId).value;
-            const name = document.getElementById('name-' + deviceId).value;
-            const userLevel = parseInt(document.getElementById('userLevel-' + deviceId).value);
-            
-            let relayMask = 0;
-            if (document.getElementById('relay1-' + deviceId).checked) relayMask |= 1;
-            if (document.getElementById('relay2-' + deviceId).checked) relayMask |= 2;
-            if (document.getElementById('relay3-' + deviceId).checked) relayMask |= 4;
-            if (document.getElementById('relay4-' + deviceId).checked) relayMask |= 8;
-            
-            if (!phone || !name) {
-                alert('Please fill in all fields');
-                return;
-            }
-            
-            if (!/^\\d{10}$/.test(phone)) {
-                alert('Please enter a valid 10-digit phone number');
-                return;
-            }
-            
-            fetch('/api/device/' + deviceId + '/register-user', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    phone: parseInt(phone),
-                    name: name,
-                    relayMask: relayMask,
-                    userLevel: userLevel
-                })
-            })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) {
-                    alert('✅ User registered: ' + name + ' (' + phone + ')');
-                    document.getElementById('phone-' + deviceId).value = '';
-                    document.getElementById('name-' + deviceId).value = '';
-                    document.getElementById('userLevel-' + deviceId).value = '0';
-                    document.querySelectorAll('input[type="checkbox"][id*="' + deviceId + '"]').forEach(cb => cb.checked = false);
-                    document.getElementById('relay1-' + deviceId).checked = true;
-                } else {
-                    alert('❌ Registration failed');
-                }
-            })
-            .catch(e => alert('❌ Error: ' + e.message));
-        }
-        
-        function renderDevices() {
-            const container = document.getElementById('devices');
-            if (devices.length === 0) {
-                container.innerHTML = '<div class="card"><p>📭 No devices connected yet. Waiting for ESP32 heartbeat...</p></div>';
-                return;
-            }
-            
-            container.innerHTML = devices.map(([deviceId, info]) => {
-                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-                return \`
-                    <div class="card device \${isOnline ? '' : 'offline'}">
-                        <h3>🎛️ \${deviceId} \${isOnline ? '🟢' : '🔴'}</h3>
-                        <div class="status">
-                            📶 Signal: \${info.signalStrength}dBm | 
-                            🔋 Battery: \${info.batteryLevel}% | 
-                            ⏱️ Uptime: \${Math.floor(info.uptime / 1000)}s<br>
-                            🔄 Last Heartbeat: \${new Date(info.lastHeartbeat).toLocaleTimeString()}
-                        </div>
-                        
-                        <div class="device-controls">
-                            <div>
-                                <h4>🎮 Device Controls</h4>
-                                <div class="controls">
-                                    <button class="open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                                    <button class="stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                                    <button class="close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                                    <button class="partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                                </div>
-                                <p style="font-size: 0.8em; color: #666; margin-top: 10px;">
-                                    🔐 Commands require registered phone number authentication
-                                </p>
-                            </div>
-                            
-                            <div class="user-management">
-                                <h4>👤 Register New User</h4>
-                                <div class="form-grid">
-                                    <input type="tel" id="phone-\${deviceId}" placeholder="Phone Number (1234567890)" maxlength="10" required>
-                                    <input type="text" id="name-\${deviceId}" placeholder="User Name" required>
-                                    <select id="userLevel-\${deviceId}">
-                                        <option value="0">👤 Basic User</option>
-                                        <option value="1">👔 Manager</option>
-                                        <option value="2">🔐 Admin</option>
-                                    </select>
-                                    <div>
-                                        <label style="font-weight: bold; margin-bottom: 5px; display: block;">🔑 Permissions:</label>
-                                        <div class="checkbox-group">
-                                            <label><input type="checkbox" id="relay1-\${deviceId}" checked> 🔓 OPEN</label>
-                                            <label><input type="checkbox" id="relay2-\${deviceId}"> ⏸️ STOP</label>
-                                            <label><input type="checkbox" id="relay3-\${deviceId}"> 🔒 CLOSE</label>
-                                            <label><input type="checkbox" id="relay4-\${deviceId}"> ↗️ PARTIAL</label>
-                                        </div>
-                                    </div>
-                                    <button class="register" onclick="registerUser('\${deviceId}')">
-                                        ➕ Register User
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                \`;
-            }).join('');
-        }
-        
-        renderDevices();
-    </script>
-</body>
-</html>`;
-      
-      res.writeHead(200, { 'Content-Type': 'text/html' });
-      res.end(dashboardHtml);
-    });
-    return;
-  }
-
-  // Health check endpoint (public)
-  if (req.url === '/health') {
-    const responseData = {
-      message: '🎉 Railway server is working perfectly!',
-      timestamp: new Date().toISOString(),
-      url: req.url,
-      method: req.method,
-      port: PORT,
-      connectedDevices: connectedDevices.size,
-      activeSessions: activeSessions.size,
-      server_info: {
-        actual_port: PORT,
-        railway_env: process.env.RAILWAY_ENVIRONMENT || 'not_set',
-        node_env: process.env.NODE_ENV || 'not_set'
-      }
-    };
-    
-    res.writeHead(200);
-    res.end(JSON.stringify(responseData, null, 2));
-    return;
-  }
-
-  // API endpoints list (public)
-  if (req.url === '/api' || req.url === '/api/') {
-    const responseData = {
-      message: '🎉 Gate Controller API with User Management and Authentication',
-      timestamp: new Date().toISOString(),
-      connectedDevices: connectedDevices.size,
-      activeSessions: activeSessions.size,
-      endpoints: [
-        'GET /',
-        'GET /dashboard (requires login)',
-        'POST /dashboard/login',
-        'POST /dashboard/logout', 
-        'GET /health', 
-        'POST /api/device/heartbeat',
-        'GET /api/device/{deviceId}/commands',
-        'POST /api/device/auth',
-        'POST /api/device/{deviceId}/send-command (requires login)',
-        'POST /api/device/{deviceId}/register-user (requires login)'
-      ],
-      devices: Array.from(connectedDevices.keys())
-    };
-    
-    res.writeHead(200);
-    res.end(JSON.stringify(responseData, null, 2));
-    return;
-  }
-
-  // Root redirect to dashboard
-  if (req.url === '/') {
-    res.writeHead(302, { 'Location': '/dashboard' });
-    res.end();
-    return;
-  }
-
-  // Default response for other endpoints
-  const responseData = {
-    message: '🎉 Railway Gate Controller Server with Authentication',
-    timestamp: new Date().toISOString(),
-    url: req.url,
-    method: req.method,
-    port: PORT,
-    help: 'Visit /dashboard for the control interface or /api for API info'
-  };
-  
-  res.writeHead(404);
-  res.end(JSON.stringify(responseData, null, 2));
-});
-
-server.on('error', (err) => {
-  console.error('❌ Server error:', err);
-  console.error('Error details:', {
-    code: err.code,
-    message: err.message,
-    port: PORT
-  });
-});
-
-server.on('listening', () => {
-  const addr = server.address();
-  console.log('🎉 Server successfully listening with Authentication!');
-  console.log(`✅ Port: ${addr.port}`);
-  console.log(`✅ Address: ${addr.address}`);
-  console.log(`🌐 Railway should now be able to route traffic`);
-  console.log(`📱 Dashboard: https://gate-controller-system-production.up.railway.app/dashboard`);
-  console.log(`🔐 Demo Login: admin/admin123 or manager/gate2024`);
-});
-
-// Start server
-server.listen(PORT, '0.0.0.0', (err) => {
-  if (err) {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1);
-  }
-  console.log(`💫 Server started on ${PORT} with Authentication`);
-});
-
-// Health check endpoint logging
-setInterval(() => {
-  console.log(`💓 Server heartbeat - Port: ${PORT} - Devices: ${connectedDevices.size} - Sessions: ${activeSessions.size} - ${new Date().toISOString()}`);
-  
-  // Clean up old devices (offline for more than 5 minutes)
-  const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-  for (const [deviceId, info] of connectedDevices.entries()) {
-    if (new Date(info.lastHeartbeat).getTime() < fiveMinutesAgo) {
-      console.log(`🗑️ Removing offline device: ${deviceId}`);
-      connectedDevices.delete(deviceId);
-      deviceCommands.delete(deviceId);
-    }
-  }
-  
-  // Clean up old sessions (older than 24 hours)
-  const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-  for (const [sessionToken, session] of activeSessions.entries()) {
-    if (new Date(session.loginTime).getTime() < oneDayAgo) {
-      console.log(`🗑️ Removing expired session: ${session.username}`);
-      activeSessions.delete(sessionToken);
-    }
-  }
-}, 30000);
+        <form id="signupForm">
+            <div class="form-group">
+                <label for="fullName">Full Name:</label>
