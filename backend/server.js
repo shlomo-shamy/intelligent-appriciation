@@ -1,958 +1,4 @@
-// User management functions
-        function editUser(email) {
-            if (!currentDeviceId) return;
-            
-            const users = registeredUsers.find(([id]) => id === currentDeviceId);
-            if (!users) return;
-            
-            const user = users[1].find(u => u.email === email);
-            if (!user) return;
-            
-            editingUser = { ...user, originalEmail: email, deviceId: currentDeviceId };
-            
-            // Populate edit form
-            document.getElementById('editEmail').value = user.email;
-            document.getElementById('editPhone').value = user.phone;
-            document.getElementById('editName').value = user.name;
-            document.getElementById('editPassword').value = user.password || '';
-            document.getElementById('editUserLevel').value = user.userLevel;
-            document.getElementById('editCanLogin').checked = user.canLogin;
-            
-            // Set relay permissions
-            document.getElementById('editRelay1').checked = (user.relayMask & 1) !== 0;
-            document.getElementById('editRelay2').checked = (user.relayMask & 2) !== 0;
-            document.getElementById('editRelay3').checked = (user.relayMask & 4) !== 0;
-            document.getElementById('editRelay4').checked = (user.relayMask & 8) !== 0;
-            
-            document.getElementById('editUserModal').style.display = 'block';
-        }
-        
-        function closeEditUserModal() {
-            document.getElementById('editUserModal').style.display = 'none';
-            editingUser = null;
-        }
-        
-        async function updateUser() {
-            if (!editingUser) return;
-            
-            const email = document.getElementById('editEmail').value;
-            const phone = document.getElementById('editPhone').value;
-            const name = document.getElementById('editName').value;
-            const password = document.getElementById('editPassword').value;
-            const userLevel = parseInt(document.getElementById('editUserLevel').value);
-            const canLogin = document.getElementById('editCanLogin').checked;
-            
-            let relayMask = 0;
-            if (document.getElementById('editRelay1').checked) relayMask |= 1;
-            if (document.getElementById('editRelay2').checked) relayMask |= 2;
-            if (document.getElementById('editRelay3').checked) relayMask |= 4;
-            if (document.getElementById('editRelay4').checked) relayMask |= 8;
-            
-            if (!email || !phone || !name) {
-                alert('Please fill in email, phone, and name fields');
-                return;
-            }
-            
-            if (!/^\\d{10}$/.test(phone)) {
-                alert('Please enter a valid 10-digit phone number');
-                return;
-            }
-            
-            if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
-                alert('Please enter a valid email address');
-                return;
-            }
-            
-            if (canLogin && (!password || password.length < 6)) {
-                alert('Password must be at least 6 characters if login is allowed');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/device/' + editingUser.deviceId + '/update-user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                    body: JSON.stringify({
-                        originalEmail: editingUser.originalEmail,
-                        email: email,
-                        phone: parseInt(phone),
-                        name: name,
-                        password: password,
-                        relayMask: relayMask,
-                        userLevel: userLevel,
-                        canLogin: canLogin
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('✅ User updated successfully: ' + name);
-                    closeEditUserModal();
-                    loadUsers();
-                } else {
-                    alert('❌ Update failed: ' + result.message);
-                }
-            } catch (error) {
-                alert('❌ Error: ' + error.message);
-            }
-        }
-        
-        function confirmDeleteUser(email, name) {
-            if (!confirm('Are you sure you want to delete user "' + name + '" (' + email + ')?\n\nThis action cannot be undone.')) {
-                return;
-            }
-            deleteUserByEmail(email);
-        }
-        
-        async function deleteUser() {
-            if (!editingUser) return;
-            
-            if (!confirm('Are you sure you want to delete this user?\n\nThis action cannot be undone.')) {
-                return;
-            }
-            
-            await deleteUserByEmail(editingUser.email);
-            closeEditUserModal();
-        }
-        
-        async function deleteUserByEmail(email) {
-            if (!currentDeviceId) return;
-            
-            try {
-                const response = await fetch('/api/device/' + currentDeviceId + '/delete-user', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                    body: JSON.stringify({ email: email })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('✅ User deleted successfully');
-                    loadUsers();
-                } else {
-                    alert('❌ Delete failed: ' + result.message);
-                }
-            } catch (error) {
-                alert('❌ Error: ' + error.message);
-            }
-        }
-        
-        // Close modals when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('settingsModal');
-            const editModal = document.getElementById('editUserModal');
-            
-            if (event.target === modal) {
-                closeModal();
-            }
-            if (event.target === editModal) {
-                closeEditUserModal();
-            }
-        }
-        
-        // Initialize page
-        loadUserPermissions().then(() => {
-            renderDevices();
-        });const http = require('http');
-
-console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
-
-// Let Railway assign the port - don't force 3000
-const PORT = process.env.PORT || 3001;
-
-console.log(`🔍 Full Environment check:`, {
-  'process.env.PORT': process.env.PORT,
-  'process.env.RAILWAY_ENVIRONMENT': process.env.RAILWAY_ENVIRONMENT,
-  'Final PORT being used': PORT,
-  'All env vars': Object.keys(process.env).filter(key => key.includes('RAILWAY'))
-});
-
-// Store connected devices
-const connectedDevices = new Map();
-const deviceCommands = new Map(); // Store commands for each device
-const registeredUsers = new Map(); // Store registered users by deviceId
-const deviceLogs = new Map(); // Store device logs
-const deviceSchedules = new Map(); // Store device schedules
-
-// Simple dashboard authentication - Default admin users
-const DASHBOARD_USERS = new Map([
-  ['admin@gatecontroller.com', { password: 'admin123', name: 'Administrator', userLevel: 2, phone: '0000000000' }],
-  ['manager@gatecontroller.com', { password: 'gate2024', name: 'Gate Manager', userLevel: 1, phone: '0000000001' }]
-]);
-
-// Store active sessions (in production, use Redis or database)
-const activeSessions = new Map();
-
-function generateSessionToken() {
-  return 'session_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-}
-
-function validateSession(sessionToken) {
-  return activeSessions.has(sessionToken);
-}
-
-// Helper function to add device log
-function addDeviceLog(deviceId, action, user, details = '') {
-  if (!deviceLogs.has(deviceId)) {
-    deviceLogs.set(deviceId, []);
-  }
-  
-  const log = {
-    timestamp: new Date().toISOString(),
-    action: action,
-    user: user,
-    details: details,
-    id: 'log_' + Date.now() + '_' + Math.random().toString(36).substring(2)
-  };
-  
-  const logs = deviceLogs.get(deviceId);
-  logs.unshift(log); // Add to beginning
-  
-  // Keep only last 100 logs per device
-  if (logs.length > 100) {
-    logs.splice(100);
-  }
-  
-  deviceLogs.set(deviceId, logs);
-}
-
-const server = http.createServer((req, res) => {
-  console.log(`📡 ${req.method} ${req.url} - ${new Date().toISOString()}`);
-  
-  // Set CORS headers for all requests with UTF-8 support
-  res.setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
-  
-  if (req.method === 'OPTIONS') {
-    res.writeHead(200);
-    res.end();
-    return;
-  }
-
-  // Helper function to read request body
-  function readBody(callback) {
-    let body = '';
-    req.on('data', chunk => {
-      body += chunk.toString('utf8');
-    });
-    req.on('end', () => {
-      try {
-        const parsedBody = body ? JSON.parse(body) : {};
-        callback(parsedBody);
-      } catch (error) {
-        console.error('❌ JSON Parse Error:', error);
-        callback({});
-      }
-    });
-  }
-
-  // Helper function to get session token from cookie
-  function getSessionFromCookie(cookieHeader) {
-    if (!cookieHeader) return null;
-    const sessionMatch = cookieHeader.match(/session=([^;]+)/);
-    return sessionMatch ? sessionMatch[1] : null;
-  }
-
-  // Dashboard login endpoint
-  if (req.url === '/dashboard/login' && req.method === 'POST') {
-    readBody((data) => {
-      const { email, password } = data;
-      const user = DASHBOARD_USERS.get(email);
-      
-      if (user && user.password === password) {
-        const sessionToken = generateSessionToken();
-        activeSessions.set(sessionToken, {
-          email: email,
-          name: user.name,
-          userLevel: user.userLevel,
-          phone: user.phone,
-          loginTime: new Date().toISOString()
-        });
-        
-        console.log(`🔐 Dashboard login successful: ${email}`);
-        
-        res.writeHead(200, {
-          'Content-Type': 'application/json; charset=utf-8',
-          'Set-Cookie': `session=${sessionToken}; HttpOnly; Path=/; Max-Age=86400` // 24 hours
-        });
-        res.end(JSON.stringify({
-          success: true,
-          message: 'Login successful',
-          user: { email, name: user.name, userLevel: user.userLevel }
-        }));
-      } else {
-        console.log(`🔐 Dashboard login failed: ${email}`);
-        res.writeHead(401);
-        res.end(JSON.stringify({
-          success: false,
-          message: 'Invalid email or password'
-        }));
-      }
-    });
-    return;
-  }
-
-  // Dashboard logout endpoint
-  if (req.url === '/dashboard/logout' && req.method === 'POST') {
-    const sessionToken = getSessionFromCookie(req.headers.cookie);
-    if (sessionToken && activeSessions.has(sessionToken)) {
-      const session = activeSessions.get(sessionToken);
-      activeSessions.delete(sessionToken);
-      console.log(`🔐 Dashboard logout: ${session.email}`);
-    }
-    
-    res.writeHead(200, {
-      'Content-Type': 'application/json; charset=utf-8',
-      'Set-Cookie': 'session=; HttpOnly; Path=/; Max-Age=0'
-    });
-    res.end(JSON.stringify({ success: true, message: 'Logged out' }));
-    return;
-  }
-
-  // ESP32 Heartbeat endpoint (no auth required for device communication)
-  if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
-    console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
-    
-    readBody((data) => {
-      const deviceId = data.deviceId || 'unknown';
-      const timestamp = new Date().toISOString();
-      
-      // Store/update device info
-      connectedDevices.set(deviceId, {
-        lastHeartbeat: timestamp,
-        status: data.status || 'online',
-        signalStrength: data.signalStrength || 0,
-        batteryLevel: data.batteryLevel || 0,
-        firmwareVersion: data.firmwareVersion || '1.0.0',
-        uptime: data.uptime || 0,
-        freeHeap: data.freeHeap || 0,
-        connectionType: data.connectionType || 'wifi'
-      });
-      
-      // Add log entry
-      addDeviceLog(deviceId, 'heartbeat', 'system', `Signal: ${data.signalStrength}dBm, Battery: ${data.batteryLevel}%`);
-      
-      console.log(`💓 Device ${deviceId} heartbeat received:`, connectedDevices.get(deviceId));
-      
-      res.writeHead(200);
-      res.end(JSON.stringify({
-        success: true,
-        message: "Heartbeat received",
-        timestamp: timestamp,
-        deviceId: deviceId
-      }));
-    });
-    return;
-  }
-
-  // ESP32 Command check endpoint - GET /api/device/{deviceId}/commands (no auth required)
-  if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
-    const urlParts = req.url.split('/');
-    const deviceId = urlParts[3];
-    
-    console.log(`📥 Command check from ESP32 device: ${deviceId}`);
-    
-    const deviceCommandQueue = deviceCommands.get(deviceId) || [];
-    deviceCommands.set(deviceId, []);
-    
-    console.log(`📋 Sending ${deviceCommandQueue.length} commands to device ${deviceId}`);
-    
-    res.writeHead(200);
-    res.end(JSON.stringify(deviceCommandQueue));
-    return;
-  }
-
-  // ESP32 Authentication endpoint (no auth required)
-  if (req.url === '/api/device/auth' && req.method === 'POST') {
-    console.log(`🔐 Auth request from ESP32: ${req.method} ${req.url}`);
-    
-    readBody((data) => {
-      const deviceId = data.deviceId || 'unknown';
-      const deviceType = data.deviceType || 'unknown';
-      const firmwareVersion = data.firmwareVersion || '1.0.0';
-      
-      console.log(`🔐 Authenticating device: ${deviceId} (${deviceType}) v${firmwareVersion}`);
-      
-      // Add log entry
-      addDeviceLog(deviceId, 'authentication', 'system', `Device type: ${deviceType}, Firmware: ${firmwareVersion}`);
-      
-      res.writeHead(200);
-      res.end(JSON.stringify({
-        success: true,
-        token: "device_token_" + deviceId + "_" + Date.now(),
-        message: "Device authenticated",
-        deviceId: deviceId
-      }));
-    });
-    return;
-  }
-
-  // Protected dashboard endpoints - require login
-  function requireAuth(callback) {
-    const sessionToken = getSessionFromCookie(req.headers.cookie);
-    if (!sessionToken || !validateSession(sessionToken)) {
-      // Return login page for dashboard access
-      if (req.url === '/dashboard' || req.url === '/') {
-        const loginHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>🔐 Gate Controller Login</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 0; 
-            padding: 0;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .login-container { 
-            background: white; 
-            padding: 40px; 
-            border-radius: 15px; 
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            max-width: 400px;
-            width: 90%;
-        }
-        .login-header { 
-            text-align: center; 
-            margin-bottom: 30px;
-            color: #333;
-        }
-        .login-header h1 {
-            margin: 0;
-            font-size: 2em;
-            color: #667eea;
-        }
-        .form-group { margin-bottom: 20px; }
-        label { 
-            display: block; 
-            margin-bottom: 5px; 
-            font-weight: bold;
-            color: #555;
-        }
-        input { 
-            width: 100%; 
-            padding: 12px; 
-            border: 2px solid #ddd; 
-            border-radius: 8px; 
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-        button { 
-            width: 100%; 
-            padding: 12px; 
-            background: #667eea; 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        button:hover { background: #5a6fd8; }
-        .error { 
-            color: #dc3545; 
-            margin-top: 10px; 
-            text-align: center;
-            font-weight: bold;
-        }
-        .demo-info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-            font-size: 14px;
-            border-left: 4px solid #17a2b8;
-        }
-    </style>
-</head>
-<body>
-    <div class="login-container">
-        <div class="login-header">
-            <h1>🚪 Gate Controller</h1>
-            <p>Dashboard Login</p>
-        </div>
-        
-        <form id="loginForm">
-            <div class="form-group">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
-            
-            <button type="submit">🔐 Login</button>
-            
-            <div id="error" class="error"></div>
-        </form>
-        
-        <div class="demo-info">
-            <strong>Demo Credentials:</strong><br>
-            Email: <code>admin@gatecontroller.com</code> / Password: <code>admin123</code><br>
-            Email: <code>manager@gatecontroller.com</code> / Password: <code>gate2024</code>
-        </div>
-    </div>
-
-    <script>
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
-            const errorDiv = document.getElementById('error');
-            
-            try {
-                const response = await fetch('/dashboard/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                    body: JSON.stringify({ email, password })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    window.location.href = '/dashboard';
-                } else {
-                    errorDiv.textContent = data.message || 'Login failed';
-                }
-            } catch (error) {
-                errorDiv.textContent = 'Connection error: ' + error.message;
-            }
-        });
-    </script>
-</body>
-</html>`;
-        
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(loginHtml);
-        return;
-      } else {
-        res.writeHead(401);
-        res.end(JSON.stringify({ error: 'Authentication required' }));
-        return;
-      }
-    }
-    
-    const session = activeSessions.get(sessionToken);
-    callback(session);
-  }
-
-  // Get device users endpoint
-  if (req.url.startsWith('/api/device/') && req.url.endsWith('/users') && req.method === 'GET') {
-    requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
-      
-      const users = registeredUsers.get(deviceId) || [];
-      
-      res.writeHead(200);
-      res.end(JSON.stringify(users));
-    });
-    return;
-  }
-  if (req.url.startsWith('/api/user/permissions') && req.method === 'GET') {
-    requireAuth((session) => {
-      // Find user's permissions across all devices
-      const userPermissions = {};
-      
-      for (const [deviceId, users] of registeredUsers.entries()) {
-        const userRecord = users.find(u => u.email === session.email || u.phone === session.phone);
-        if (userRecord) {
-          userPermissions[deviceId] = {
-            relayMask: userRecord.relayMask,
-            userLevel: userRecord.userLevel
-          };
-        }
-      }
-      
-      res.writeHead(200);
-      res.end(JSON.stringify({
-        userLevel: session.userLevel,
-        email: session.email,
-        devicePermissions: userPermissions
-      }));
-    });
-    return;
-  }
-
-  // Update user endpoint
-  if (req.url.includes('/update-user') && req.method === 'POST') {
-    requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
-      
-      console.log(`👤 User update for device: ${deviceId} by ${session.email}`);
-      
-      readBody((data) => {
-        if (!registeredUsers.has(deviceId)) {
-          res.writeHead(404);
-          res.end(JSON.stringify({ success: false, message: 'Device not found' }));
-          return;
-        }
-        
-        const users = registeredUsers.get(deviceId);
-        const userIndex = users.findIndex(u => u.email === data.originalEmail);
-        
-        if (userIndex === -1) {
-          res.writeHead(404);
-          res.end(JSON.stringify({ success: false, message: 'User not found' }));
-          return;
-        }
-        
-        const originalUser = users[userIndex];
-        
-        // Update user data
-        users[userIndex] = {
-          ...originalUser,
-          email: data.email || originalUser.email,
-          phone: data.phone || originalUser.phone,
-          name: data.name || originalUser.name,
-          password: data.password || originalUser.password,
-          relayMask: data.relayMask !== undefined ? data.relayMask : originalUser.relayMask,
-          userLevel: data.userLevel !== undefined ? data.userLevel : originalUser.userLevel,
-          canLogin: data.canLogin !== undefined ? data.canLogin : originalUser.canLogin,
-          lastUpdated: new Date().toISOString()
-        };
-        
-        registeredUsers.set(deviceId, users);
-        
-        // Update dashboard users if login permission changed
-        if (data.canLogin && data.email && data.password) {
-          DASHBOARD_USERS.set(data.email, {
-            password: data.password,
-            name: data.name || originalUser.name,
-            userLevel: data.userLevel !== undefined ? data.userLevel : originalUser.userLevel,
-            phone: data.phone || originalUser.phone
-          });
-          
-          // Remove old email if it changed
-          if (data.email !== data.originalEmail) {
-            DASHBOARD_USERS.delete(data.originalEmail);
-          }
-        } else if (!data.canLogin) {
-          // Remove from dashboard users if login disabled
-          DASHBOARD_USERS.delete(data.email || data.originalEmail);
-        }
-        
-        // Add log entry
-        addDeviceLog(deviceId, 'user_updated', session.email, `User: ${data.name} (${data.email}/${data.phone})`);
-        
-        console.log(`📝 User updated for device ${deviceId}:`, users[userIndex]);
-        
-        res.writeHead(200);
-        res.end(JSON.stringify({
-          success: true,
-          message: "User updated successfully",
-          user: users[userIndex]
-        }));
-      });
-    });
-    return;
-  }
-
-  // Delete user endpoint
-  if (req.url.includes('/delete-user') && req.method === 'POST') {
-    requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
-      
-      console.log(`👤 User deletion for device: ${deviceId} by ${session.email}`);
-      
-      readBody((data) => {
-        if (!registeredUsers.has(deviceId)) {
-          res.writeHead(404);
-          res.end(JSON.stringify({ success: false, message: 'Device not found' }));
-          return;
-        }
-        
-        const users = registeredUsers.get(deviceId);
-        const userIndex = users.findIndex(u => u.email === data.email);
-        
-        if (userIndex === -1) {
-          res.writeHead(404);
-          res.end(JSON.stringify({ success: false, message: 'User not found' }));
-          return;
-        }
-        
-        const deletedUser = users[userIndex];
-        users.splice(userIndex, 1);
-        registeredUsers.set(deviceId, users);
-        
-        // Remove from dashboard users
-        DASHBOARD_USERS.delete(data.email);
-        
-        // Add log entry
-        addDeviceLog(deviceId, 'user_deleted', session.email, `User: ${deletedUser.name} (${deletedUser.email})`);
-        
-        console.log(`🗑️ User deleted from device ${deviceId}:`, deletedUser.email);
-        
-        res.writeHead(200);
-        res.end(JSON.stringify({
-          success: true,
-          message: "User deleted successfully"
-        }));
-      });
-    });
-    return;
-  }
-
-  // Get device logs endpoint
-  if (req.url.startsWith('/api/device/') && req.url.endsWith('/logs') && req.method === 'GET') {
-    requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
-      
-      const logs = deviceLogs.get(deviceId) || [];
-      
-      res.writeHead(200);
-      res.end(JSON.stringify(logs));
-    });
-    return;
-  }
-
-  // Get device schedules endpoint
-  if (req.url.startsWith('/api/device/') && req.url.endsWith('/schedules') && req.method === 'GET') {
-    requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
-      
-      const schedules = deviceSchedules.get(deviceId) || [];
-      
-      res.writeHead(200);
-      res.end(JSON.stringify(schedules));
-    });
-    return;
-  }
-
-  // User registration endpoint - require auth
-  if (req.url.includes('/register-user') && req.method === 'POST') {
-    requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
-      
-      console.log(`👤 User registration for device: ${deviceId} by ${session.email}`);
-      
-      readBody((data) => {
-        // Store user in registered users
-        if (!registeredUsers.has(deviceId)) {
-          registeredUsers.set(deviceId, []);
-        }
-        
-        const users = registeredUsers.get(deviceId);
-        
-        // Check if user already exists (by email or phone)
-        const existingUserIndex = users.findIndex(u => u.email === data.email || u.phone === data.phone);
-        if (existingUserIndex >= 0) {
-          users[existingUserIndex] = {
-            email: data.email,
-            phone: data.phone,
-            name: data.name || 'New User',
-            password: data.password || 'defaultpass123',
-            relayMask: data.relayMask || 1,
-            userLevel: data.userLevel || 0,
-            canLogin: data.canLogin || false,
-            registeredBy: session.email,
-            registeredAt: users[existingUserIndex].registeredAt,
-            lastUpdated: new Date().toISOString()
-          };
-        } else {
-          users.push({
-            email: data.email,
-            phone: data.phone,
-            name: data.name || 'New User',
-            password: data.password || 'defaultpass123',
-            relayMask: data.relayMask || 1,
-            userLevel: data.userLevel || 0,
-            canLogin: data.canLogin || false,
-            registeredBy: session.email,
-            registeredAt: new Date().toISOString(),
-            lastUpdated: new Date().toISOString()
-          });
-          
-          // Add to dashboard users if they have login permission
-          if (data.canLogin && data.email && data.password) {
-            DASHBOARD_USERS.set(data.email, {
-              password: data.password,
-              name: data.name || 'New User',
-              userLevel: data.userLevel || 0,
-              phone: data.phone
-            });
-          }
-        }
-        
-        registeredUsers.set(deviceId, users);
-        
-        const registrationCommand = {
-          id: 'reg_' + Date.now(),
-          action: 'register_user',
-          phone: data.phone,
-          email: data.email,
-          name: data.name || 'New User',
-          relayMask: data.relayMask || 1,
-          userLevel: data.userLevel || 0,
-          timestamp: Date.now(),
-          registeredBy: session.email
-        };
-        
-        if (!deviceCommands.has(deviceId)) {
-          deviceCommands.set(deviceId, []);
-        }
-        deviceCommands.get(deviceId).push(registrationCommand);
-        
-        // Add log entry
-        addDeviceLog(deviceId, 'user_registered', session.email, `User: ${data.name} (${data.email}/${data.phone})`);
-        
-        console.log(`📝 Registration queued for device ${deviceId}:`, registrationCommand);
-        
-        res.writeHead(200);
-        res.end(JSON.stringify({
-          success: true,
-          message: "User registration queued",
-          email: data.email,
-          phone: data.phone,
-          deviceId: deviceId
-        }));
-      });
-    });
-    return;
-  }
-
-  // Command injection endpoint - require auth
-  if (req.url.includes('/send-command') && req.method === 'POST') {
-    requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
-      
-      console.log(`🎮 Command sent to ESP32 device: ${deviceId} by ${session.email}`);
-      
-      readBody((data) => {
-        const command = {
-          id: data.id || 'cmd_' + Date.now(),
-          action: data.action || 'relay_activate',
-          relay: data.relay || 1,
-          duration: data.duration || 2000,
-          user: data.user || session.email,
-          user_id: data.user_id || null,
-          timestamp: Date.now(),
-          sentBy: session.email
-        };
-        
-        if (!deviceCommands.has(deviceId)) {
-          deviceCommands.set(deviceId, []);
-        }
-        deviceCommands.get(deviceId).push(command);
-        
-        // Add log entry
-        addDeviceLog(deviceId, 'command_sent', session.email, `Action: ${command.action}, Relay: ${command.relay}, User ID: ${command.user_id}`);
-        
-        console.log(`📝 Command queued for device ${deviceId}:`, command);
-        
-        res.writeHead(200);
-        res.end(JSON.stringify({
-          success: true,
-          message: "Command queued for device",
-          commandId: command.id,
-          deviceId: deviceId,
-          timestamp: new Date().toISOString()
-        }));
-      });
-    });
-    return;
-  }
-
-  // Protected dashboard - require auth
-  if (req.url === '/dashboard') {
-    requireAuth((session) => {
-      const dashboardHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>🚪 Gate Controller Dashboard</title>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        * { box-sizing: border-box; }
-        body { 
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; 
-            margin: 0; 
-            background: #f5f5f5; 
-            font-size: 14px;
-        }
-        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .header { 
-            background: white; 
-            padding: 20px; 
-            margin-bottom: 20px; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-        }
-        .user-info { color: #666; }
-        .logout { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
-        .card { 
-            background: white; 
-            padding: 20px; 
-            margin-bottom: 20px; 
-            border-radius: 8px; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
-        }
-        .device { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            border-left: 4px solid #28a745; 
-            padding: 15px 20px;
-        }
-        .device.offline { border-left-color: #dc3545; }
-        .device-info h3 { margin: 0 0 5px 0; color: #333; }
-        .device-status { font-size: 12px; color: #666; }
-        .device-actions { display: flex; gap: 10px; align-items: center; }
-        .control-btn { 
-            padding: 8px 15px; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-weight: bold; 
-            font-size: 12px;
-        }
-        .open { background: #28a745; color: white; }
-        .stop { background: #ffc107; color: black; }
-        .close { background: #dc3545; color: white; }
-        .partial { background: #6f42c1; color: white; }
-        .settings-btn { 
-            background: #6c757d; 
-            color: white; 
-            padding: 8px 12px; 
-            border: none; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-size: 18px;
-        }
-        .settings-btn:hover { background: #5a6268; }
-        h1 { color: #333; margin: 0; }
-        .refresh { background: #007bff; color: white; margin-bottom: 20px; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
-        
-        /* Modal Styles */
+/* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -1072,39 +118,6 @@ const server = http.createServer((req, res) => {
         .user-name { font-weight: bold; color: #333; }
         .user-details { font-size: 12px; color: #666; }
         
-        /* Logs */
-        .log-item {
-            padding: 10px;
-            border-left: 3px solid #007bff;
-            margin-bottom: 10px;
-            background: #f8f9fa;
-            border-radius: 0 4px 4px 0;
-        }
-        .log-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 5px;
-        }
-        .log-action { font-weight: bold; color: #333; }
-        .log-time { font-size: 12px; color: #666; }
-        .log-details { font-size: 12px; color: #666; }
-        
-        /* Status */
-        .status-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-        .status-item {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 4px;
-            border-left: 4px solid #28a745;
-        }
-        .status-label { font-weight: bold; color: #333; margin-bottom: 5px; }
-        .status-value { color: #666; }
-        
         /* User Management Buttons */
         .user-actions {
             display: flex;
@@ -1156,61 +169,45 @@ const server = http.createServer((req, res) => {
             border-bottom: 1px solid #ddd;
         }
         
+        /* Logs */
+        .log-item {
+            padding: 10px;
+            border-left: 3px solid #007bff;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 0 4px 4px 0;
+        }
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .log-action { font-weight: bold; color: #333; }
+        .log-time { font-size: 12px; color: #666; }
+        .log-details { font-size: 12px; color: #666; }
+        
+        /* Status */
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .status-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #28a745;
+        }
+        .status-label { font-weight: bold; color: #333; margin-bottom: 5px; }
+        .status-value { color: #666; }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .device { flex-direction: column; align-items: flex-start; gap: 10px; }
             .device-actions { width: 100%; justify-content: space-between; }
             .modal-content { width: 95%; margin: 5% auto; }
             .status-grid { grid-template-columns: 1fr; }
-        }
-        .user-actions {
-            display: flex;
-            gap: 5px;
-        }
-        .edit-btn, .delete-btn {
-            padding: 4px 8px;
-            border: none;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        .edit-btn {
-            background: #ffc107;
-            color: black;
-        }
-        .delete-btn {
-            background: #dc3545;
-            color: white;
-        }
-        .edit-btn:hover { background: #e0a800; }
-        .delete-btn:hover { background: #c82333; }
-        
-        /* Edit User Modal */
-        .edit-user-modal {
-            display: none;
-            position: fixed;
-            z-index: 1001;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-        .edit-user-content {
-            background-color: white;
-            margin: 5% auto;
-            padding: 20px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
-        }
-        .edit-user-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 1px solid #ddd;
         }
     </style>
 </head>
@@ -1234,6 +231,90 @@ const server = http.createServer((req, res) => {
             <p>🕒 Started: ${new Date().toISOString()}</p>
             <p>📱 Connected Devices: <span id="deviceCount">${connectedDevices.size}</span></p>
             <p>👤 Active Sessions: ${activeSessions.size}</p>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">⚙️ Device Settings</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <div class="modal-tabs">
+                <button class="tab-btn active" onclick="switchTab('users')">👥 Users</button>
+                <button class="tab-btn" onclick="switchTab('status')">📊 Status</button>
+                <button class="tab-btn" onclick="switchTab('logs')">📝 Logs</button>
+                <button class="tab-btn" onclick="switchTab('schedules')">⏰ Schedules</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Users Tab -->
+                <div id="users-tab" class="tab-content active">
+                    <h3>➕ Add New User</h3>
+                    <div class="form-grid">
+                        <input type="email" id="modalEmail" placeholder="Email Address" required>
+                        <input type="tel" id="modalPhone" placeholder="Phone Number (1234567890)" maxlength="10" required>
+                        <input type="text" id="modalName" placeholder="User Name" required>
+                        <input type="password" id="modalPassword" placeholder="Password (if login allowed)" minlength="6">
+                        <select id="modalUserLevel">
+                            <option value="0">👤 Basic User</option>
+                            <option value="1">👔 Manager</option>
+                            <option value="2">🔐 Admin</option>
+                        </select>
+                        <div>
+                            <label style="font-weight: bold; margin-bottom: 5px; display: block;">🔑 Permissions:</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" id="modalRelay1" checked> 🔓 OPEN</label>
+                                <label><input type="checkbox" id="modalRelay2"> ⏸️ STOP</label>
+                                <label><input type="checkbox" id="modalRelay3"> 🔒 CLOSE</label>
+                                <label><input type="checkbox" id="modalRelay4"> ↗️ PARTIAL</label>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display: flex; align-items: center; gap: 5px; margin: 10px 0;">
+                                <input type="checkbox" id="modalCanLogin"> 🌐 Allow Dashboard Login
+                            </label>
+                            <small style="color: #666;">If checked, user can log in to this dashboard with email and password</small>
+                        </div>
+                        <button class="register-btn" onclick="registerUserModal()">
+                            ➕ Register User
+                        </button>
+                    </div>
+                    
+                    <div class="users-list">
+                        <h3>👥 Registered Users</h3>
+                        <div id="usersList">
+                            <p>Loading users...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Status Tab -->
+                <div id="status-tab" class="tab-content">
+                    <h3>📊 Device Status</h3>
+                    <div id="deviceStatus">
+                        <p>Loading status...</p>
+                    </div>
+                </div>
+                
+                <!-- Logs Tab -->
+                <div id="logs-tab" class="tab-content">
+                    <h3>📝 Device Logs</h3>
+                    <div id="deviceLogs">
+                        <p>Loading logs...</p>
+                    </div>
+                </div>
+                
+                <!-- Schedules Tab -->
+                <div id="schedules-tab" class="tab-content">
+                    <h3>⏰ Device Schedules</h3>
+                    <div id="deviceSchedules">
+                        <p>Schedules feature coming soon...</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1318,93 +399,6 @@ const server = http.createServer((req, res) => {
             const relayBit = Math.pow(2, relay - 1); // relay 1 = bit 1, relay 2 = bit 2, etc.
             return (devicePerms.relayMask & relayBit) !== 0;
         }
-    <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">⚙️ Device Settings</h2>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
-            </div>
-            
-            <div class="modal-tabs">
-                <button class="tab-btn active" onclick="switchTab('users')">👥 Users</button>
-                <button class="tab-btn" onclick="switchTab('status')">📊 Status</button>
-                <button class="tab-btn" onclick="switchTab('logs')">📝 Logs</button>
-                <button class="tab-btn" onclick="switchTab('schedules')">⏰ Schedules</button>
-            </div>
-            
-            <div class="modal-body">
-                <!-- Users Tab -->
-                <div id="users-tab" class="tab-content active">
-                    <h3>➕ Add New User</h3>
-                    <div class="form-grid">
-                        <input type="email" id="modalEmail" placeholder="Email Address" required>
-                        <input type="tel" id="modalPhone" placeholder="Phone Number (1234567890)" maxlength="10" required>
-                        <input type="text" id="modalName" placeholder="User Name" required>
-                        <input type="password" id="modalPassword" placeholder="Password (if login allowed)" minlength="6">
-                        <select id="modalUserLevel">
-                            <option value="0">👤 Basic User</option>
-                            <option value="1">👔 Manager</option>
-                            <option value="2">🔐 Admin</option>
-                        </select>
-                        <div>
-                            <label style="font-weight: bold; margin-bottom: 5px; display: block;">🔑 Permissions:</label>
-                            <div class="checkbox-group">
-                                <label><input type="checkbox" id="modalRelay1" checked> 🔓 OPEN</label>
-                                <label><input type="checkbox" id="modalRelay2"> ⏸️ STOP</label>
-                                <label><input type="checkbox" id="modalRelay3"> 🔒 CLOSE</label>
-                                <label><input type="checkbox" id="modalRelay4"> ↗️ PARTIAL</label>
-                            </div>
-                        </div>
-                        <div>
-                            <label style="display: flex; align-items: center; gap: 5px; margin: 10px 0;">
-                                <input type="checkbox" id="modalCanLogin"> 🌐 Allow Dashboard Login
-                            </label>
-                            <small style="color: #666;">If checked, user can log in to this dashboard with email and password</small>
-                        </div>
-                        <button class="register-btn" onclick="registerUserModal()">
-                            ➕ Register User
-                        </button>
-                    </div>
-                    
-                    <div class="users-list">
-                        <h3>👥 Registered Users</h3>
-                        <div id="usersList">
-                            <p>Loading users...</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Status Tab -->
-                <div id="status-tab" class="tab-content">
-                    <h3>📊 Device Status</h3>
-                    <div id="deviceStatus">
-                        <p>Loading status...</p>
-                    </div>
-                </div>
-                
-                <!-- Logs Tab -->
-                <div id="logs-tab" class="tab-content">
-                    <h3>📝 Device Logs</h3>
-                    <div id="deviceLogs">
-                        <p>Loading logs...</p>
-                    </div>
-                </div>
-                
-                <!-- Schedules Tab -->
-                <div id="schedules-tab" class="tab-content">
-                    <h3>⏰ Device Schedules</h3>
-                    <div id="deviceSchedules">
-                        <p>Schedules feature coming soon...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        const devices = ${JSON.stringify(Array.from(connectedDevices.entries()))};
-        const registeredUsers = ${JSON.stringify(Array.from(registeredUsers.entries()))};
-        let currentDeviceId = null;
         
         async function logout() {
             try {
@@ -1419,7 +413,7 @@ const server = http.createServer((req, res) => {
             const userId = prompt("Enter your registered phone number:");
             if (!userId) return;
             
-            if (!/^\\d{10}$/.test(userId)) {
+            if (!/^\\\\d{10}$/.test(userId)) {
                 alert('Please enter a valid 10-digit phone number');
                 return;
             }
@@ -1661,12 +655,12 @@ const server = http.createServer((req, res) => {
                 return;
             }
             
-            if (!/^\\d{10}$/.test(phone)) {
+            if (!/^\\\\d{10}$/.test(phone)) {
                 alert('Please enter a valid 10-digit phone number');
                 return;
             }
             
-            if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+            if (!/^[^\\\\s@]+@[^\\\\s@]+\\\\.[^\\\\s@]+$/.test(email)) {
                 alert('Please enter a valid email address');
                 return;
             }
@@ -1710,6 +704,147 @@ const server = http.createServer((req, res) => {
                     loadUsers();
                 } else {
                     alert('❌ Registration failed');
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        // User management functions
+        function editUser(email) {
+            if (!currentDeviceId) return;
+            
+            const users = registeredUsers.find(([id]) => id === currentDeviceId);
+            if (!users) return;
+            
+            const user = users[1].find(u => u.email === email);
+            if (!user) return;
+            
+            editingUser = { ...user, originalEmail: email, deviceId: currentDeviceId };
+            
+            // Populate edit form
+            document.getElementById('editEmail').value = user.email;
+            document.getElementById('editPhone').value = user.phone;
+            document.getElementById('editName').value = user.name;
+            document.getElementById('editPassword').value = user.password || '';
+            document.getElementById('editUserLevel').value = user.userLevel;
+            document.getElementById('editCanLogin').checked = user.canLogin;
+            
+            // Set relay permissions
+            document.getElementById('editRelay1').checked = (user.relayMask & 1) !== 0;
+            document.getElementById('editRelay2').checked = (user.relayMask & 2) !== 0;
+            document.getElementById('editRelay3').checked = (user.relayMask & 4) !== 0;
+            document.getElementById('editRelay4').checked = (user.relayMask & 8) !== 0;
+            
+            document.getElementById('editUserModal').style.display = 'block';
+        }
+        
+        function closeEditUserModal() {
+            document.getElementById('editUserModal').style.display = 'none';
+            editingUser = null;
+        }
+        
+        async function updateUser() {
+            if (!editingUser) return;
+            
+            const email = document.getElementById('editEmail').value;
+            const phone = document.getElementById('editPhone').value;
+            const name = document.getElementById('editName').value;
+            const password = document.getElementById('editPassword').value;
+            const userLevel = parseInt(document.getElementById('editUserLevel').value);
+            const canLogin = document.getElementById('editCanLogin').checked;
+            
+            let relayMask = 0;
+            if (document.getElementById('editRelay1').checked) relayMask |= 1;
+            if (document.getElementById('editRelay2').checked) relayMask |= 2;
+            if (document.getElementById('editRelay3').checked) relayMask |= 4;
+            if (document.getElementById('editRelay4').checked) relayMask |= 8;
+            
+            if (!email || !phone || !name) {
+                alert('Please fill in email, phone, and name fields');
+                return;
+            }
+            
+            if (!/^\\\\d{10}$/.test(phone)) {
+                alert('Please enter a valid 10-digit phone number');
+                return;
+            }
+            
+            if (!/^[^\\\\s@]+@[^\\\\s@]+\\\\.[^\\\\s@]+$/.test(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            if (canLogin && (!password || password.length < 6)) {
+                alert('Password must be at least 6 characters if login is allowed');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/' + editingUser.deviceId + '/update-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({
+                        originalEmail: editingUser.originalEmail,
+                        email: email,
+                        phone: parseInt(phone),
+                        name: name,
+                        password: password,
+                        relayMask: relayMask,
+                        userLevel: userLevel,
+                        canLogin: canLogin
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User updated successfully: ' + name);
+                    closeEditUserModal();
+                    loadUsers();
+                } else {
+                    alert('❌ Update failed: ' + result.message);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        function confirmDeleteUser(email, name) {
+            if (!confirm('Are you sure you want to delete user "' + name + '" (' + email + ')?\\n\\nThis action cannot be undone.')) {
+                return;
+            }
+            deleteUserByEmail(email);
+        }
+        
+        async function deleteUser() {
+            if (!editingUser) return;
+            
+            if (!confirm('Are you sure you want to delete this user?\\n\\nThis action cannot be undone.')) {
+                return;
+            }
+            
+            await deleteUserByEmail(editingUser.email);
+            closeEditUserModal();
+        }
+        
+        async function deleteUserByEmail(email) {
+            if (!currentDeviceId) return;
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/delete-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({ email: email })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User deleted successfully');
+                    loadUsers();
+                } else {
+                    alert('❌ Delete failed: ' + result.message);
                 }
             } catch (error) {
                 alert('❌ Error: ' + error.message);
@@ -1790,19 +925,7 @@ const server = http.createServer((req, res) => {
         });
     </script>
 </body>
-</html>`;
-      
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(dashboardHtml);
-    });
-    return;
-  }
-    </script>
-</body>
-</html>`;
-      
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(dashboardHtml);
+</html>`);
     });
     return;
   }
@@ -1849,7 +972,10 @@ const server = http.createServer((req, res) => {
         'POST /api/device/{deviceId}/register-user (requires login)',
         'GET /api/device/{deviceId}/users (requires login)',
         'GET /api/device/{deviceId}/logs (requires login)',
-        'GET /api/device/{deviceId}/schedules (requires login)'
+        'GET /api/device/{deviceId}/schedules (requires login)',
+        'GET /api/user/permissions (requires login)',
+        'POST /api/device/{deviceId}/update-user (requires login)',
+        'POST /api/device/{deviceId}/delete-user (requires login)'
       ],
       devices: Array.from(connectedDevices.keys())
     };
@@ -1933,4 +1059,806 @@ setInterval(() => {
       activeSessions.delete(sessionToken);
     }
   }
-}, 30000);
+}, 30000);const http = require('http');
+
+console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
+
+// Let Railway assign the port - don't force 3000
+const PORT = process.env.PORT || 3001;
+
+console.log(`🔍 Full Environment check:`, {
+  'process.env.PORT': process.env.PORT,
+  'process.env.RAILWAY_ENVIRONMENT': process.env.RAILWAY_ENVIRONMENT,
+  'Final PORT being used': PORT,
+  'All env vars': Object.keys(process.env).filter(key => key.includes('RAILWAY'))
+});
+
+// Store connected devices
+const connectedDevices = new Map();
+const deviceCommands = new Map(); // Store commands for each device
+const registeredUsers = new Map(); // Store registered users by deviceId
+const deviceLogs = new Map(); // Store device logs
+const deviceSchedules = new Map(); // Store device schedules
+
+// Simple dashboard authentication - Default admin users
+const DASHBOARD_USERS = new Map([
+  ['admin@gatecontroller.com', { password: 'admin123', name: 'Administrator', userLevel: 2, phone: '0000000000' }],
+  ['manager@gatecontroller.com', { password: 'gate2024', name: 'Gate Manager', userLevel: 1, phone: '0000000001' }]
+]);
+
+// Store active sessions (in production, use Redis or database)
+const activeSessions = new Map();
+
+function generateSessionToken() {
+  return 'session_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
+
+function validateSession(sessionToken) {
+  return activeSessions.has(sessionToken);
+}
+
+// Helper function to add device log
+function addDeviceLog(deviceId, action, user, details = '') {
+  if (!deviceLogs.has(deviceId)) {
+    deviceLogs.set(deviceId, []);
+  }
+  
+  const log = {
+    timestamp: new Date().toISOString(),
+    action: action,
+    user: user,
+    details: details,
+    id: 'log_' + Date.now() + '_' + Math.random().toString(36).substring(2)
+  };
+  
+  const logs = deviceLogs.get(deviceId);
+  logs.unshift(log); // Add to beginning
+  
+  // Keep only last 100 logs per device
+  if (logs.length > 100) {
+    logs.splice(100);
+  }
+  
+  deviceLogs.set(deviceId, logs);
+}
+
+const server = http.createServer((req, res) => {
+  console.log(`📡 ${req.method} ${req.url} - ${new Date().toISOString()}`);
+  
+  // Set CORS headers for all requests with UTF-8 support
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie');
+  
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
+    return;
+  }
+
+  // Helper function to read request body
+  function readBody(callback) {
+    let body = '';
+    req.on('data', chunk => {
+      body += chunk.toString('utf8');
+    });
+    req.on('end', () => {
+      try {
+        const parsedBody = body ? JSON.parse(body) : {};
+        callback(parsedBody);
+      } catch (error) {
+        console.error('❌ JSON Parse Error:', error);
+        callback({});
+      }
+    });
+  }
+
+  // Helper function to get session token from cookie
+  function getSessionFromCookie(cookieHeader) {
+    if (!cookieHeader) return null;
+    const sessionMatch = cookieHeader.match(/session=([^;]+)/);
+    return sessionMatch ? sessionMatch[1] : null;
+  }
+
+  // Dashboard login endpoint
+  if (req.url === '/dashboard/login' && req.method === 'POST') {
+    readBody((data) => {
+      const { email, password } = data;
+      const user = DASHBOARD_USERS.get(email);
+      
+      if (user && user.password === password) {
+        const sessionToken = generateSessionToken();
+        activeSessions.set(sessionToken, {
+          email: email,
+          name: user.name,
+          userLevel: user.userLevel,
+          phone: user.phone,
+          loginTime: new Date().toISOString()
+        });
+        
+        console.log(`🔐 Dashboard login successful: ${email}`);
+        
+        res.writeHead(200, {
+          'Content-Type': 'application/json; charset=utf-8',
+          'Set-Cookie': `session=${sessionToken}; HttpOnly; Path=/; Max-Age=86400` // 24 hours
+        });
+        res.end(JSON.stringify({
+          success: true,
+          message: 'Login successful',
+          user: { email, name: user.name, userLevel: user.userLevel }
+        }));
+      } else {
+        console.log(`🔐 Dashboard login failed: ${email}`);
+        res.writeHead(401);
+        res.end(JSON.stringify({
+          success: false,
+          message: 'Invalid email or password'
+        }));
+      }
+    });
+    return;
+  }
+
+  // Dashboard logout endpoint
+  if (req.url === '/dashboard/logout' && req.method === 'POST') {
+    const sessionToken = getSessionFromCookie(req.headers.cookie);
+    if (sessionToken && activeSessions.has(sessionToken)) {
+      const session = activeSessions.get(sessionToken);
+      activeSessions.delete(sessionToken);
+      console.log(`🔐 Dashboard logout: ${session.email}`);
+    }
+    
+    res.writeHead(200, {
+      'Content-Type': 'application/json; charset=utf-8',
+      'Set-Cookie': 'session=; HttpOnly; Path=/; Max-Age=0'
+    });
+    res.end(JSON.stringify({ success: true, message: 'Logged out' }));
+    return;
+  }
+
+  // ESP32 Heartbeat endpoint (no auth required for device communication)
+  if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
+    console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
+    
+    readBody((data) => {
+      const deviceId = data.deviceId || 'unknown';
+      const timestamp = new Date().toISOString();
+      
+      // Store/update device info
+      connectedDevices.set(deviceId, {
+        lastHeartbeat: timestamp,
+        status: data.status || 'online',
+        signalStrength: data.signalStrength || 0,
+        batteryLevel: data.batteryLevel || 0,
+        firmwareVersion: data.firmwareVersion || '1.0.0',
+        uptime: data.uptime || 0,
+        freeHeap: data.freeHeap || 0,
+        connectionType: data.connectionType || 'wifi'
+      });
+      
+      // Add log entry
+      addDeviceLog(deviceId, 'heartbeat', 'system', `Signal: ${data.signalStrength}dBm, Battery: ${data.batteryLevel}%`);
+      
+      console.log(`💓 Device ${deviceId} heartbeat received:`, connectedDevices.get(deviceId));
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: "Heartbeat received",
+        timestamp: timestamp,
+        deviceId: deviceId
+      }));
+    });
+    return;
+  }
+
+  // ESP32 Command check endpoint - GET /api/device/{deviceId}/commands (no auth required)
+  if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
+    const urlParts = req.url.split('/');
+    const deviceId = urlParts[3];
+    
+    console.log(`📥 Command check from ESP32 device: ${deviceId}`);
+    
+    const deviceCommandQueue = deviceCommands.get(deviceId) || [];
+    deviceCommands.set(deviceId, []);
+    
+    console.log(`📋 Sending ${deviceCommandQueue.length} commands to device ${deviceId}`);
+    
+    res.writeHead(200);
+    res.end(JSON.stringify(deviceCommandQueue));
+    return;
+  }
+
+  // ESP32 Authentication endpoint (no auth required)
+  if (req.url === '/api/device/auth' && req.method === 'POST') {
+    console.log(`🔐 Auth request from ESP32: ${req.method} ${req.url}`);
+    
+    readBody((data) => {
+      const deviceId = data.deviceId || 'unknown';
+      const deviceType = data.deviceType || 'unknown';
+      const firmwareVersion = data.firmwareVersion || '1.0.0';
+      
+      console.log(`🔐 Authenticating device: ${deviceId} (${deviceType}) v${firmwareVersion}`);
+      
+      // Add log entry
+      addDeviceLog(deviceId, 'authentication', 'system', `Device type: ${deviceType}, Firmware: ${firmwareVersion}`);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        token: "device_token_" + deviceId + "_" + Date.now(),
+        message: "Device authenticated",
+        deviceId: deviceId
+      }));
+    });
+    return;
+  }
+
+  // Protected dashboard endpoints - require login
+  function requireAuth(callback) {
+    const sessionToken = getSessionFromCookie(req.headers.cookie);
+    if (!sessionToken || !validateSession(sessionToken)) {
+      // Return login page for dashboard access
+      if (req.url === '/dashboard' || req.url === '/') {
+        const loginHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <title>🔐 Gate Controller Login</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0; 
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-container { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 15px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            max-width: 400px;
+            width: 90%;
+        }
+        .login-header { 
+            text-align: center; 
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .login-header h1 {
+            margin: 0;
+            font-size: 2em;
+            color: #667eea;
+        }
+        .form-group { margin-bottom: 20px; }
+        label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold;
+            color: #555;
+        }
+        input { 
+            width: 100%; 
+            padding: 12px; 
+            border: 2px solid #ddd; 
+            border-radius: 8px; 
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        button { 
+            width: 100%; 
+            padding: 12px; 
+            background: #667eea; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        button:hover { background: #5a6fd8; }
+        .error { 
+            color: #dc3545; 
+            margin-top: 10px; 
+            text-align: center;
+            font-weight: bold;
+        }
+        .demo-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-size: 14px;
+            border-left: 4px solid #17a2b8;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <h1>🚪 Gate Controller</h1>
+            <p>Dashboard Login</p>
+        </div>
+        
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            
+            <button type="submit">🔐 Login</button>
+            
+            <div id="error" class="error"></div>
+        </form>
+        
+        <div class="demo-info">
+            <strong>Demo Credentials:</strong><br>
+            Email: <code>admin@gatecontroller.com</code> / Password: <code>admin123</code><br>
+            Email: <code>manager@gatecontroller.com</code> / Password: <code>gate2024</code>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error');
+            
+            try {
+                const response = await fetch('/dashboard/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    window.location.href = '/dashboard';
+                } else {
+                    errorDiv.textContent = data.message || 'Login failed';
+                }
+            } catch (error) {
+                errorDiv.textContent = 'Connection error: ' + error.message;
+            }
+        });
+    </script>
+</body>
+</html>`;
+        
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(loginHtml);
+        return;
+      } else {
+        res.writeHead(401);
+        res.end(JSON.stringify({ error: 'Authentication required' }));
+        return;
+      }
+    }
+    
+    const session = activeSessions.get(sessionToken);
+    callback(session);
+  }
+
+  // Get current user's permissions endpoint
+  if (req.url.startsWith('/api/user/permissions') && req.method === 'GET') {
+    requireAuth((session) => {
+      // Find user's permissions across all devices
+      const userPermissions = {};
+      
+      for (const [deviceId, users] of registeredUsers.entries()) {
+        const userRecord = users.find(u => u.email === session.email || u.phone === session.phone);
+        if (userRecord) {
+          userPermissions[deviceId] = {
+            relayMask: userRecord.relayMask,
+            userLevel: userRecord.userLevel
+          };
+        }
+      }
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        userLevel: session.userLevel,
+        email: session.email,
+        devicePermissions: userPermissions
+      }));
+    });
+    return;
+  }
+
+  // Get device users endpoint
+  if (req.url.startsWith('/api/device/') && req.url.endsWith('/users') && req.method === 'GET') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      const users = registeredUsers.get(deviceId) || [];
+      
+      res.writeHead(200);
+      res.end(JSON.stringify(users));
+    });
+    return;
+  }
+
+  // Get device logs endpoint
+  if (req.url.startsWith('/api/device/') && req.url.endsWith('/logs') && req.method === 'GET') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      const logs = deviceLogs.get(deviceId) || [];
+      
+      res.writeHead(200);
+      res.end(JSON.stringify(logs));
+    });
+    return;
+  }
+
+  // Get device schedules endpoint
+  if (req.url.startsWith('/api/device/') && req.url.endsWith('/schedules') && req.method === 'GET') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      const schedules = deviceSchedules.get(deviceId) || [];
+      
+      res.writeHead(200);
+      res.end(JSON.stringify(schedules));
+    });
+    return;
+  }
+
+  // Update user endpoint
+  if (req.url.includes('/update-user') && req.method === 'POST') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      console.log(`👤 User update for device: ${deviceId} by ${session.email}`);
+      
+      readBody((data) => {
+        if (!registeredUsers.has(deviceId)) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ success: false, message: 'Device not found' }));
+          return;
+        }
+        
+        const users = registeredUsers.get(deviceId);
+        const userIndex = users.findIndex(u => u.email === data.originalEmail);
+        
+        if (userIndex === -1) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ success: false, message: 'User not found' }));
+          return;
+        }
+        
+        const originalUser = users[userIndex];
+        
+        // Update user data
+        users[userIndex] = {
+          ...originalUser,
+          email: data.email || originalUser.email,
+          phone: data.phone || originalUser.phone,
+          name: data.name || originalUser.name,
+          password: data.password || originalUser.password,
+          relayMask: data.relayMask !== undefined ? data.relayMask : originalUser.relayMask,
+          userLevel: data.userLevel !== undefined ? data.userLevel : originalUser.userLevel,
+          canLogin: data.canLogin !== undefined ? data.canLogin : originalUser.canLogin,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        registeredUsers.set(deviceId, users);
+        
+        // Update dashboard users if login permission changed
+        if (data.canLogin && data.email && data.password) {
+          DASHBOARD_USERS.set(data.email, {
+            password: data.password,
+            name: data.name || originalUser.name,
+            userLevel: data.userLevel !== undefined ? data.userLevel : originalUser.userLevel,
+            phone: data.phone || originalUser.phone
+          });
+          
+          // Remove old email if it changed
+          if (data.email !== data.originalEmail) {
+            DASHBOARD_USERS.delete(data.originalEmail);
+          }
+        } else if (!data.canLogin) {
+          // Remove from dashboard users if login disabled
+          DASHBOARD_USERS.delete(data.email || data.originalEmail);
+        }
+        
+        // Add log entry
+        addDeviceLog(deviceId, 'user_updated', session.email, `User: ${data.name} (${data.email}/${data.phone})`);
+        
+        console.log(`📝 User updated for device ${deviceId}:`, users[userIndex]);
+        
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: "User updated successfully",
+          user: users[userIndex]
+        }));
+      });
+    });
+    return;
+  }
+
+  // Delete user endpoint
+  if (req.url.includes('/delete-user') && req.method === 'POST') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      console.log(`👤 User deletion for device: ${deviceId} by ${session.email}`);
+      
+      readBody((data) => {
+        if (!registeredUsers.has(deviceId)) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ success: false, message: 'Device not found' }));
+          return;
+        }
+        
+        const users = registeredUsers.get(deviceId);
+        const userIndex = users.findIndex(u => u.email === data.email);
+        
+        if (userIndex === -1) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ success: false, message: 'User not found' }));
+          return;
+        }
+        
+        const deletedUser = users[userIndex];
+        users.splice(userIndex, 1);
+        registeredUsers.set(deviceId, users);
+        
+        // Remove from dashboard users
+        DASHBOARD_USERS.delete(data.email);
+        
+        // Add log entry
+        addDeviceLog(deviceId, 'user_deleted', session.email, `User: ${deletedUser.name} (${deletedUser.email})`);
+        
+        console.log(`🗑️ User deleted from device ${deviceId}:`, deletedUser.email);
+        
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: "User deleted successfully"
+        }));
+      });
+    });
+    return;
+  }
+
+  // User registration endpoint - require auth
+  if (req.url.includes('/register-user') && req.method === 'POST') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      console.log(`👤 User registration for device: ${deviceId} by ${session.email}`);
+      
+      readBody((data) => {
+        // Store user in registered users
+        if (!registeredUsers.has(deviceId)) {
+          registeredUsers.set(deviceId, []);
+        }
+        
+        const users = registeredUsers.get(deviceId);
+        
+        // Check if user already exists (by email or phone)
+        const existingUserIndex = users.findIndex(u => u.email === data.email || u.phone === data.phone);
+        if (existingUserIndex >= 0) {
+          users[existingUserIndex] = {
+            email: data.email,
+            phone: data.phone,
+            name: data.name || 'New User',
+            password: data.password || 'defaultpass123',
+            relayMask: data.relayMask || 1,
+            userLevel: data.userLevel || 0,
+            canLogin: data.canLogin || false,
+            registeredBy: session.email,
+            registeredAt: users[existingUserIndex].registeredAt,
+            lastUpdated: new Date().toISOString()
+          };
+        } else {
+          users.push({
+            email: data.email,
+            phone: data.phone,
+            name: data.name || 'New User',
+            password: data.password || 'defaultpass123',
+            relayMask: data.relayMask || 1,
+            userLevel: data.userLevel || 0,
+            canLogin: data.canLogin || false,
+            registeredBy: session.email,
+            registeredAt: new Date().toISOString(),
+            lastUpdated: new Date().toISOString()
+          });
+          
+          // Add to dashboard users if they have login permission
+          if (data.canLogin && data.email && data.password) {
+            DASHBOARD_USERS.set(data.email, {
+              password: data.password,
+              name: data.name || 'New User',
+              userLevel: data.userLevel || 0,
+              phone: data.phone
+            });
+          }
+        }
+        
+        registeredUsers.set(deviceId, users);
+        
+        const registrationCommand = {
+          id: 'reg_' + Date.now(),
+          action: 'register_user',
+          phone: data.phone,
+          email: data.email,
+          name: data.name || 'New User',
+          relayMask: data.relayMask || 1,
+          userLevel: data.userLevel || 0,
+          timestamp: Date.now(),
+          registeredBy: session.email
+        };
+        
+        if (!deviceCommands.has(deviceId)) {
+          deviceCommands.set(deviceId, []);
+        }
+        deviceCommands.get(deviceId).push(registrationCommand);
+        
+        // Add log entry
+        addDeviceLog(deviceId, 'user_registered', session.email, `User: ${data.name} (${data.email}/${data.phone})`);
+        
+        console.log(`📝 Registration queued for device ${deviceId}:`, registrationCommand);
+        
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: "User registration queued",
+          email: data.email,
+          phone: data.phone,
+          deviceId: deviceId
+        }));
+      });
+    });
+    return;
+  }
+
+  // Command injection endpoint - require auth
+  if (req.url.includes('/send-command') && req.method === 'POST') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      console.log(`🎮 Command sent to ESP32 device: ${deviceId} by ${session.email}`);
+      
+      readBody((data) => {
+        const command = {
+          id: data.id || 'cmd_' + Date.now(),
+          action: data.action || 'relay_activate',
+          relay: data.relay || 1,
+          duration: data.duration || 2000,
+          user: data.user || session.email,
+          user_id: data.user_id || null,
+          timestamp: Date.now(),
+          sentBy: session.email
+        };
+        
+        if (!deviceCommands.has(deviceId)) {
+          deviceCommands.set(deviceId, []);
+        }
+        deviceCommands.get(deviceId).push(command);
+        
+        // Add log entry
+        addDeviceLog(deviceId, 'command_sent', session.email, `Action: ${command.action}, Relay: ${command.relay}, User ID: ${command.user_id}`);
+        
+        console.log(`📝 Command queued for device ${deviceId}:`, command);
+        
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: "Command queued for device",
+          commandId: command.id,
+          deviceId: deviceId,
+          timestamp: new Date().toISOString()
+        }));
+      });
+    });
+    return;
+  }
+
+  // Protected dashboard - require auth
+  if (req.url === '/dashboard') {
+    requireAuth((session) => {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(`<!DOCTYPE html>
+<html>
+<head>
+    <title>🚪 Gate Controller Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; 
+            margin: 0; 
+            background: #f5f5f5; 
+            font-size: 14px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { 
+            background: white; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .user-info { color: #666; }
+        .logout { background: #dc3545; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; }
+        .card { 
+            background: white; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .device { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-left: 4px solid #28a745; 
+            padding: 15px 20px;
+        }
+        .device.offline { border-left-color: #dc3545; }
+        .device-info h3 { margin: 0 0 5px 0; color: #333; }
+        .device-status { font-size: 12px; color: #666; }
+        .device-actions { display: flex; gap: 10px; align-items: center; }
+        .control-btn { 
+            padding: 8px 15px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 12px;
+        }
+        .open { background: #28a745; color: white; }
+        .stop { background: #ffc107; color: black; }
+        .close { background: #dc3545; color: white; }
+        .partial { background: #6f42c1; color: white; }
+        .settings-btn { 
+            background: #6c757d; 
+            color: white; 
+            padding: 8px 12px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 18px;
+        }
+        .settings-btn:hover { background: #5a6268; }
+        h1 { color: #333; margin: 0; }
+        .refresh { background: #007bff; color: white; margin-bottom: 20px; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
