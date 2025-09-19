@@ -1,4 +1,161 @@
-const http = require('http');
+// User management functions
+        function editUser(email) {
+            if (!currentDeviceId) return;
+            
+            const users = registeredUsers.find(([id]) => id === currentDeviceId);
+            if (!users) return;
+            
+            const user = users[1].find(u => u.email === email);
+            if (!user) return;
+            
+            editingUser = { ...user, originalEmail: email, deviceId: currentDeviceId };
+            
+            // Populate edit form
+            document.getElementById('editEmail').value = user.email;
+            document.getElementById('editPhone').value = user.phone;
+            document.getElementById('editName').value = user.name;
+            document.getElementById('editPassword').value = user.password || '';
+            document.getElementById('editUserLevel').value = user.userLevel;
+            document.getElementById('editCanLogin').checked = user.canLogin;
+            
+            // Set relay permissions
+            document.getElementById('editRelay1').checked = (user.relayMask & 1) !== 0;
+            document.getElementById('editRelay2').checked = (user.relayMask & 2) !== 0;
+            document.getElementById('editRelay3').checked = (user.relayMask & 4) !== 0;
+            document.getElementById('editRelay4').checked = (user.relayMask & 8) !== 0;
+            
+            document.getElementById('editUserModal').style.display = 'block';
+        }
+        
+        function closeEditUserModal() {
+            document.getElementById('editUserModal').style.display = 'none';
+            editingUser = null;
+        }
+        
+        async function updateUser() {
+            if (!editingUser) return;
+            
+            const email = document.getElementById('editEmail').value;
+            const phone = document.getElementById('editPhone').value;
+            const name = document.getElementById('editName').value;
+            const password = document.getElementById('editPassword').value;
+            const userLevel = parseInt(document.getElementById('editUserLevel').value);
+            const canLogin = document.getElementById('editCanLogin').checked;
+            
+            let relayMask = 0;
+            if (document.getElementById('editRelay1').checked) relayMask |= 1;
+            if (document.getElementById('editRelay2').checked) relayMask |= 2;
+            if (document.getElementById('editRelay3').checked) relayMask |= 4;
+            if (document.getElementById('editRelay4').checked) relayMask |= 8;
+            
+            if (!email || !phone || !name) {
+                alert('Please fill in email, phone, and name fields');
+                return;
+            }
+            
+            if (!/^\\d{10}$/.test(phone)) {
+                alert('Please enter a valid 10-digit phone number');
+                return;
+            }
+            
+            if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            if (canLogin && (!password || password.length < 6)) {
+                alert('Password must be at least 6 characters if login is allowed');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/' + editingUser.deviceId + '/update-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({
+                        originalEmail: editingUser.originalEmail,
+                        email: email,
+                        phone: parseInt(phone),
+                        name: name,
+                        password: password,
+                        relayMask: relayMask,
+                        userLevel: userLevel,
+                        canLogin: canLogin
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User updated successfully: ' + name);
+                    closeEditUserModal();
+                    loadUsers();
+                } else {
+                    alert('❌ Update failed: ' + result.message);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        function confirmDeleteUser(email, name) {
+            if (!confirm('Are you sure you want to delete user "' + name + '" (' + email + ')?\n\nThis action cannot be undone.')) {
+                return;
+            }
+            deleteUserByEmail(email);
+        }
+        
+        async function deleteUser() {
+            if (!editingUser) return;
+            
+            if (!confirm('Are you sure you want to delete this user?\n\nThis action cannot be undone.')) {
+                return;
+            }
+            
+            await deleteUserByEmail(editingUser.email);
+            closeEditUserModal();
+        }
+        
+        async function deleteUserByEmail(email) {
+            if (!currentDeviceId) return;
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/delete-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({ email: email })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User deleted successfully');
+                    loadUsers();
+                } else {
+                    alert('❌ Delete failed: ' + result.message);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('settingsModal');
+            const editModal = document.getElementById('editUserModal');
+            
+            if (event.target === modal) {
+                closeModal();
+            }
+            if (event.target === editModal) {
+                closeEditUserModal();
+            }
+        }
+        
+        // Initialize page
+        loadUserPermissions().then(() => {
+            renderDevices();
+        });const http = require('http');
 
 console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
 
@@ -411,6 +568,151 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+  if (req.url.startsWith('/api/user/permissions') && req.method === 'GET') {
+    requireAuth((session) => {
+      // Find user's permissions across all devices
+      const userPermissions = {};
+      
+      for (const [deviceId, users] of registeredUsers.entries()) {
+        const userRecord = users.find(u => u.email === session.email || u.phone === session.phone);
+        if (userRecord) {
+          userPermissions[deviceId] = {
+            relayMask: userRecord.relayMask,
+            userLevel: userRecord.userLevel
+          };
+        }
+      }
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        userLevel: session.userLevel,
+        email: session.email,
+        devicePermissions: userPermissions
+      }));
+    });
+    return;
+  }
+
+  // Update user endpoint
+  if (req.url.includes('/update-user') && req.method === 'POST') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      console.log(`👤 User update for device: ${deviceId} by ${session.email}`);
+      
+      readBody((data) => {
+        if (!registeredUsers.has(deviceId)) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ success: false, message: 'Device not found' }));
+          return;
+        }
+        
+        const users = registeredUsers.get(deviceId);
+        const userIndex = users.findIndex(u => u.email === data.originalEmail);
+        
+        if (userIndex === -1) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ success: false, message: 'User not found' }));
+          return;
+        }
+        
+        const originalUser = users[userIndex];
+        
+        // Update user data
+        users[userIndex] = {
+          ...originalUser,
+          email: data.email || originalUser.email,
+          phone: data.phone || originalUser.phone,
+          name: data.name || originalUser.name,
+          password: data.password || originalUser.password,
+          relayMask: data.relayMask !== undefined ? data.relayMask : originalUser.relayMask,
+          userLevel: data.userLevel !== undefined ? data.userLevel : originalUser.userLevel,
+          canLogin: data.canLogin !== undefined ? data.canLogin : originalUser.canLogin,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        registeredUsers.set(deviceId, users);
+        
+        // Update dashboard users if login permission changed
+        if (data.canLogin && data.email && data.password) {
+          DASHBOARD_USERS.set(data.email, {
+            password: data.password,
+            name: data.name || originalUser.name,
+            userLevel: data.userLevel !== undefined ? data.userLevel : originalUser.userLevel,
+            phone: data.phone || originalUser.phone
+          });
+          
+          // Remove old email if it changed
+          if (data.email !== data.originalEmail) {
+            DASHBOARD_USERS.delete(data.originalEmail);
+          }
+        } else if (!data.canLogin) {
+          // Remove from dashboard users if login disabled
+          DASHBOARD_USERS.delete(data.email || data.originalEmail);
+        }
+        
+        // Add log entry
+        addDeviceLog(deviceId, 'user_updated', session.email, `User: ${data.name} (${data.email}/${data.phone})`);
+        
+        console.log(`📝 User updated for device ${deviceId}:`, users[userIndex]);
+        
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: "User updated successfully",
+          user: users[userIndex]
+        }));
+      });
+    });
+    return;
+  }
+
+  // Delete user endpoint
+  if (req.url.includes('/delete-user') && req.method === 'POST') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      console.log(`👤 User deletion for device: ${deviceId} by ${session.email}`);
+      
+      readBody((data) => {
+        if (!registeredUsers.has(deviceId)) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ success: false, message: 'Device not found' }));
+          return;
+        }
+        
+        const users = registeredUsers.get(deviceId);
+        const userIndex = users.findIndex(u => u.email === data.email);
+        
+        if (userIndex === -1) {
+          res.writeHead(404);
+          res.end(JSON.stringify({ success: false, message: 'User not found' }));
+          return;
+        }
+        
+        const deletedUser = users[userIndex];
+        users.splice(userIndex, 1);
+        registeredUsers.set(deviceId, users);
+        
+        // Remove from dashboard users
+        DASHBOARD_USERS.delete(data.email);
+        
+        // Add log entry
+        addDeviceLog(deviceId, 'user_deleted', session.email, `User: ${deletedUser.name} (${deletedUser.email})`);
+        
+        console.log(`🗑️ User deleted from device ${deviceId}:`, deletedUser.email);
+        
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: "User deleted successfully"
+        }));
+      });
+    });
+    return;
+  }
 
   // Get device logs endpoint
   if (req.url.startsWith('/api/device/') && req.url.endsWith('/logs') && req.method === 'GET') {
@@ -803,12 +1105,112 @@ const server = http.createServer((req, res) => {
         .status-label { font-weight: bold; color: #333; margin-bottom: 5px; }
         .status-value { color: #666; }
         
+        /* User Management Buttons */
+        .user-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .edit-btn, .delete-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .edit-btn {
+            background: #ffc107;
+            color: black;
+        }
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+        .edit-btn:hover { background: #e0a800; }
+        .delete-btn:hover { background: #c82333; }
+        
+        /* Edit User Modal */
+        .edit-user-modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .edit-user-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+        }
+        .edit-user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .device { flex-direction: column; align-items: flex-start; gap: 10px; }
             .device-actions { width: 100%; justify-content: space-between; }
             .modal-content { width: 95%; margin: 5% auto; }
             .status-grid { grid-template-columns: 1fr; }
+        }
+        .user-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .edit-btn, .delete-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .edit-btn {
+            background: #ffc107;
+            color: black;
+        }
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+        }
+        .edit-btn:hover { background: #e0a800; }
+        .delete-btn:hover { background: #c82333; }
+        
+        /* Edit User Modal */
+        .edit-user-modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .edit-user-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+        }
+        .edit-user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
         }
     </style>
 </head>
@@ -835,7 +1237,87 @@ const server = http.createServer((req, res) => {
         </div>
     </div>
 
-    <!-- Settings Modal -->
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="edit-user-modal">
+        <div class="edit-user-content">
+            <div class="edit-user-header">
+                <h3>✏️ Edit User</h3>
+                <button class="close-btn" onclick="closeEditUserModal()">&times;</button>
+            </div>
+            
+            <div class="form-grid">
+                <input type="email" id="editEmail" placeholder="Email Address" required>
+                <input type="tel" id="editPhone" placeholder="Phone Number (1234567890)" maxlength="10" required>
+                <input type="text" id="editName" placeholder="User Name" required>
+                <input type="password" id="editPassword" placeholder="Password (if login allowed)" minlength="6">
+                <select id="editUserLevel">
+                    <option value="0">👤 Basic User</option>
+                    <option value="1">👔 Manager</option>
+                    <option value="2">🔐 Admin</option>
+                </select>
+                <div>
+                    <label style="font-weight: bold; margin-bottom: 5px; display: block;">🔑 Permissions:</label>
+                    <div class="checkbox-group">
+                        <label><input type="checkbox" id="editRelay1"> 🔓 OPEN</label>
+                        <label><input type="checkbox" id="editRelay2"> ⏸️ STOP</label>
+                        <label><input type="checkbox" id="editRelay3"> 🔒 CLOSE</label>
+                        <label><input type="checkbox" id="editRelay4"> ↗️ PARTIAL</label>
+                    </div>
+                </div>
+                <div>
+                    <label style="display: flex; align-items: center; gap: 5px; margin: 10px 0;">
+                        <input type="checkbox" id="editCanLogin"> 🌐 Allow Dashboard Login
+                    </label>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button class="register-btn" onclick="updateUser()" style="flex: 1;">
+                        💾 Update User
+                    </button>
+                    <button class="delete-btn" onclick="deleteUser()" style="flex: 1;">
+                        🗑️ Delete User
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const devices = ${JSON.stringify(Array.from(connectedDevices.entries()))};
+        const registeredUsers = ${JSON.stringify(Array.from(registeredUsers.entries()))};
+        let currentDeviceId = null;
+        let currentUserPermissions = null;
+        let editingUser = null;
+        
+        // Load user permissions on page load
+        async function loadUserPermissions() {
+            try {
+                const response = await fetch('/api/user/permissions');
+                const data = await response.json();
+                currentUserPermissions = data;
+                console.log('User permissions loaded:', currentUserPermissions);
+            } catch (error) {
+                console.error('Error loading user permissions:', error);
+            }
+        }
+        
+        // Check if user has permission for specific relay on device
+        function hasRelayPermission(deviceId, relay) {
+            if (!currentUserPermissions) return false;
+            
+            // Admin level users (level 2) can use everything
+            if (currentUserPermissions.userLevel >= 2) return true;
+            
+            // Check device-specific permissions
+            const devicePerms = currentUserPermissions.devicePermissions[deviceId];
+            if (!devicePerms) return false;
+            
+            // Manager level (level 1) can use everything on their assigned devices
+            if (devicePerms.userLevel >= 1) return true;
+            
+            // Check specific relay permissions via bitmask
+            const relayBit = Math.pow(2, relay - 1); // relay 1 = bit 1, relay 2 = bit 2, etc.
+            return (devicePerms.relayMask & relayBit) !== 0;
+        }
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1034,6 +1516,9 @@ const server = http.createServer((req, res) => {
                     const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
                     const loginStatus = user.canLogin ? '🌐 Can Login' : '🚫 No Login';
                     
+                    // Only show edit/delete buttons for admins or managers
+                    const canManageUsers = currentUserPermissions && currentUserPermissions.userLevel >= 1;
+                    
                     return \`
                         <div class="user-item">
                             <div class="user-info">
@@ -1044,6 +1529,12 @@ const server = http.createServer((req, res) => {
                                     Registered: \${new Date(user.registeredAt).toLocaleDateString()}
                                 </div>
                             </div>
+                            \${canManageUsers ? \`
+                                <div class="user-actions">
+                                    <button class="edit-btn" onclick="editUser('\${user.email}')" title="Edit User">✏️</button>
+                                    <button class="delete-btn" onclick="confirmDeleteUser('\${user.email}', '\${user.name}')" title="Delete User">🗑️</button>
+                                </div>
+                            \` : ''}
                         </div>
                     \`;
                 }).join('');
@@ -1237,6 +1728,27 @@ const server = http.createServer((req, res) => {
                 const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
                 const userCount = deviceUsers ? deviceUsers[1].length : 0;
                 
+                // Generate control buttons based on user permissions
+                let controlButtons = '';
+                
+                if (hasRelayPermission(deviceId, 1)) {
+                    controlButtons += \`<button class="control-btn open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')">🔓 OPEN</button>\`;
+                }
+                if (hasRelayPermission(deviceId, 2)) {
+                    controlButtons += \`<button class="control-btn stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')">⏸️ STOP</button>\`;
+                }
+                if (hasRelayPermission(deviceId, 3)) {
+                    controlButtons += \`<button class="control-btn close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>\`;
+                }
+                if (hasRelayPermission(deviceId, 4)) {
+                    controlButtons += \`<button class="control-btn partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>\`;
+                }
+                
+                // Only show settings button for managers and admins
+                const canManage = currentUserPermissions && currentUserPermissions.userLevel >= 1;
+                const settingsButton = canManage ? 
+                    \`<button class="settings-btn" onclick="openSettings('\${deviceId}')" title="Device Settings">⚙️</button>\` : '';
+                
                 return \`
                     <div class="card device \${isOnline ? '' : 'offline'}">
                         <div class="device-info">
@@ -1251,11 +1763,8 @@ const server = http.createServer((req, res) => {
                         </div>
                         
                         <div class="device-actions">
-                            <button class="control-btn open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                            <button class="control-btn stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                            <button class="control-btn close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                            <button class="control-btn partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                            <button class="settings-btn" onclick="openSettings('\${deviceId}')" title="Device Settings">⚙️</button>
+                            \${controlButtons}
+                            \${settingsButton}
                         </div>
                     </div>
                 \`;
