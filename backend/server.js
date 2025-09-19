@@ -1771,6 +1771,19 @@ const server = http.createServer((req, res) => {
             }).join('');
         }
         
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('settingsModal');
+            const editModal = document.getElementById('editUserModal');
+            
+            if (event.target === modal) {
+                closeModal();
+            }
+            if (event.target === editModal) {
+                closeEditUserModal();
+            }
+        }
+        
         // Initialize page
         loadUserPermissions().then(() => {
             renderDevices();
