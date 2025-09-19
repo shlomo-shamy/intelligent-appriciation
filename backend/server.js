@@ -1771,15 +1771,19 @@ const server = http.createServer((req, res) => {
             }).join('');
         }
         
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('settingsModal');
-            if (event.target === modal) {
-                closeModal();
-            }
-        }
-        
-        renderDevices();
+        // Initialize page
+        loadUserPermissions().then(() => {
+            renderDevices();
+        });
+    </script>
+</body>
+</html>`;
+      
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(dashboardHtml);
+    });
+    return;
+  }
     </script>
 </body>
 </html>`;
