@@ -5,7 +5,8 @@
       console.log(`🗑️ Removing expired session: ${session.email}`);
       activeSessions.delete(sessionToken);
     }
-  }const http = require('http');
+  }
+}, 30000);const http = require('http');
 
 console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
 
