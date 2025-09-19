@@ -1,12 +1,4 @@
-// Clean up old sessions (older than 24 hours)
-  const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-  for (const [sessionToken, session] of activeSessions.entries()) {
-    if (new Date(session.loginTime).getTime() < oneDayAgo) {
-      console.log(`🗑️ Removing expired session: ${session.email}`);
-      activeSessions.delete(sessionToken);
-    }
-  }
-}, 30000);const http = require('http');
+const http = require('http');
 
 console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
 
@@ -454,7 +446,7 @@ const server = http.createServer((req, res) => {
       const urlParts = req.url.split('/');
       const deviceId = urlParts[3];
       
-      console.log(`👤 User registration for device: ${deviceId} by ${session.username}`);
+      console.log(`👤 User registration for device: ${deviceId} by ${session.email}`);
       
       readBody((data) => {
         // Store user in registered users
@@ -547,7 +539,7 @@ const server = http.createServer((req, res) => {
       const urlParts = req.url.split('/');
       const deviceId = urlParts[3];
       
-      console.log(`🎮 Command sent to ESP32 device: ${deviceId} by ${session.username}`);
+      console.log(`🎮 Command sent to ESP32 device: ${deviceId} by ${session.email}`);
       
       readBody((data) => {
         const command = {
@@ -555,10 +547,10 @@ const server = http.createServer((req, res) => {
           action: data.action || 'relay_activate',
           relay: data.relay || 1,
           duration: data.duration || 2000,
-          user: data.user || session.username,
+          user: data.user || session.email,
           user_id: data.user_id || null,
           timestamp: Date.now(),
-          sentBy: session.username
+          sentBy: session.email
         };
         
         if (!deviceCommands.has(deviceId)) {
@@ -567,7 +559,7 @@ const server = http.createServer((req, res) => {
         deviceCommands.get(deviceId).push(command);
         
         // Add log entry
-        addDeviceLog(deviceId, 'command_sent', session.username, `Action: ${command.action}, Relay: ${command.relay}, User ID: ${command.user_id}`);
+        addDeviceLog(deviceId, 'command_sent', session.email, `Action: ${command.action}, Relay: ${command.relay}, User ID: ${command.user_id}`);
         
         console.log(`📝 Command queued for device ${deviceId}:`, command);
         
@@ -1378,7 +1370,7 @@ server.on('listening', () => {
   console.log(`✅ Address: ${addr.address}`);
   console.log(`🌐 Railway should now be able to route traffic`);
   console.log(`📱 Dashboard: https://gate-controller-system-production.up.railway.app/dashboard`);
-  console.log(`🔐 Demo Login: admin/admin123 or manager/gate2024`);
+  console.log(`🔐 Demo Login: admin@gatecontroller.com/admin123 or manager@gatecontroller.com/gate2024`);
 });
 
 // Start server
@@ -1411,7 +1403,7 @@ setInterval(() => {
   const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
   for (const [sessionToken, session] of activeSessions.entries()) {
     if (new Date(session.loginTime).getTime() < oneDayAgo) {
-      console.log(`🗑️ Removing expired session: ${session.username}`);
+      console.log(`🗑️ Removing expired session: ${session.email}`);
       activeSessions.delete(sessionToken);
     }
   }
