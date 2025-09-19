@@ -1,4 +1,11 @@
-const http = require('http');
+// Clean up old sessions (older than 24 hours)
+  const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+  for (const [sessionToken, session] of activeSessions.entries()) {
+    if (new Date(session.loginTime).getTime() < oneDayAgo) {
+      console.log(`🗑️ Removing expired session: ${session.email}`);
+      activeSessions.delete(sessionToken);
+    }
+  }const http = require('http');
 
 console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
 
@@ -19,10 +26,10 @@ const registeredUsers = new Map(); // Store registered users by deviceId
 const deviceLogs = new Map(); // Store device logs
 const deviceSchedules = new Map(); // Store device schedules
 
-// Simple dashboard authentication
+// Simple dashboard authentication - Default admin users
 const DASHBOARD_USERS = new Map([
-  ['admin', { password: 'admin123', name: 'Administrator' }],
-  ['manager', { password: 'gate2024', name: 'Gate Manager' }]
+  ['admin@gatecontroller.com', { password: 'admin123', name: 'Administrator', userLevel: 2, phone: '0000000000' }],
+  ['manager@gatecontroller.com', { password: 'gate2024', name: 'Gate Manager', userLevel: 1, phone: '0000000001' }]
 ]);
 
 // Store active sessions (in production, use Redis or database)
@@ -103,18 +110,20 @@ const server = http.createServer((req, res) => {
   // Dashboard login endpoint
   if (req.url === '/dashboard/login' && req.method === 'POST') {
     readBody((data) => {
-      const { username, password } = data;
-      const user = DASHBOARD_USERS.get(username);
+      const { email, password } = data;
+      const user = DASHBOARD_USERS.get(email);
       
       if (user && user.password === password) {
         const sessionToken = generateSessionToken();
         activeSessions.set(sessionToken, {
-          username: username,
+          email: email,
           name: user.name,
+          userLevel: user.userLevel,
+          phone: user.phone,
           loginTime: new Date().toISOString()
         });
         
-        console.log(`🔐 Dashboard login successful: ${username}`);
+        console.log(`🔐 Dashboard login successful: ${email}`);
         
         res.writeHead(200, {
           'Content-Type': 'application/json; charset=utf-8',
@@ -123,14 +132,14 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({
           success: true,
           message: 'Login successful',
-          user: { username, name: user.name }
+          user: { email, name: user.name, userLevel: user.userLevel }
         }));
       } else {
-        console.log(`🔐 Dashboard login failed: ${username}`);
+        console.log(`🔐 Dashboard login failed: ${email}`);
         res.writeHead(401);
         res.end(JSON.stringify({
           success: false,
-          message: 'Invalid username or password'
+          message: 'Invalid email or password'
         }));
       }
     });
@@ -143,7 +152,7 @@ const server = http.createServer((req, res) => {
     if (sessionToken && activeSessions.has(sessionToken)) {
       const session = activeSessions.get(sessionToken);
       activeSessions.delete(sessionToken);
-      console.log(`🔐 Dashboard logout: ${session.username}`);
+      console.log(`🔐 Dashboard logout: ${session.email}`);
     }
     
     res.writeHead(200, {
@@ -331,8 +340,8 @@ const server = http.createServer((req, res) => {
         
         <form id="loginForm">
             <div class="form-group">
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required>
             </div>
             
             <div class="form-group">
@@ -347,8 +356,8 @@ const server = http.createServer((req, res) => {
         
         <div class="demo-info">
             <strong>Demo Credentials:</strong><br>
-            Username: <code>admin</code> / Password: <code>admin123</code><br>
-            Username: <code>manager</code> / Password: <code>gate2024</code>
+            Email: <code>admin@gatecontroller.com</code> / Password: <code>admin123</code><br>
+            Email: <code>manager@gatecontroller.com</code> / Password: <code>gate2024</code>
         </div>
     </div>
 
@@ -356,7 +365,7 @@ const server = http.createServer((req, res) => {
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
-            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             const errorDiv = document.getElementById('error');
             
@@ -364,7 +373,7 @@ const server = http.createServer((req, res) => {
                 const response = await fetch('/dashboard/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ email, password })
                 });
                 
                 const data = await response.json();
@@ -447,17 +456,6 @@ const server = http.createServer((req, res) => {
       console.log(`👤 User registration for device: ${deviceId} by ${session.username}`);
       
       readBody((data) => {
-        const registrationCommand = {
-          id: 'reg_' + Date.now(),
-          action: 'register_user',
-          phone: data.phone,
-          name: data.name || 'New User',
-          relayMask: data.relayMask || 1,
-          userLevel: data.userLevel || 0,
-          timestamp: Date.now(),
-          registeredBy: session.username
-        };
-        
         // Store user in registered users
         if (!registeredUsers.has(deviceId)) {
           registeredUsers.set(deviceId, []);
@@ -465,31 +463,59 @@ const server = http.createServer((req, res) => {
         
         const users = registeredUsers.get(deviceId);
         
-        // Check if user already exists
-        const existingUserIndex = users.findIndex(u => u.phone === data.phone);
+        // Check if user already exists (by email or phone)
+        const existingUserIndex = users.findIndex(u => u.email === data.email || u.phone === data.phone);
         if (existingUserIndex >= 0) {
           users[existingUserIndex] = {
+            email: data.email,
             phone: data.phone,
             name: data.name || 'New User',
+            password: data.password || 'defaultpass123',
             relayMask: data.relayMask || 1,
             userLevel: data.userLevel || 0,
-            registeredBy: session.username,
-            registeredAt: new Date().toISOString(),
+            canLogin: data.canLogin || false,
+            registeredBy: session.email,
+            registeredAt: users[existingUserIndex].registeredAt,
             lastUpdated: new Date().toISOString()
           };
         } else {
           users.push({
+            email: data.email,
             phone: data.phone,
             name: data.name || 'New User',
+            password: data.password || 'defaultpass123',
             relayMask: data.relayMask || 1,
             userLevel: data.userLevel || 0,
-            registeredBy: session.username,
+            canLogin: data.canLogin || false,
+            registeredBy: session.email,
             registeredAt: new Date().toISOString(),
             lastUpdated: new Date().toISOString()
           });
+          
+          // Add to dashboard users if they have login permission
+          if (data.canLogin && data.email && data.password) {
+            DASHBOARD_USERS.set(data.email, {
+              password: data.password,
+              name: data.name || 'New User',
+              userLevel: data.userLevel || 0,
+              phone: data.phone
+            });
+          }
         }
         
         registeredUsers.set(deviceId, users);
+        
+        const registrationCommand = {
+          id: 'reg_' + Date.now(),
+          action: 'register_user',
+          phone: data.phone,
+          email: data.email,
+          name: data.name || 'New User',
+          relayMask: data.relayMask || 1,
+          userLevel: data.userLevel || 0,
+          timestamp: Date.now(),
+          registeredBy: session.email
+        };
         
         if (!deviceCommands.has(deviceId)) {
           deviceCommands.set(deviceId, []);
@@ -497,7 +523,7 @@ const server = http.createServer((req, res) => {
         deviceCommands.get(deviceId).push(registrationCommand);
         
         // Add log entry
-        addDeviceLog(deviceId, 'user_registered', session.username, `User: ${data.name} (${data.phone})`);
+        addDeviceLog(deviceId, 'user_registered', session.email, `User: ${data.name} (${data.email}/${data.phone})`);
         
         console.log(`📝 Registration queued for device ${deviceId}:`, registrationCommand);
         
@@ -505,6 +531,7 @@ const server = http.createServer((req, res) => {
         res.end(JSON.stringify({
           success: true,
           message: "User registration queued",
+          email: data.email,
           phone: data.phone,
           deviceId: deviceId
         }));
@@ -797,7 +824,7 @@ const server = http.createServer((req, res) => {
         <div class="header">
             <div>
                 <h1>🚪 Gate Controller Dashboard</h1>
-                <div class="user-info">Logged in as: <strong>${session.name}</strong> (${session.username})</div>
+                <div class="user-info">Logged in as: <strong>${session.name}</strong> (${session.email})</div>
             </div>
             <button class="logout" onclick="logout()">🚪 Logout</button>
         </div>
@@ -835,8 +862,10 @@ const server = http.createServer((req, res) => {
                 <div id="users-tab" class="tab-content active">
                     <h3>➕ Add New User</h3>
                     <div class="form-grid">
+                        <input type="email" id="modalEmail" placeholder="Email Address" required>
                         <input type="tel" id="modalPhone" placeholder="Phone Number (1234567890)" maxlength="10" required>
                         <input type="text" id="modalName" placeholder="User Name" required>
+                        <input type="password" id="modalPassword" placeholder="Password (if login allowed)" minlength="6">
                         <select id="modalUserLevel">
                             <option value="0">👤 Basic User</option>
                             <option value="1">👔 Manager</option>
@@ -850,6 +879,12 @@ const server = http.createServer((req, res) => {
                                 <label><input type="checkbox" id="modalRelay3"> 🔒 CLOSE</label>
                                 <label><input type="checkbox" id="modalRelay4"> ↗️ PARTIAL</label>
                             </div>
+                        </div>
+                        <div>
+                            <label style="display: flex; align-items: center; gap: 5px; margin: 10px 0;">
+                                <input type="checkbox" id="modalCanLogin"> 🌐 Allow Dashboard Login
+                            </label>
+                            <small style="color: #666;">If checked, user can log in to this dashboard with email and password</small>
                         </div>
                         <button class="register-btn" onclick="registerUserModal()">
                             ➕ Register User
@@ -1004,13 +1039,14 @@ const server = http.createServer((req, res) => {
                     if (user.relayMask & 8) permissions.push('↗️ PARTIAL');
                     
                     const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
+                    const loginStatus = user.canLogin ? '🌐 Can Login' : '🚫 No Login';
                     
                     return \`
                         <div class="user-item">
                             <div class="user-info">
-                                <div class="user-name">\${user.name}</div>
+                                <div class="user-name">\${user.name} \${user.canLogin ? '🌐' : ''}</div>
                                 <div class="user-details">
-                                    📱 \${user.phone} | \${userLevelText} | 
+                                    📧 \${user.email} | 📱 \${user.phone} | \${userLevelText} | \${loginStatus}<br>
                                     Permissions: \${permissions.join(', ')} |
                                     Registered: \${new Date(user.registeredAt).toLocaleDateString()}
                                 </div>
@@ -1123,9 +1159,12 @@ const server = http.createServer((req, res) => {
         async function registerUserModal() {
             if (!currentDeviceId) return;
             
+            const email = document.getElementById('modalEmail').value;
             const phone = document.getElementById('modalPhone').value;
             const name = document.getElementById('modalName').value;
+            const password = document.getElementById('modalPassword').value;
             const userLevel = parseInt(document.getElementById('modalUserLevel').value);
+            const canLogin = document.getElementById('modalCanLogin').checked;
             
             let relayMask = 0;
             if (document.getElementById('modalRelay1').checked) relayMask |= 1;
@@ -1133,8 +1172,8 @@ const server = http.createServer((req, res) => {
             if (document.getElementById('modalRelay3').checked) relayMask |= 4;
             if (document.getElementById('modalRelay4').checked) relayMask |= 8;
             
-            if (!phone || !name) {
-                alert('Please fill in all fields');
+            if (!email || !phone || !name) {
+                alert('Please fill in email, phone, and name fields');
                 return;
             }
             
@@ -1143,27 +1182,43 @@ const server = http.createServer((req, res) => {
                 return;
             }
             
+            if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            if (canLogin && (!password || password.length < 6)) {
+                alert('Password must be at least 6 characters if login is allowed');
+                return;
+            }
+            
             try {
                 const response = await fetch('/api/device/' + currentDeviceId + '/register-user', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json; charset=utf-8' },
                     body: JSON.stringify({
+                        email: email,
                         phone: parseInt(phone),
                         name: name,
+                        password: password,
                         relayMask: relayMask,
-                        userLevel: userLevel
+                        userLevel: userLevel,
+                        canLogin: canLogin
                     })
                 });
                 
                 const result = await response.json();
                 
                 if (result.success) {
-                    alert('✅ User registered: ' + name + ' (' + phone + ')');
+                    alert('✅ User registered: ' + name + ' (' + email + ')');
                     
                     // Clear form
+                    document.getElementById('modalEmail').value = '';
                     document.getElementById('modalPhone').value = '';
                     document.getElementById('modalName').value = '';
+                    document.getElementById('modalPassword').value = '';
                     document.getElementById('modalUserLevel').value = '0';
+                    document.getElementById('modalCanLogin').checked = false;
                     document.querySelectorAll('#settingsModal input[type="checkbox"]').forEach(cb => cb.checked = false);
                     document.getElementById('modalRelay1').checked = true;
                     
