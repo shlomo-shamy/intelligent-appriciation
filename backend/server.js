@@ -1,5 +1,32 @@
 const http = require('http');
 
+// Firebase Admin SDK (optional - falls back gracefully)
+let admin, db, auth, firebaseInitialized = false;
+
+try {
+  if (process.env.FIREBASE_PROJECT_ID) {
+    admin = require('firebase-admin');
+    
+    const serviceAccount = {
+      type: "service_account",
+      project_id: process.env.FIREBASE_PROJECT_ID,
+      private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : null,
+      client_email: process.env.FIREBASE_CLIENT_EMAIL,
+    };
+
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+    
+    db = admin.firestore();
+    auth = admin.auth();
+    firebaseInitialized = true;
+    console.log('Firebase initialized successfully');
+  }
+} catch (error) {
+  console.log('Firebase not configured - running in local mode');
+}
+
 console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
 
 // Let Railway assign the port - don't force 3000
@@ -100,6 +127,22 @@ const server = http.createServer((req, res) => {
     return sessionMatch ? sessionMatch[1] : null;
   }
 
+// Firebase device activation (simple version)
+if (req.url === '/api/device/activate' && req.method === 'POST') {
+  readBody((data) => {
+    const { serial, pin, activating_user } = data;
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      success: true,
+      message: 'Device activation endpoint working',
+      firebase_status: firebaseInitialized ? 'connected' : 'local_mode',
+      data: { serial, pin, activating_user }
+    }));
+  });
+  return;
+}
+  
   // Dashboard login endpoint
   if (req.url === '/dashboard/login' && req.method === 'POST') {
     readBody((data) => {
