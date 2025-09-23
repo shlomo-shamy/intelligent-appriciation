@@ -1600,17 +1600,18 @@ const server = http.createServer((req, res) => {
                     return;
                 }
                 
-                logsContainer.innerHTML = logs.map(log => `
-                    <div class="log-item">
-                        <div class="log-header">
-                            <span class="log-action">📝 ${log.action.replace('_', ' ').toUpperCase()}</span>
-                            <span class="log-time">${new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <div class="log-details">
-                            👤 User: ${log.user} | ${log.details}
-                        </div>
-                    </div>
-                `).join('');
+// FIXED:
+logsContainer.innerHTML = logs.map(log => 
+    '<div class="log-item">' +
+        '<div class="log-header">' +
+            '<span class="log-action">📝 ' + log.action.replace('_', ' ').toUpperCase() + '</span>' +
+            '<span class="log-time">' + new Date(log.timestamp).toLocaleString() + '</span>' +
+        '</div>' +
+        '<div class="log-details">' +
+            '👤 User: ' + log.user + ' | ' + log.details +
+        '</div>' +
+    '</div>'
+).join('');
                 
             } catch (error) {
                 document.getElementById('deviceLogs').innerHTML = '<p style="color: #dc3545;">Error loading logs: ' + error.message + '</p>';
