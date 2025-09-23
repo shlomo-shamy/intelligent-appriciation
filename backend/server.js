@@ -46,6 +46,22 @@ const registeredUsers = new Map(); // Store registered users by deviceId
 const deviceLogs = new Map(); // Store device logs
 const deviceSchedules = new Map(); // Store device schedules
 
+// Firebase-specific data stores
+const authorizedUsers = new Map();
+const manufacturingDevices = new Map();
+
+// Demo data for testing
+authorizedUsers.set('+972501234567', {
+  name: 'Demo Admin',
+  email: 'demo@gatecontroller.com', 
+  canActivateDevices: true
+});
+
+manufacturingDevices.set('ESP32_12345', {
+  pin: '123456',
+  activated: false
+});
+
 // Simple dashboard authentication - Default admin users
 const DASHBOARD_USERS = new Map([
   ['admin@gatecontroller.com', { password: 'admin123', name: 'Administrator', userLevel: 2, phone: '0000000000' }],
@@ -127,17 +143,47 @@ const server = http.createServer((req, res) => {
     return sessionMatch ? sessionMatch[1] : null;
   }
 
-// Firebase device activation (simple version)
+// Device activation endpoint
 if (req.url === '/api/device/activate' && req.method === 'POST') {
-  readBody((data) => {
+  readBody(async (data) => {
     const { serial, pin, activating_user } = data;
+    
+    // Validate device exists
+    const device = manufacturingDevices.get(serial);
+    if (!device || device.pin !== pin) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ success: false, error: 'Invalid device credentials' }));
+      return;
+    }
+    
+    // Validate user authorized
+    const user = authorizedUsers.get(activating_user);
+    if (!user || !user.canActivateDevices) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ success: false, error: 'User not authorized' }));
+      return;
+    }
+    
+    // Mark device as activated
+    device.activated = true;
+    
+    // Add to your existing registered users
+    if (!registeredUsers.has(serial)) {
+      registeredUsers.set(serial, []);
+    }
+    registeredUsers.get(serial).push({
+      email: user.email,
+      phone: activating_user,
+      name: user.name,
+      relayMask: 15, // All relays
+      userLevel: 2   // Admin
+    });
     
     res.writeHead(200);
     res.end(JSON.stringify({
       success: true,
-      message: 'Device activation endpoint working',
-      firebase_status: firebaseInitialized ? 'connected' : 'local_mode',
-      data: { serial, pin, activating_user }
+      message: 'Device activated successfully',
+      firebase_status: firebaseInitialized ? 'connected' : 'local_mode'
     }));
   });
   return;
