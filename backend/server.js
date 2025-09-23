@@ -1,46 +1,6 @@
 const http = require('http');
 
-// Firebase Admin SDK initialization
-const admin = require('firebase-admin');
-
-console.log('🚀 Starting Railway server with ESP32 support, User Management, Dashboard Login, and Firebase Integration...');
-
-// Firebase Admin SDK initialization
-const serviceAccount = {
-  type: "service_account",
-  project_id: process.env.FIREBASE_PROJECT_ID,
-  private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
-  private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : null,
-  client_email: process.env.FIREBASE_CLIENT_EMAIL,
-  client_id: process.env.FIREBASE_CLIENT_ID,
-  auth_uri: "https://accounts.google.com/o/oauth2/auth",
-  token_uri: "https://oauth2.googleapis.com/token",
-  auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs",
-  client_x509_cert_url: process.env.FIREBASE_CLIENT_CERT_URL
-};
-
-let firebaseInitialized = false;
-let db, auth;
-
-try {
-  if (serviceAccount.private_key && serviceAccount.project_id) {
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      databaseURL: `https://${process.env.FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com`
-    });
-    
-    db = admin.firestore();
-    auth = admin.auth();
-    firebaseInitialized = true;
-    
-    console.log('🔥 Firebase Admin SDK initialized successfully');
-  } else {
-    console.log('⚠️ Firebase credentials not configured - running in local mode only');
-  }
-} catch (error) {
-  console.error('❌ Firebase initialization failed:', error.message);
-  console.log('⚠️ Continuing without Firebase - local mode only');
-}
+console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
 
 // Let Railway assign the port - don't force 3000
 const PORT = process.env.PORT || 3001;
@@ -49,7 +9,6 @@ console.log(`🔍 Full Environment check:`, {
   'process.env.PORT': process.env.PORT,
   'process.env.RAILWAY_ENVIRONMENT': process.env.RAILWAY_ENVIRONMENT,
   'Final PORT being used': PORT,
-  'Firebase Status': firebaseInitialized ? 'Connected' : 'Local Mode',
   'All env vars': Object.keys(process.env).filter(key => key.includes('RAILWAY'))
 });
 
@@ -59,24 +18,6 @@ const deviceCommands = new Map(); // Store commands for each device
 const registeredUsers = new Map(); // Store registered users by deviceId
 const deviceLogs = new Map(); // Store device logs
 const deviceSchedules = new Map(); // Store device schedules
-
-// Firebase-specific data stores
-const authorizedUsers = new Map(); // Store pre-authorized users
-const manufacturingDevices = new Map(); // Store manufacturing data
-
-// Initialize with demo data for testing
-authorizedUsers.set('+972501234567', {
-  name: 'Demo Admin',
-  email: 'demo@gatecontroller.com',
-  canActivateDevices: true,
-  createdDate: new Date().toISOString()
-});
-
-manufacturingDevices.set('ESP32_12345', {
-  pin: '123456',
-  activated: false,
-  manufacturingDate: new Date().toISOString()
-});
 
 // Simple dashboard authentication - Default admin users
 const DASHBOARD_USERS = new Map([
@@ -157,334 +98,6 @@ const server = http.createServer((req, res) => {
     if (!cookieHeader) return null;
     const sessionMatch = cookieHeader.match(/session=([^;]+)/);
     return sessionMatch ? sessionMatch[1] : null;
-  }
-
-  // =============================================================================
-  // FIREBASE DEVICE ACTIVATION ENDPOINT
-  // =============================================================================
-  if (req.url === '/api/device/activate' && req.method === 'POST') {
-    readBody(async (data) => {
-      try {
-        const { serial, pin, activating_user } = data;
-        
-        console.log(`🔧 Device activation request: ${serial} by ${activating_user}`);
-        
-        // Validate required fields
-        if (!serial || !pin || !activating_user) {
-          res.writeHead(400);
-          res.end(JSON.stringify({
-            success: false,
-            error: 'Missing required fields: serial, pin, activating_user'
-          }));
-          return;
-        }
-
-        // 1. Validate device credentials
-        const deviceData = manufacturingDevices.get(serial);
-        if (!deviceData || deviceData.pin !== pin) {
-          res.writeHead(400);
-          res.end(JSON.stringify({
-            success: false,
-            error: 'Invalid device serial number or PIN'
-          }));
-          return;
-        }
-        
-        if (deviceData.activated) {
-          res.writeHead(409);
-          res.end(JSON.stringify({
-            success: false,
-            error: 'Device already activated'
-          }));
-          return;
-        }
-
-        // 2. Validate user authorization
-        const userData = authorizedUsers.get(activating_user);
-        if (!userData || !userData.canActivateDevices) {
-          res.writeHead(403);
-          res.end(JSON.stringify({
-            success: false,
-            error: 'User not authorized to activate devices'
-          }));
-          return;
-        }
-
-        // 3. Create gate record in Firebase (if available)
-        if (firebaseInitialized) {
-          try {
-            const gateData = {
-              serial: serial,
-              name: `Gate ${serial}`,
-              location: 'Location not specified',
-              timezone: 'Asia/Jerusalem',
-              calendar_system: 'sunday_start',
-              activatedBy: activating_user,
-              activationDate: admin.firestore.FieldValue.serverTimestamp(),
-              deviceMode: 'firebase_sync',
-              admins: [activating_user],
-              users: {
-                [activating_user]: {
-                  name: userData.name,
-                  relayMask: 0x0F,
-                  role: 'admin',
-                  addedBy: 'system',
-                  addedDate: admin.firestore.FieldValue.serverTimestamp()
-                }
-              }
-            };
-
-            await db.collection('gates').doc(serial).set(gateData);
-            
-            // Create user permissions document
-            await db.collection('userPermissions').doc(activating_user).set({
-              gates: {
-                [serial]: {
-                  name: gateData.name,
-                  location: gateData.location,
-                  relayMask: 0x0F,
-                  role: 'admin',
-                  addedBy: 'system',
-                  addedDate: admin.firestore.FieldValue.serverTimestamp()
-                }
-              }
-            }, { merge: true });
-
-            // Create Firebase Auth user if doesn't exist
-            try {
-              await auth.createUser({
-                phoneNumber: activating_user,
-                displayName: userData.name,
-                disabled: false
-              });
-              console.log(`🔐 Firebase Auth user created: ${activating_user}`);
-            } catch (authError) {
-              if (authError.code !== 'auth/phone-number-already-exists') {
-                console.error('Firebase Auth error:', authError);
-              }
-            }
-
-            console.log(`🔥 Firebase gate document created for ${serial}`);
-          } catch (firebaseError) {
-            console.error('Firebase error during activation:', firebaseError);
-            // Continue with local activation even if Firebase fails
-          }
-        }
-
-        // 4. Mark device as activated locally
-        deviceData.activated = true;
-        deviceData.activationDate = new Date().toISOString();
-        deviceData.activatingUser = activating_user;
-        manufacturingDevices.set(serial, deviceData);
-
-        // 5. Add to your existing registered users
-        if (!registeredUsers.has(serial)) {
-          registeredUsers.set(serial, []);
-        }
-        
-        const users = registeredUsers.get(serial);
-        users.push({
-          email: userData.email,
-          phone: activating_user,
-          name: userData.name,
-          password: 'activated123', // Default password
-          relayMask: 0x0F,
-          userLevel: 2, // Admin
-          canLogin: true,
-          registeredBy: 'system',
-          registeredAt: new Date().toISOString(),
-          lastUpdated: new Date().toISOString()
-        });
-        
-        registeredUsers.set(serial, users);
-
-        // 6. Add to dashboard users if not exists
-        if (!DASHBOARD_USERS.has(userData.email)) {
-          DASHBOARD_USERS.set(userData.email, {
-            password: 'activated123',
-            name: userData.name,
-            userLevel: 2,
-            phone: activating_user
-          });
-        }
-
-        // Add log entry
-        addDeviceLog(serial, 'device_activated', activating_user, `Device activated by ${userData.name}`);
-
-        // 7. Return success response
-        const response = {
-          success: true,
-          message: 'Device activated successfully',
-          firebase_config: firebaseInitialized ? {
-            project_id: process.env.FIREBASE_PROJECT_ID,
-            api_key: process.env.FIREBASE_WEB_API_KEY,
-            auth_domain: `${process.env.FIREBASE_PROJECT_ID}.firebaseapp.com`
-          } : null,
-          device_token: 'local_token_' + serial + '_' + Date.now(),
-          admin_user: activating_user,
-          activation_timestamp: new Date().toISOString()
-        };
-
-        res.writeHead(200);
-        res.end(JSON.stringify(response));
-        
-        console.log(`✅ Device ${serial} activated successfully by ${activating_user}`);
-
-      } catch (error) {
-        console.error('Device activation error:', error);
-        res.writeHead(500);
-        res.end(JSON.stringify({
-          success: false,
-          error: 'Internal server error during activation'
-        }));
-      }
-    });
-    return;
-  }
-
-  // =============================================================================
-  // FIREBASE USER MANAGEMENT ENDPOINTS
-  // =============================================================================
-
-  // Add user to gate (Firebase integration)
-  if (req.url.match(/\/api\/gates\/[^\/]+\/users$/) && req.method === 'POST') {
-    requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const serial = urlParts[3];
-      
-      readBody(async (data) => {
-        try {
-          const { phone, name, role = 'user', relayMask = 0x01, email } = data;
-          
-          console.log(`👤 Adding user to gate ${serial}: ${name} (${phone}) by ${session.email}`);
-          
-          // Validate required fields
-          if (!phone || !name) {
-            res.writeHead(400);
-            res.end(JSON.stringify({
-              success: false,
-              error: 'Phone and name are required'
-            }));
-            return;
-          }
-
-          // Check if user has permission to manage this gate
-          const gateUsers = registeredUsers.get(serial) || [];
-          const adminUser = gateUsers.find(u => u.email === session.email && (u.userLevel >= 2 || u.relayMask & 0x08));
-          
-          if (!adminUser) {
-            res.writeHead(403);
-            res.end(JSON.stringify({
-              success: false,
-              error: 'Not authorized to manage users for this gate'
-            }));
-            return;
-          }
-
-          // Add to Firebase if available
-          if (firebaseInitialized) {
-            try {
-              // Update gate document
-              await db.collection('gates').doc(serial).update({
-                [`users.${phone}`]: {
-                  name: name,
-                  email: email || null,
-                  relayMask: relayMask,
-                  role: role,
-                  addedBy: session.phone,
-                  addedDate: admin.firestore.FieldValue.serverTimestamp()
-                }
-              });
-
-              // Update user permissions
-              const gateDoc = await db.collection('gates').doc(serial).get();
-              const gateData = gateDoc.data();
-              
-              await db.collection('userPermissions').doc(phone).set({
-                gates: {
-                  [serial]: {
-                    name: gateData.name,
-                    location: gateData.location,
-                    relayMask: relayMask,
-                    role: role,
-                    addedBy: session.phone,
-                    addedDate: admin.firestore.FieldValue.serverTimestamp()
-                  }
-                }
-              }, { merge: true });
-
-              // Create Firebase Auth user and send SMS
-              try {
-                await auth.createUser({
-                  phoneNumber: phone,
-                  displayName: name,
-                  disabled: false
-                });
-                console.log(`📱 SMS invitation sent to ${phone}`);
-              } catch (authError) {
-                if (authError.code !== 'auth/phone-number-already-exists') {
-                  console.error('Firebase Auth error:', authError);
-                }
-              }
-
-              console.log(`🔥 User added to Firebase: ${name} (${phone})`);
-            } catch (firebaseError) {
-              console.error('Firebase error adding user:', firebaseError);
-            }
-          }
-
-          // Add to local registered users
-          const users = registeredUsers.get(serial) || [];
-          const existingIndex = users.findIndex(u => u.phone === phone || u.email === email);
-          
-          const userLevel = role === 'admin' ? 2 : role === 'manager' ? 1 : 0;
-          const newUser = {
-            email: email || `${phone}@temp.local`,
-            phone: phone,
-            name: name,
-            password: 'firebase123', // Default password
-            relayMask: relayMask,
-            userLevel: userLevel,
-            canLogin: false, // Firebase users login via SMS
-            registeredBy: session.email,
-            registeredAt: existingIndex >= 0 ? users[existingIndex].registeredAt : new Date().toISOString(),
-            lastUpdated: new Date().toISOString()
-          };
-
-          if (existingIndex >= 0) {
-            users[existingIndex] = newUser;
-          } else {
-            users.push(newUser);
-          }
-          
-          registeredUsers.set(serial, users);
-
-          // Add log entry
-          addDeviceLog(serial, 'user_added', session.email, `Added user: ${name} (${phone}) with role: ${role}`);
-
-          res.writeHead(200);
-          res.end(JSON.stringify({
-            success: true,
-            message: 'User added successfully' + (firebaseInitialized ? ' and SMS invitation sent' : ''),
-            user: {
-              phone: phone,
-              name: name,
-              role: role,
-              relayMask: relayMask
-            }
-          }));
-
-        } catch (error) {
-          console.error('Add user error:', error);
-          res.writeHead(500);
-          res.end(JSON.stringify({
-            success: false,
-            error: 'Failed to add user'
-          }));
-        }
-      });
-    });
-    return;
   }
 
   // Dashboard login endpoint
@@ -1037,44 +650,7 @@ const server = http.createServer((req, res) => {
         h1 { color: #333; margin: 0; }
         .refresh { background: #007bff; color: white; margin-bottom: 20px; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
         
-        /* Firebase Status Styles */
-        .firebase-status {
-            background: ${firebaseInitialized ? '#d4edda' : '#fff3cd'};
-            border: 1px solid ${firebaseInitialized ? '#c3e6cb' : '#ffeaa7'};
-            color: ${firebaseInitialized ? '#155724' : '#856404'};
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-        }
-        
-        /* Device Activation Styles */
-        .activation-form {
-            display: grid;
-            grid-template-columns: 1fr 100px 1fr auto;
-            gap: 10px;
-            align-items: center;
-            margin: 15px 0;
-        }
-        .activation-form input {
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .activate-btn {
-            background: #17a2b8;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        .activate-btn:hover {
-            background: #138496;
-        }
-        
-        /* Modal and other existing styles remain the same */
+        /* Modal Styles */
         .modal {
             display: none;
             position: fixed;
@@ -1233,7 +809,6 @@ const server = http.createServer((req, res) => {
             .device-actions { width: 100%; justify-content: space-between; }
             .modal-content { width: 95%; margin: 5% auto; }
             .status-grid { grid-template-columns: 1fr; }
-            .activation-form { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -1247,26 +822,6 @@ const server = http.createServer((req, res) => {
             <button class="logout" onclick="logout()">🚪 Logout</button>
         </div>
         
-        <div class="firebase-status">
-            <h3>🔥 Firebase Status</h3>
-            <p>Status: ${firebaseInitialized ? '✅ Connected' : '⚠️ Local Mode Only'}</p>
-            ${firebaseInitialized ? `<p>Project: ${process.env.FIREBASE_PROJECT_ID}</p>` : '<p>Configure Firebase environment variables to enable cloud sync</p>'}
-        </div>
-        
-        ${session.userLevel >= 2 ? `
-        <div class="card">
-            <h3>🔧 Device Activation</h3>
-            <p>Scan QR code or enter device details:</p>
-            <div class="activation-form">
-                <input type="text" id="deviceSerial" placeholder="Device Serial (ESP32_12345)">
-                <input type="text" id="devicePin" placeholder="PIN" maxlength="6">
-                <input type="text" id="userPhone" placeholder="Your Phone (+972501234567)">
-                <button class="activate-btn" onclick="activateDevice()">Activate</button>
-            </div>
-            <p><strong>Demo Device:</strong> Serial: ESP32_12345, PIN: 123456, Phone: +972501234567</p>
-        </div>
-        ` : ''}
-        
         <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
         
         <div id="devices"></div>
@@ -1277,11 +832,10 @@ const server = http.createServer((req, res) => {
             <p>🕒 Started: ${new Date().toISOString()}</p>
             <p>📱 Connected Devices: <span id="deviceCount">${connectedDevices.size}</span></p>
             <p>👤 Active Sessions: ${activeSessions.size}</p>
-            <p>🔥 Firebase: ${firebaseInitialized ? 'Connected' : 'Local Mode'}</p>
         </div>
     </div>
 
-    <!-- Settings Modal (same as before) -->
+    <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -1302,7 +856,7 @@ const server = http.createServer((req, res) => {
                     <h3>➕ Add New User</h3>
                     <div class="form-grid">
                         <input type="email" id="modalEmail" placeholder="Email Address" required>
-                        <input type="tel" id="modalPhone" placeholder="Phone Number (+972501234567)" required>
+                        <input type="tel" id="modalPhone" placeholder="Phone Number (1234567890)" maxlength="10" required>
                         <input type="text" id="modalName" placeholder="User Name" required>
                         <input type="password" id="modalPassword" placeholder="Password (if login allowed)" minlength="6">
                         <select id="modalUserLevel">
@@ -1379,51 +933,12 @@ const server = http.createServer((req, res) => {
             }
         }
         
-        // Device activation function
-        async function activateDevice() {
-            const serial = document.getElementById('deviceSerial').value;
-            const pin = document.getElementById('devicePin').value;
-            const phone = document.getElementById('userPhone').value;
-            
-            if (!serial || !pin || !phone) {
-                alert('Please fill all fields');
-                return;
-            }
-            
-            if (!confirm('Activate device: ' + serial + ' with user: ' + phone + '?')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/device/activate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        serial: serial,
-                        pin: pin,
-                        activating_user: phone
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert('✅ Device activated successfully!\\n\\nDevice: ' + serial + '\\nAdmin: ' + phone + '\\n\\nPage will refresh...');
-                    setTimeout(() => location.reload(), 2000);
-                } else {
-                    alert('❌ Activation failed: ' + data.error);
-                }
-            } catch (error) {
-                alert('❌ Error: ' + error.message);
-            }
-        }
-        
         function sendCommand(deviceId, relay, action) {
             const userId = prompt("Enter your registered phone number:");
             if (!userId) return;
             
-            if (!/^[+]?[\\d\\s\\-\\(\\)]{10,15}$/.test(userId)) {
-                alert('Please enter a valid phone number');
+            if (!/^\\d{10}$/.test(userId)) {
+                alert('Please enter a valid 10-digit phone number');
                 return;
             }
             
@@ -1440,7 +955,7 @@ const server = http.createServer((req, res) => {
                     relay: relay,
                     duration: 2000,
                     user: 'dashboard',
-                    user_id: userId
+                    user_id: parseInt(userId)
                 })
             })
             .then(r => r.json())
@@ -1538,7 +1053,6 @@ const server = http.createServer((req, res) => {
             }
         }
         
-        // Rest of the JavaScript functions remain the same as in your original code
         async function loadStatus() {
             if (!currentDeviceId) return;
             
@@ -1600,18 +1114,17 @@ const server = http.createServer((req, res) => {
                     return;
                 }
                 
-// FIXED:
-logsContainer.innerHTML = logs.map(log => 
-    '<div class="log-item">' +
-        '<div class="log-header">' +
-            '<span class="log-action">📝 ' + log.action.replace('_', ' ').toUpperCase() + '</span>' +
-            '<span class="log-time">' + new Date(log.timestamp).toLocaleString() + '</span>' +
-        '</div>' +
-        '<div class="log-details">' +
-            '👤 User: ' + log.user + ' | ' + log.details +
-        '</div>' +
-    '</div>'
-).join('');
+                logsContainer.innerHTML = logs.map(log => \`
+                    <div class="log-item">
+                        <div class="log-header">
+                            <span class="log-action">📝 \${log.action.replace('_', ' ').toUpperCase()}</span>
+                            <span class="log-time">\${new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div class="log-details">
+                            👤 User: \${log.user} | \${log.details}
+                        </div>
+                    </div>
+                \`).join('');
                 
             } catch (error) {
                 document.getElementById('deviceLogs').innerHTML = '<p style="color: #dc3545;">Error loading logs: ' + error.message + '</p>';
@@ -1621,7 +1134,7 @@ logsContainer.innerHTML = logs.map(log =>
         async function loadSchedules() {
             if (!currentDeviceId) return;
             
-            document.getElementById('deviceSchedules').innerHTML = `
+            document.getElementById('deviceSchedules').innerHTML = \`
                 <div style="text-align: center; padding: 40px; color: #666;">
                     <h4>⏰ Schedules Feature</h4>
                     <p>This feature will allow you to:</p>
@@ -1633,7 +1146,7 @@ logsContainer.innerHTML = logs.map(log =>
                     </ul>
                     <p><strong>Coming in the next update!</strong></p>
                 </div>
-            `;
+            \`;
         }
         
         async function registerUserModal() {
@@ -1657,8 +1170,8 @@ logsContainer.innerHTML = logs.map(log =>
                 return;
             }
             
-            if (!/^[+]?[\\d\\s\\-\\(\\)]{10,15}$/.test(phone)) {
-                alert('Please enter a valid phone number');
+            if (!/^\\d{10}$/.test(phone)) {
+                alert('Please enter a valid 10-digit phone number');
                 return;
             }
             
@@ -1678,7 +1191,7 @@ logsContainer.innerHTML = logs.map(log =>
                     headers: { 'Content-Type': 'application/json; charset=utf-8' },
                     body: JSON.stringify({
                         email: email,
-                        phone: phone,
+                        phone: parseInt(phone),
                         name: name,
                         password: password,
                         relayMask: relayMask,
@@ -1724,28 +1237,28 @@ logsContainer.innerHTML = logs.map(log =>
                 const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
                 const userCount = deviceUsers ? deviceUsers[1].length : 0;
                 
-                return `
-                    <div class="card device ${isOnline ? '' : 'offline'}">
+                return \`
+                    <div class="card device \${isOnline ? '' : 'offline'}">
                         <div class="device-info">
-                            <h3>🎛️ ${deviceId} ${isOnline ? '🟢' : '🔴'}</h3>
+                            <h3>🎛️ \${deviceId} \${isOnline ? '🟢' : '🔴'}</h3>
                             <div class="device-status">
-                                📶 Signal: ${info.signalStrength}dBm | 
-                                🔋 Battery: ${info.batteryLevel}% | 
-                                ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
-                                👥 Users: ${userCount}<br>
-                                🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
+                                📶 Signal: \${info.signalStrength}dBm | 
+                                🔋 Battery: \${info.batteryLevel}% | 
+                                ⏱️ Uptime: \${Math.floor(info.uptime / 1000)}s |
+                                👥 Users: \${userCount}<br>
+                                🔄 Last Heartbeat: \${new Date(info.lastHeartbeat).toLocaleTimeString()}
                             </div>
                         </div>
                         
                         <div class="device-actions">
-                            <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                            <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                            <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                            <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                            <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
+                            <button class="control-btn open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                            <button class="control-btn stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                            <button class="control-btn close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                            <button class="control-btn partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                            <button class="settings-btn" onclick="openSettings('\${deviceId}')" title="Device Settings">⚙️</button>
                         </div>
                     </div>
-                `;
+                \`;
             }).join('');
         }
         
@@ -1771,14 +1284,13 @@ logsContainer.innerHTML = logs.map(log =>
   // Health check endpoint (public)
   if (req.url === '/health') {
     const responseData = {
-      message: '🎉 Railway server is working perfectly with Firebase integration!',
+      message: '🎉 Railway server is working perfectly!',
       timestamp: new Date().toISOString(),
       url: req.url,
       method: req.method,
       port: PORT,
       connectedDevices: connectedDevices.size,
       activeSessions: activeSessions.size,
-      firebaseStatus: firebaseInitialized ? 'Connected' : 'Local Mode',
       server_info: {
         actual_port: PORT,
         railway_env: process.env.RAILWAY_ENVIRONMENT || 'not_set',
@@ -1794,11 +1306,10 @@ logsContainer.innerHTML = logs.map(log =>
   // API endpoints list (public)
   if (req.url === '/api' || req.url === '/api/') {
     const responseData = {
-      message: '🎉 Gate Controller API with User Management, Authentication, and Firebase Integration',
+      message: '🎉 Gate Controller API with User Management and Authentication',
       timestamp: new Date().toISOString(),
       connectedDevices: connectedDevices.size,
       activeSessions: activeSessions.size,
-      firebaseStatus: firebaseInitialized ? 'Connected' : 'Local Mode',
       endpoints: [
         'GET /',
         'GET /dashboard (requires login)',
@@ -1808,8 +1319,6 @@ logsContainer.innerHTML = logs.map(log =>
         'POST /api/device/heartbeat',
         'GET /api/device/{deviceId}/commands',
         'POST /api/device/auth',
-        'POST /api/device/activate (Firebase activation)',
-        'POST /api/gates/{gateSerial}/users (Firebase user management)',
         'POST /api/device/{deviceId}/send-command (requires login)',
         'POST /api/device/{deviceId}/register-user (requires login)',
         'GET /api/device/{deviceId}/users (requires login)',
@@ -1833,12 +1342,11 @@ logsContainer.innerHTML = logs.map(log =>
 
   // Default response for other endpoints
   const responseData = {
-    message: '🎉 Railway Gate Controller Server with Authentication and Firebase',
+    message: '🎉 Railway Gate Controller Server with Authentication',
     timestamp: new Date().toISOString(),
     url: req.url,
     method: req.method,
     port: PORT,
-    firebaseStatus: firebaseInitialized ? 'Connected' : 'Local Mode',
     help: 'Visit /dashboard for the control interface or /api for API info'
   };
   
@@ -1857,13 +1365,12 @@ server.on('error', (err) => {
 
 server.on('listening', () => {
   const addr = server.address();
-  console.log('🎉 Server successfully listening with Authentication and Firebase!');
+  console.log('🎉 Server successfully listening with Authentication!');
   console.log(`✅ Port: ${addr.port}`);
   console.log(`✅ Address: ${addr.address}`);
   console.log(`🌐 Railway should now be able to route traffic`);
   console.log(`📱 Dashboard: https://gate-controller-system-production.up.railway.app/dashboard`);
   console.log(`🔐 Demo Login: admin@gatecontroller.com/admin123 or manager@gatecontroller.com/gate2024`);
-  console.log(`🔥 Firebase Status: ${firebaseInitialized ? 'Connected' : 'Local Mode Only'}`);
 });
 
 // Start server
@@ -1872,12 +1379,12 @@ server.listen(PORT, '0.0.0.0', (err) => {
     console.error('❌ Failed to start server:', err);
     process.exit(1);
   }
-  console.log(`💫 Server started on ${PORT} with Authentication and Firebase Integration`);
+  console.log(`💫 Server started on ${PORT} with Authentication`);
 });
 
 // Health check endpoint logging
 setInterval(() => {
-  console.log(`💓 Server heartbeat - Port: ${PORT} - Devices: ${connectedDevices.size} - Sessions: ${activeSessions.size} - Firebase: ${firebaseInitialized ? 'Connected' : 'Local'} - ${new Date().toISOString()}`);
+  console.log(`💓 Server heartbeat - Port: ${PORT} - Devices: ${connectedDevices.size} - Sessions: ${activeSessions.size} - ${new Date().toISOString()}`);
   
   // Clean up old devices (offline for more than 5 minutes)
   const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
