@@ -922,6 +922,22 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
             <p>📱 Connected Devices: <span id="deviceCount">${connectedDevices.size}</span></p>
             <p>👤 Active Sessions: ${activeSessions.size}</p>
         </div>
+
+// Add this after the existing server status card
+${session.userLevel >= 2 ? `
+        <div class="card">
+            <h3>🔧 Device Activation (Testing)</h3>
+            <p>Test the device activation endpoint:</p>
+            <div style="display: grid; grid-template-columns: 1fr 100px 1fr auto; gap: 10px; margin: 15px 0;">
+                <input type="text" id="deviceSerial" placeholder="ESP32_12345" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <input type="text" id="devicePin" placeholder="123456" maxlength="6" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <input type="text" id="userPhone" placeholder="+972501234567" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <button onclick="testActivation()" style="background: #17a2b8; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer;">Activate</button>
+            </div>
+            <p><strong>Demo Values:</strong> Serial: ESP32_12345, PIN: 123456, Phone: +972501234567</p>
+        </div>
+` : ''}
+        
     </div>
 
     <!-- Settings Modal -->
@@ -1188,6 +1204,36 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
                 </div>
             \`;
         }
+
+// Add this function to the dashboard JavaScript
+async function testActivation() {
+    const serial = document.getElementById('deviceSerial').value || 'ESP32_12345';
+    const pin = document.getElementById('devicePin').value || '123456';
+    const phone = document.getElementById('userPhone').value || '+972501234567';
+    
+    try {
+        const response = await fetch('/api/device/activate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                serial: serial,
+                pin: pin,
+                activating_user: phone
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            alert('✅ Device activated successfully!\\nSerial: ' + serial + '\\nUser: ' + phone);
+            location.reload(); // Refresh to see the new device
+        } else {
+            alert('❌ Activation failed: ' + data.error);
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
         
         async function loadLogs() {
             if (!currentDeviceId) return;
