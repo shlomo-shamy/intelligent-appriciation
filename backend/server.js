@@ -1,7 +1,7 @@
 console.log('=== SERVER STARTUP DEBUG ===');
 console.log('Node version:', process.version);
 console.log('Platform:', process.platform);
-console.log('Memory usage:', process.memoryUsage());
+console.log('Memory usage:', process.memif (devices.length === 0) {oryUsage());
 console.log('Environment variables set:', Object.keys(process.env).length);
 console.log('PORT from environment:', process.env.PORT);
 console.log('Current working directory:', process.cwd());
@@ -1519,38 +1519,42 @@ if (req.url.includes('/register-user') && req.method === 'POST') {
             }
         }
         
-        function renderDevices() {
-            const container = document.getElementById('devices');
-            if (devices.length === 0) {
-                container.innerHTML = devices.map(([deviceId, info]) => {
-                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-                const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
-                const userCount = deviceUsers ? deviceUsers[1].length : 0;
-                
-                return \`
-                    <div class="card device \${isOnline ? '' : 'offline'}">
-                        <div class="device-info">
-                            <h3>🎛️ \${deviceId} \${isOnline ? '🟢' : '🔴'}</h3>
-                            <div class="device-status">
-                                📶 Signal: \${info.signalStrength}dBm | 
-                                🔋 Battery: \${info.batteryLevel}% | 
-                                ⏱️ Uptime: \${Math.floor(info.uptime / 1000)}s |
-                                👥 Users: \${userCount}<br>
-                                🔄 Last Heartbeat: \${new Date(info.lastHeartbeat).toLocaleTimeString()}
-                            </div>
-                        </div>
-                        
-                        <div class="device-actions">
-                            <button class="control-btn open" onclick="sendCommand('\${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                            <button class="control-btn stop" onclick="sendCommand('\${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                            <button class="control-btn close" onclick="sendCommand('\${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                            <button class="control-btn partial" onclick="sendCommand('\${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                            <button class="settings-btn" onclick="openSettings('\${deviceId}')" title="Device Settings">⚙️</button>
-                        </div>
+function renderDevices() {
+    const container = document.getElementById('devices');
+    if (devices.length === 0) {
+        container.innerHTML = '<div class="card"><p>📭 No devices connected yet. Waiting for ESP32 heartbeat...</p></div>';
+        return;
+    }
+    
+    container.innerHTML = devices.map(([deviceId, info]) => {
+        const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+        const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
+        const userCount = deviceUsers ? deviceUsers[1].length : 0;
+        
+        return `
+            <div class="card device ${isOnline ? '' : 'offline'}">
+                <div class="device-info">
+                    <h3>🎛️ ${deviceId} ${isOnline ? '🟢' : '🔴'}</h3>
+                    <div class="device-status">
+                        📶 Signal: ${info.signalStrength}dBm | 
+                        🔋 Battery: ${info.batteryLevel}% | 
+                        ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
+                        👥 Users: ${userCount}<br>
+                        🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
                     </div>
-                \`;
-            }).join('');
-        }
+                </div>
+                
+                <div class="device-actions">
+                    <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                    <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                    <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                    <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                    <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
         
         window.onclick = function(event) {
             const modal = document.getElementById('settingsModal');
@@ -1693,185 +1697,6 @@ setInterval(() => {
   for (const [sessionToken, session] of activeSessions.entries()) {
     if (new Date(session.loginTime).getTime() < oneDayAgo) {
       console.log(\`🗑️ Removing expired session: \${session.email}\`);
-      activeSessions.delete(sessionToken);
-    }
-  }
-}, 30000);innerHTML = '<div class="card"><p>📭 No devices connected yet. Waiting for ESP32 heartbeat...</p></div>';
-                return;
-            }
-            
-            container.innerHTML = devices.map(([deviceId, info]) => {
-    const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-    const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
-    const userCount = deviceUsers ? deviceUsers[1].length : 0;
-    
-    return `
-        <div class="card device ${isOnline ? '' : 'offline'}">
-            <div class="device-info">
-                <h3>🎛️ ${deviceId} ${isOnline ? '🟢' : '🔴'}</h3>
-                <div class="device-status">
-                    📶 Signal: ${info.signalStrength}dBm | 
-                    🔋 Battery: ${info.batteryLevel}% | 
-                    ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
-                    👥 Users: ${userCount}<br>
-                    🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
-                </div>
-            </div>
-            
-            <div class="device-actions">
-                <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
-            </div>
-        </div>
-    `;
-}).join('');
-}
-        
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const modal = document.getElementById('settingsModal');
-            if (event.target === modal) {
-                closeModal();
-            }
-        }
-        
-        renderDevices();
-    </script>
-</body>
-</html>`;
-      
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(dashboardHtml);
-    });
-    return;
-  }
-
-  // Health check endpoint (public)
-  if (req.url === '/health') {
-    const responseData = {
-      message: '🎉 Railway server is working perfectly!',
-      timestamp: new Date().toISOString(),
-      url: req.url,
-      method: req.method,
-      port: PORT,
-      connectedDevices: connectedDevices.size,
-      activeSessions: activeSessions.size,
-      server_info: {
-        actual_port: PORT,
-        railway_env: process.env.RAILWAY_ENVIRONMENT || 'not_set',
-        node_env: process.env.NODE_ENV || 'not_set'
-      }
-    };
-    
-    res.writeHead(200);
-    res.end(JSON.stringify(responseData, null, 2));
-    return;
-  }
-
-  // API endpoints list (public)
-  if (req.url === '/api' || req.url === '/api/') {
-    const responseData = {
-      message: '🎉 Gate Controller API with User Management and Authentication',
-      timestamp: new Date().toISOString(),
-      connectedDevices: connectedDevices.size,
-      activeSessions: activeSessions.size,
-      endpoints: [
-        'GET /',
-        'GET /dashboard (requires login)',
-        'POST /dashboard/login',
-        'POST /dashboard/logout', 
-        'GET /health', 
-        'POST /api/device/heartbeat',
-        'GET /api/device/{deviceId}/commands',
-        'POST /api/device/auth',
-        'POST /api/device/{deviceId}/send-command (requires login)',
-        'POST /api/device/{deviceId}/register-user (requires login)',
-        'GET /api/device/{deviceId}/users (requires login)',
-        'GET /api/device/{deviceId}/logs (requires login)',
-        'GET /api/device/{deviceId}/schedules (requires login)'
-      ],
-      devices: Array.from(connectedDevices.keys())
-    };
-    
-    res.writeHead(200);
-    res.end(JSON.stringify(responseData, null, 2));
-    return;
-  }
-
-  // Root redirect to dashboard
-  if (req.url === '/') {
-    res.writeHead(302, { 'Location': '/dashboard' });
-    res.end();
-    return;
-  }
-
-  // Default response for other endpoints
-  const responseData = {
-    message: '🎉 Railway Gate Controller Server with Authentication',
-    timestamp: new Date().toISOString(),
-    url: req.url,
-    method: req.method,
-    port: PORT,
-    help: 'Visit /dashboard for the control interface or /api for API info'
-  };
-  
-  res.writeHead(404);
-  res.end(JSON.stringify(responseData, null, 2));
-});
-
-server.on('error', (err) => {
-  console.error('❌ Server error:', err);
-  console.error('Error details:', {
-    code: err.code,
-    message: err.message,
-    port: PORT
-  });
-});
-
-server.on('listening', () => {
-  const addr = server.address();
-  console.log('🎉 Server successfully listening with Authentication!');
-  console.log(`✅ Port: ${addr.port}`);
-  console.log(`✅ Address: ${addr.address}`);
-  console.log(`🌐 Railway should now be able to route traffic`);
-  console.log(`📱 Dashboard: https://gate-controller-system-production.up.railway.app/dashboard`);
-  console.log(`🔐 Demo Login: admin@gatecontroller.com/admin123 or manager@gatecontroller.com/gate2024`);
-});
-
-// Start server
-server.listen(PORT, '0.0.0.0', (err) => {
-  if (err) {
-    console.error('❌ Failed to start server:', err);
-    process.exit(1);
-  }
-  console.log(`💫 Server started on ${PORT} with Authentication`);
-});
-
-// Health check endpoint logging
-setInterval(() => {
-  console.log(`💓 Server heartbeat - Port: ${PORT} - Devices: ${connectedDevices.size} - Sessions: ${activeSessions.size} - ${new Date().toISOString()}`);
-  
-  // Clean up old devices (offline for more than 5 minutes)
-  const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-  for (const [deviceId, info] of connectedDevices.entries()) {
-    if (new Date(info.lastHeartbeat).getTime() < fiveMinutesAgo) {
-      console.log(`🗑️ Removing offline device: ${deviceId}`);
-      connectedDevices.delete(deviceId);
-      deviceCommands.delete(deviceId);
-      deviceLogs.delete(deviceId);
-      registeredUsers.delete(deviceId);
-      deviceSchedules.delete(deviceId);
-    }
-  }
-  
-  // Clean up old sessions (older than 24 hours)
-  const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
-  for (const [sessionToken, session] of activeSessions.entries()) {
-    if (new Date(session.loginTime).getTime() < oneDayAgo) {
-      console.log(`🗑️ Removing expired session: ${session.email}`);
       activeSessions.delete(sessionToken);
     }
   }
