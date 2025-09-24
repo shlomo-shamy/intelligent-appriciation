@@ -1,5 +1,15 @@
 const http = require('http');
 
+console.log('Current working directory:', process.cwd());
+console.log('Files in current directory:', require('fs').readdirSync('.'));
+
+try {
+  const packageJson = require('./package.json');
+  console.log('Package.json found:', packageJson.dependencies);
+} catch (error) {
+  console.log('Package.json not found in current directory');
+}
+
 // Firebase Admin SDK (optional - falls back gracefully)
 let admin, db, auth, firebaseInitialized = false;
 
