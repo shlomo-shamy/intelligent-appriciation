@@ -1,6 +1,6 @@
 {
   "name": "gate-controller-system",
-  "version": "1.0.0",
+  "version": "1.0.0", 
   "main": "server.js",
   "dependencies": {
     "firebase-admin": "^12.0.0"
