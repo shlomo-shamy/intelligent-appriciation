@@ -1,3 +1,23 @@
+console.log('=== SERVER STARTUP DEBUG ===');
+console.log('Node version:', process.version);
+console.log('Platform:', process.platform);
+console.log('Memory usage:', process.memoryUsage());
+console.log('Environment variables set:', Object.keys(process.env).length);
+console.log('PORT from environment:', process.env.PORT);
+console.log('Current working directory:', process.cwd());
+
+// Catch any unhandled errors
+process.on('uncaughtException', (error) => {
+  console.error('UNCAUGHT EXCEPTION:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('UNHANDLED REJECTION at:', promise, 'reason:', reason);
+});
+
+console.log('Starting main server code...');
+
 const http = require('http');
 
 console.log('Current working directory:', process.cwd());
