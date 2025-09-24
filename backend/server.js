@@ -4,13 +4,18 @@ const http = require('http');
 let admin, db, auth, firebaseInitialized = false;
 
 try {
-  if (process.env.FIREBASE_PROJECT_ID) {
+  console.log('Firebase environment check:');
+  console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING');
+  console.log('FIREBASE_PRIVATE_KEY:', process.env.FIREBASE_PRIVATE_KEY ? 'SET (' + process.env.FIREBASE_PRIVATE_KEY.length + ' chars)' : 'MISSING');
+  console.log('FIREBASE_CLIENT_EMAIL:', process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING');
+  
+  if (process.env.FIREBASE_PROJECT_ID && process.env.FIREBASE_PRIVATE_KEY && process.env.FIREBASE_CLIENT_EMAIL) {
     admin = require('firebase-admin');
     
     const serviceAccount = {
       type: "service_account",
       project_id: process.env.FIREBASE_PROJECT_ID,
-      private_key: process.env.FIREBASE_PRIVATE_KEY ? process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n') : null,
+      private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       client_email: process.env.FIREBASE_CLIENT_EMAIL,
     };
 
@@ -22,9 +27,12 @@ try {
     auth = admin.auth();
     firebaseInitialized = true;
     console.log('Firebase initialized successfully');
+  } else {
+    console.log('Firebase environment variables missing - running in local mode');
   }
 } catch (error) {
-  console.log('Firebase not configured - running in local mode');
+  console.log('Firebase initialization error:', error.message);
+  console.log('Full error:', error);
 }
 
 console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
