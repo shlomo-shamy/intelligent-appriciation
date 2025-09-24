@@ -643,9 +643,14 @@ if (req.url.includes('/register-user') && req.method === 'POST') {
         console.log(`👤 User registration for device: ${deviceId} by ${session.email}`);
         
         readBody((data) => {
-            // Validate phone number
+            console.log("Registration data received:", data); // Debug log
+            
+            // Validate phone number with enhanced debugging
             const phoneValidation = validatePhoneNumber(data.phone);
+            console.log("Phone validation result:", phoneValidation); // Debug log
+            
             if (!phoneValidation.valid) {
+                console.error("Phone validation failed:", phoneValidation.message);
                 res.writeHead(400);
                 res.end(JSON.stringify({
                     success: false,
@@ -656,6 +661,7 @@ if (req.url.includes('/register-user') && req.method === 'POST') {
             
             // Use the cleaned phone number
             const cleanPhone = phoneValidation.cleanPhone;
+            console.log("Using cleaned phone:", cleanPhone);
             
             // Store user in registered users
             if (!registeredUsers.has(deviceId)) {
@@ -669,7 +675,7 @@ if (req.url.includes('/register-user') && req.method === 'POST') {
             
             const userData = {
                 email: data.email,
-                phone: cleanPhone, // Use cleaned phone
+                phone: cleanPhone,
                 name: data.name || 'New User',
                 password: data.password || 'defaultpass123',
                 relayMask: data.relayMask || 1,
@@ -682,29 +688,19 @@ if (req.url.includes('/register-user') && req.method === 'POST') {
             if (existingUserIndex >= 0) {
                 userData.registeredAt = users[existingUserIndex].registeredAt;
                 users[existingUserIndex] = userData;
-                
-                // Add to dashboard users if they have login permission
-                if (userData.canLogin && userData.email && userData.password) {
-                    DASHBOARD_USERS.set(userData.email, {
-                        password: userData.password,
-                        name: userData.name,
-                        userLevel: userData.userLevel,
-                        phone: userData.phone
-                    });
-                }
             } else {
                 userData.registeredAt = new Date().toISOString();
                 users.push(userData);
-                
-                // Add to dashboard users if they have login permission
-                if (userData.canLogin && userData.email && userData.password) {
-                    DASHBOARD_USERS.set(userData.email, {
-                        password: userData.password,
-                        name: userData.name,
-                        userLevel: userData.userLevel,
-                        phone: userData.phone
-                    });
-                }
+            }
+            
+            // Add to dashboard users if they have login permission
+            if (userData.canLogin && userData.email && userData.password) {
+                DASHBOARD_USERS.set(userData.email, {
+                    password: userData.password,
+                    name: userData.name,
+                    userLevel: userData.userLevel,
+                    phone: userData.phone
+                });
             }
             
             registeredUsers.set(deviceId, users);
@@ -729,7 +725,7 @@ if (req.url.includes('/register-user') && req.method === 'POST') {
             // Add log entry
             addDeviceLog(deviceId, 'user_registered', session.email, `User: ${data.name} (${data.email}/${cleanPhone})`);
             
-            console.log(`📝 Registration queued for device ${deviceId}:`, registrationCommand);
+            console.log(`📝 Registration successful for device ${deviceId}:`, registrationCommand);
             
             res.writeHead(200);
             res.end(JSON.stringify({
@@ -1421,11 +1417,13 @@ async function registerUserModal() {
     if (!currentDeviceId) return;
     
     const email = document.getElementById('modalEmail').value;
-    const phone = document.getElementById('modalPhone').value;
+    const phoneRaw = document.getElementById('modalPhone').value;
     const name = document.getElementById('modalName').value;
     const password = document.getElementById('modalPassword').value;
     const userLevel = parseInt(document.getElementById('modalUserLevel').value);
     const canLogin = document.getElementById('modalCanLogin').checked;
+    
+    console.log("Raw phone input:", JSON.stringify(phoneRaw)); // Debug log
     
     let relayMask = 0;
     if (document.getElementById('modalRelay1').checked) relayMask |= 1;
@@ -1433,17 +1431,28 @@ async function registerUserModal() {
     if (document.getElementById('modalRelay3').checked) relayMask |= 4;
     if (document.getElementById('modalRelay4').checked) relayMask |= 8;
     
-    if (!email || !phone || !name) {
+    if (!email || !phoneRaw || !name) {
         alert('Please fill in email, phone, and name fields');
         return;
     }
     
-    // Clean phone number
-    const cleanPhone = phone.replace(/\D/g, '');
+    // Clean phone number and debug
+    const cleanPhone = phoneRaw.toString().replace(/\D/g, '');
+    console.log("Cleaned phone:", cleanPhone, "Length:", cleanPhone.length);
     
-    // Flexible validation: 10-14 digits
+    // Enhanced validation with better error messages
+    if (cleanPhone.length < 10) {
+        alert(`Phone number too short: ${cleanPhone} (${cleanPhone.length} digits)\\nMinimum: 10 digits`);
+        return;
+    }
+    
+    if (cleanPhone.length > 14) {
+        alert(`Phone number too long: ${cleanPhone} (${cleanPhone.length} digits)\\nMaximum: 14 digits`);
+        return;
+    }
+    
     if (!/^\d{10,14}$/.test(cleanPhone)) {
-        alert('Please enter a valid phone number (10-14 digits, numbers only)\\n\\nExamples:\\n• US: 1234567890\\n• International: 972501234567\\n• UK: 447123456789');
+        alert(`Invalid phone format: ${cleanPhone}\\nMust be 10-14 digits only`);
         return;
     }
     
@@ -1457,13 +1466,15 @@ async function registerUserModal() {
         return;
     }
     
+    console.log("Sending registration with phone:", cleanPhone); // Debug log
+    
     try {
         const response = await fetch('/api/device/' + currentDeviceId + '/register-user', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json; charset=utf-8' },
             body: JSON.stringify({
                 email: email,
-                phone: cleanPhone, // Send cleaned phone
+                phone: cleanPhone,
                 name: name,
                 password: password,
                 relayMask: relayMask,
@@ -1473,6 +1484,7 @@ async function registerUserModal() {
         });
         
         const result = await response.json();
+        console.log("Registration response:", result); // Debug log
         
         if (result.success) {
             alert('✅ User registered: ' + name + ' (' + email + ')\\nPhone: ' + result.phone);
@@ -1491,9 +1503,11 @@ async function registerUserModal() {
             loadUsers();
         } else {
             alert('❌ Registration failed: ' + (result.error || 'Unknown error'));
+            console.error("Registration error:", result); // Debug log
         }
     } catch (error) {
         alert('❌ Error: ' + error.message);
+        console.error("Network error:", error); // Debug log
     }
 }
 
