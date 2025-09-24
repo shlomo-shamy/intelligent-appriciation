@@ -202,10 +202,10 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
       return;
     }
     
-    // Mark device as activated
+    // Mark device as activated locally
     device.activated = true;
     
-    // Add to your existing registered users
+    // Add to local registered users
     if (!registeredUsers.has(serial)) {
       registeredUsers.set(serial, []);
     }
@@ -213,9 +213,55 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
       email: user.email,
       phone: activating_user,
       name: user.name,
-      relayMask: 15, // All relays
-      userLevel: 2   // Admin
+      relayMask: 15,
+      userLevel: 2
     });
+    
+    // CREATE FIREBASE DOCUMENTS
+    if (firebaseInitialized) {
+      try {
+        // Create gate document
+        const gateData = {
+          serial: serial,
+          name: `Gate ${serial}`,
+          location: 'Location not specified',
+          timezone: 'Asia/Jerusalem',
+          activatedBy: activating_user,
+          activationDate: admin.firestore.FieldValue.serverTimestamp(),
+          admins: [activating_user],
+          users: {
+            [activating_user]: {
+              name: user.name,
+              relayMask: 15,
+              role: 'admin',
+              addedBy: 'system',
+              addedDate: admin.firestore.FieldValue.serverTimestamp()
+            }
+          }
+        };
+        
+        await db.collection('gates').doc(serial).set(gateData);
+        console.log('Firebase gate document created:', serial);
+        
+        // Create user permissions document
+        await db.collection('userPermissions').doc(activating_user).set({
+          gates: {
+            [serial]: {
+              name: gateData.name,
+              relayMask: 15,
+              role: 'admin',
+              addedBy: 'system',
+              addedDate: admin.firestore.FieldValue.serverTimestamp()
+            }
+          }
+        }, { merge: true });
+        
+        console.log('Firebase user permissions created:', activating_user);
+        
+      } catch (firebaseError) {
+        console.error('Firebase write error:', firebaseError);
+      }
+    }
     
     res.writeHead(200);
     res.end(JSON.stringify({
