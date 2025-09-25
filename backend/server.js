@@ -88,8 +88,8 @@ const deviceSchedules = new Map(); // Store device schedules
 const authorizedUsers = new Map();
 const manufacturingDevices = new Map();
 
-// Demo data for testing
-authorizedUsers.set('+972501234567', {
+// Demo data for testing - UPDATED: use phone numbers without + prefix
+authorizedUsers.set('972501234567', {
   name: 'Demo Admin',
   email: 'demo@gatecontroller.com', 
   canActivateDevices: true
@@ -115,6 +115,33 @@ function generateSessionToken() {
 
 function validateSession(sessionToken) {
   return activeSessions.has(sessionToken);
+}
+
+// PHONE VALIDATION HELPER FUNCTION - supports 10-14 digits
+function validatePhoneNumber(phone) {
+    console.log("Validating phone:", phone, "Type:", typeof phone);
+    
+    // Convert to string and remove any non-digit characters
+    const cleanPhone = phone.toString().replace(/\D/g, '');
+    console.log("Clean phone:", cleanPhone, "Length:", cleanPhone.length);
+    
+    // Check if it's between 10-14 digits
+    const isValid = /^\d{10,14}$/.test(cleanPhone);
+    console.log("Regex test result:", isValid);
+    
+    if (!isValid) {
+        return {
+            valid: false,
+            message: `Phone number must be 10-14 digits. Received: "${cleanPhone}" (${cleanPhone.length} digits)`,
+            cleanPhone: null
+        };
+    }
+    
+    return {
+        valid: true,
+        message: 'Valid phone number',
+        cleanPhone: cleanPhone
+    };
 }
 
 // Helper function to add device log
@@ -181,10 +208,20 @@ const server = http.createServer((req, res) => {
     return sessionMatch ? sessionMatch[1] : null;
   }
 
-// Device activation endpoint
+// UPDATED DEVICE ACTIVATION ENDPOINT - add phone validation
 if (req.url === '/api/device/activate' && req.method === 'POST') {
   readBody(async (data) => {
     const { serial, pin, activating_user } = data;
+    
+    // ADDED: Clean the activating_user phone number
+    const phoneValidation = validatePhoneNumber(activating_user);
+    if (!phoneValidation.valid) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ success: false, error: phoneValidation.message }));
+      return;
+    }
+    
+    const cleanActivatingUser = phoneValidation.cleanPhone;
     
     // Validate device exists
     const device = manufacturingDevices.get(serial);
@@ -194,8 +231,8 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
       return;
     }
     
-    // Validate user authorized
-    const user = authorizedUsers.get(activating_user);
+    // UPDATED: Validate user authorized with cleaned phone
+    const user = authorizedUsers.get(cleanActivatingUser);
     if (!user || !user.canActivateDevices) {
       res.writeHead(403);
       res.end(JSON.stringify({ success: false, error: 'User not authorized' }));
@@ -211,7 +248,7 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
     }
     registeredUsers.get(serial).push({
       email: user.email,
-      phone: activating_user,
+      phone: cleanActivatingUser, // UPDATED: use cleaned phone
       name: user.name,
       relayMask: 15,
       userLevel: 2
@@ -226,11 +263,11 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
           name: `Gate ${serial}`,
           location: 'Location not specified',
           timezone: 'Asia/Jerusalem',
-          activatedBy: activating_user,
+          activatedBy: cleanActivatingUser, // UPDATED: use cleaned phone
           activationDate: admin.firestore.FieldValue.serverTimestamp(),
-          admins: [activating_user],
+          admins: [cleanActivatingUser], // UPDATED: use cleaned phone
           users: {
-            [activating_user]: {
+            [cleanActivatingUser]: { // UPDATED: use cleaned phone
               name: user.name,
               relayMask: 15,
               role: 'admin',
@@ -244,7 +281,7 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
         console.log('Firebase gate document created:', serial);
         
         // Create user permissions document
-        await db.collection('userPermissions').doc(activating_user).set({
+        await db.collection('userPermissions').doc(cleanActivatingUser).set({ // UPDATED: use cleaned phone
           gates: {
             [serial]: {
               name: gateData.name,
@@ -256,7 +293,7 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
           }
         }, { merge: true });
         
-        console.log('Firebase user permissions created:', activating_user);
+        console.log('Firebase user permissions created:', cleanActivatingUser);
         
       } catch (firebaseError) {
         console.error('Firebase write error:', firebaseError);
@@ -613,7 +650,7 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
     return;
   }
 
-  // User registration endpoint - require auth
+  // UPDATED USER REGISTRATION ENDPOINT - add phone validation
   if (req.url.includes('/register-user') && req.method === 'POST') {
     requireAuth((session) => {
       const urlParts = req.url.split('/');
@@ -622,6 +659,26 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
       console.log(`👤 User registration for device: ${deviceId} by ${session.email}`);
       
       readBody((data) => {
+        console.log("Registration data received:", data); // Debug log
+        
+        // ADDED: Validate phone number with enhanced debugging
+        const phoneValidation = validatePhoneNumber(data.phone);
+        console.log("Phone validation result:", phoneValidation); // Debug log
+        
+        if (!phoneValidation.valid) {
+          console.error("Phone validation failed:", phoneValidation.message);
+          res.writeHead(400);
+          res.end(JSON.stringify({
+            success: false,
+            error: phoneValidation.message
+          }));
+          return;
+        }
+        
+        // ADDED: Use the cleaned phone number
+        const cleanPhone = phoneValidation.cleanPhone;
+        console.log("Using cleaned phone:", cleanPhone);
+        
         // Store user in registered users
         if (!registeredUsers.has(deviceId)) {
           registeredUsers.set(deviceId, []);
@@ -629,12 +686,12 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
         
         const users = registeredUsers.get(deviceId);
         
-        // Check if user already exists (by email or phone)
-        const existingUserIndex = users.findIndex(u => u.email === data.email || u.phone === data.phone);
+        // UPDATED: Check if user already exists (by email or cleaned phone)
+        const existingUserIndex = users.findIndex(u => u.email === data.email || u.phone === cleanPhone);
         if (existingUserIndex >= 0) {
           users[existingUserIndex] = {
             email: data.email,
-            phone: data.phone,
+            phone: cleanPhone, // UPDATED: use cleaned phone
             name: data.name || 'New User',
             password: data.password || 'defaultpass123',
             relayMask: data.relayMask || 1,
@@ -647,7 +704,7 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
         } else {
           users.push({
             email: data.email,
-            phone: data.phone,
+            phone: cleanPhone, // UPDATED: use cleaned phone
             name: data.name || 'New User',
             password: data.password || 'defaultpass123',
             relayMask: data.relayMask || 1,
@@ -664,7 +721,7 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
               password: data.password,
               name: data.name || 'New User',
               userLevel: data.userLevel || 0,
-              phone: data.phone
+              phone: cleanPhone // UPDATED: use cleaned phone
             });
           }
         }
@@ -674,7 +731,7 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
         const registrationCommand = {
           id: 'reg_' + Date.now(),
           action: 'register_user',
-          phone: data.phone,
+          phone: cleanPhone, // UPDATED: use cleaned phone
           email: data.email,
           name: data.name || 'New User',
           relayMask: data.relayMask || 1,
@@ -688,17 +745,17 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
         }
         deviceCommands.get(deviceId).push(registrationCommand);
         
-        // Add log entry
-        addDeviceLog(deviceId, 'user_registered', session.email, `User: ${data.name} (${data.email}/${data.phone})`);
+        // UPDATED: Add log entry with cleaned phone
+        addDeviceLog(deviceId, 'user_registered', session.email, `User: ${data.name} (${data.email}/${cleanPhone})`);
         
-        console.log(`📝 Registration queued for device ${deviceId}:`, registrationCommand);
+        console.log(`📝 Registration successful for device ${deviceId}:`, registrationCommand);
         
         res.writeHead(200);
         res.end(JSON.stringify({
           success: true,
           message: "User registration queued",
           email: data.email,
-          phone: data.phone,
+          phone: cleanPhone, // UPDATED: return cleaned phone
           deviceId: deviceId
         }));
       });
@@ -1007,7 +1064,6 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
             <p>👤 Active Sessions: ${activeSessions.size}</p>
         </div>
 
-// Add this after the existing server status card
 ${session.userLevel >= 2 ? `
         <div class="card">
             <h3>🔧 Device Activation (Testing)</h3>
@@ -1015,10 +1071,11 @@ ${session.userLevel >= 2 ? `
             <div style="display: grid; grid-template-columns: 1fr 100px 1fr auto; gap: 10px; margin: 15px 0;">
                 <input type="text" id="deviceSerial" placeholder="ESP32_12345" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
                 <input type="text" id="devicePin" placeholder="123456" maxlength="6" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
-                <input type="text" id="userPhone" placeholder="+972501234567" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
+                <input type="text" id="userPhone" placeholder="972501234567" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px;">
                 <button onclick="testActivation()" style="background: #17a2b8; color: white; border: none; padding: 10px 15px; border-radius: 4px; cursor: pointer;">Activate</button>
             </div>
-            <p><strong>Demo Values:</strong> Serial: ESP32_12345, PIN: 123456, Phone: +972501234567</p>
+            <p><strong>Demo Values:</strong> Serial: ESP32_12345, PIN: 123456, Phone: 972501234567</p>
+            <p><small>📱 Phone format: 10-14 digits (US: 1234567890, International: 972501234567)</small></p>
         </div>
 ` : ''}
         
@@ -1045,7 +1102,7 @@ ${session.userLevel >= 2 ? `
                     <h3>➕ Add New User</h3>
                     <div class="form-grid">
                         <input type="email" id="modalEmail" placeholder="Email Address" required>
-                        <input type="tel" id="modalPhone" placeholder="Phone Number (1234567890)" maxlength="10" required>
+                        <input type="tel" id="modalPhone" placeholder="Phone Number (10-14 digits)" maxlength="14" required>
                         <input type="text" id="modalName" placeholder="User Name" required>
                         <input type="password" id="modalPassword" placeholder="Password (if login allowed)" minlength="6">
                         <select id="modalUserLevel">
@@ -1068,6 +1125,7 @@ ${session.userLevel >= 2 ? `
                             </label>
                             <small style="color: #666;">If checked, user can log in to this dashboard with email and password</small>
                         </div>
+                        <small style="color: #17a2b8; font-weight: bold;">📱 Phone: Enter 10-14 digits (e.g., 1234567890, 972501234567, 447123456789)</small>
                         <button class="register-btn" onclick="registerUserModal()">
                             ➕ Register User
                         </button>
@@ -1122,16 +1180,21 @@ ${session.userLevel >= 2 ? `
             }
         }
         
+        // UPDATED sendCommand function with enhanced phone validation
         function sendCommand(deviceId, relay, action) {
-            const userId = prompt("Enter your registered phone number:");
+            const userId = prompt("Enter your registered phone number (10-14 digits, numbers only):");
             if (!userId) return;
             
-            if (!/^\\d{10}$/.test(userId)) {
-                alert('Please enter a valid 10-digit phone number');
+            // UPDATED: Clean the input
+            const cleanUserId = userId.replace(/\\D/g, '');
+            
+            // UPDATED: Flexible validation: 10-14 digits
+            if (!/^\\d{10,14}$/.test(cleanUserId)) {
+                alert('Please enter a valid phone number (10-14 digits, numbers only)\\n\\nExamples:\\n• US: 1234567890\\n• International: 972501234567');
                 return;
             }
             
-            if (!confirm('Send ' + action + ' command with user ID: ' + userId + '?')) {
+            if (!confirm('Send ' + action + ' command with user ID: ' + cleanUserId + '?')) {
                 return;
             }
             
@@ -1144,7 +1207,7 @@ ${session.userLevel >= 2 ? `
                     relay: relay,
                     duration: 2000,
                     user: 'dashboard',
-                    user_id: parseInt(userId)
+                    user_id: cleanUserId // UPDATED: send cleaned user ID as string
                 })
             })
             .then(r => r.json())
@@ -1289,35 +1352,44 @@ ${session.userLevel >= 2 ? `
             \`;
         }
 
-// Add this function to the dashboard JavaScript
-async function testActivation() {
-    const serial = document.getElementById('deviceSerial').value || 'ESP32_12345';
-    const pin = document.getElementById('devicePin').value || '123456';
-    const phone = document.getElementById('userPhone').value || '+972501234567';
-    
-    try {
-        const response = await fetch('/api/device/activate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                serial: serial,
-                pin: pin,
-                activating_user: phone
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert('✅ Device activated successfully!\\nSerial: ' + serial + '\\nUser: ' + phone);
-            location.reload(); // Refresh to see the new device
-        } else {
-            alert('❌ Activation failed: ' + data.error);
+        // UPDATED testActivation function with phone validation
+        async function testActivation() {
+            const serial = document.getElementById('deviceSerial').value || 'ESP32_12345';
+            const pin = document.getElementById('devicePin').value || '123456';
+            const phone = document.getElementById('userPhone').value || '972501234567';
+            
+            // ADDED: Clean phone number
+            const cleanPhone = phone.replace(/\\D/g, '');
+            console.log("Test activation - Clean phone:", cleanPhone, "Length:", cleanPhone.length);
+            
+            if (!/^\\d{10,14}$/.test(cleanPhone)) {
+                alert('Please enter a valid phone number (10-14 digits)\\nReceived: ' + cleanPhone + ' (' + cleanPhone.length + ' digits)');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/activate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        serial: serial,
+                        pin: pin,
+                        activating_user: cleanPhone // UPDATED: send cleaned phone
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Device activated successfully!\\nSerial: ' + serial + '\\nUser: ' + cleanPhone);
+                    location.reload(); // Refresh to see the new device
+                } else {
+                    alert('❌ Activation failed: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
         }
-    } catch (error) {
-        alert('❌ Error: ' + error.message);
-    }
-}
         
         async function loadLogs() {
             if (!currentDeviceId) return;
@@ -1368,15 +1440,18 @@ async function testActivation() {
             \`;
         }
         
+        // UPDATED registerUserModal function with enhanced phone validation
         async function registerUserModal() {
             if (!currentDeviceId) return;
             
             const email = document.getElementById('modalEmail').value;
-            const phone = document.getElementById('modalPhone').value;
+            const phoneRaw = document.getElementById('modalPhone').value; // UPDATED: get raw phone
             const name = document.getElementById('modalName').value;
             const password = document.getElementById('modalPassword').value;
             const userLevel = parseInt(document.getElementById('modalUserLevel').value);
             const canLogin = document.getElementById('modalCanLogin').checked;
+            
+            console.log("Raw phone input:", JSON.stringify(phoneRaw)); // ADDED: debug log
             
             let relayMask = 0;
             if (document.getElementById('modalRelay1').checked) relayMask |= 1;
@@ -1384,13 +1459,28 @@ async function testActivation() {
             if (document.getElementById('modalRelay3').checked) relayMask |= 4;
             if (document.getElementById('modalRelay4').checked) relayMask |= 8;
             
-            if (!email || !phone || !name) {
+            if (!email || !phoneRaw || !name) {
                 alert('Please fill in email, phone, and name fields');
                 return;
             }
             
-            if (!/^\\d{10}$/.test(phone)) {
-                alert('Please enter a valid 10-digit phone number');
+            // ADDED: Clean phone number and debug
+            const cleanPhone = phoneRaw.toString().replace(/\\D/g, '');
+            console.log("Cleaned phone:", cleanPhone, "Length:", cleanPhone.length);
+            
+            // UPDATED: Enhanced validation with better error messages
+            if (cleanPhone.length < 10) {
+                alert(\`Phone number too short: \${cleanPhone} (\${cleanPhone.length} digits)\\nMinimum: 10 digits\`);
+                return;
+            }
+            
+            if (cleanPhone.length > 14) {
+                alert(\`Phone number too long: \${cleanPhone} (\${cleanPhone.length} digits)\\nMaximum: 14 digits\`);
+                return;
+            }
+            
+            if (!/^\\d{10,14}$/.test(cleanPhone)) {
+                alert(\`Invalid phone format: \${cleanPhone}\\nMust be 10-14 digits only\`);
                 return;
             }
             
@@ -1404,13 +1494,15 @@ async function testActivation() {
                 return;
             }
             
+            console.log("Sending registration with phone:", cleanPhone); // ADDED: debug log
+            
             try {
                 const response = await fetch('/api/device/' + currentDeviceId + '/register-user', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json; charset=utf-8' },
                     body: JSON.stringify({
                         email: email,
-                        phone: parseInt(phone),
+                        phone: cleanPhone, // UPDATED: send cleaned phone as string
                         name: name,
                         password: password,
                         relayMask: relayMask,
@@ -1420,9 +1512,10 @@ async function testActivation() {
                 });
                 
                 const result = await response.json();
+                console.log("Registration response:", result); // ADDED: debug log
                 
                 if (result.success) {
-                    alert('✅ User registered: ' + name + ' (' + email + ')');
+                    alert('✅ User registered: ' + name + ' (' + email + ')\\nPhone: ' + result.phone);
                     
                     // Clear form
                     document.getElementById('modalEmail').value = '';
@@ -1437,10 +1530,12 @@ async function testActivation() {
                     // Reload users list
                     loadUsers();
                 } else {
-                    alert('❌ Registration failed');
+                    alert('❌ Registration failed: ' + (result.error || 'Unknown error'));
+                    console.error("Registration error:", result); // ADDED: debug log
                 }
             } catch (error) {
                 alert('❌ Error: ' + error.message);
+                console.error("Network error:", error); // ADDED: debug log
             }
         }
         
@@ -1538,6 +1633,7 @@ async function testActivation() {
         'POST /api/device/heartbeat',
         'GET /api/device/{deviceId}/commands',
         'POST /api/device/auth',
+        'POST /api/device/activate',
         'POST /api/device/{deviceId}/send-command (requires login)',
         'POST /api/device/{deviceId}/register-user (requires login)',
         'GET /api/device/{deviceId}/users (requires login)',
