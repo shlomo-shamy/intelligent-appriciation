@@ -1377,6 +1377,9 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
                 <button onclick="syncFirebase()" style="background: #ff6b35; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 10px;">
                     🔄 Sync All Users to Firebase
                 </button>
+                <button onclick="loadFromFirebase()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 10px; margin-left: 10px;">
+                    📥 Load Users from Firebase
+                </button>
                 <button onclick="checkFirebaseStatus()" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 10px; margin-left: 10px;">
                     🔍 Check Firebase Status
                 </button>
@@ -1738,21 +1741,64 @@ ${session.userLevel >= 2 ? `
             }
         }
         
+        async function loadFromFirebase() {
+            if (!confirm('📥 Load users from Firebase?\\n\\nThis will pull all Firebase users into the local system and merge with existing users.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/firebase/load', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Firebase Load Complete!\\n\\nDevices: ' + result.loadedDevices + '\\nUsers: ' + result.loadedUsers + '\\n\\nRefresh the page to see loaded users.');
+                    location.reload(); // Refresh to see loaded users
+                } else {
+                    alert('❌ Firebase Load Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Load Error: ' + error.message);
+            }
+        }
+        
         async function checkFirebaseStatus() {
             try {
                 const response = await fetch('/api/firebase/status');
                 const status = await response.json();
                 
-                const statusText = \`
+                // Test actual Firebase connectivity
+                let connectivityTest = 'Not tested';
+                try {
+                    const testResponse = await fetch('/api/firebase/sync', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ test: true })
+                    });
+                    connectivityTest = testResponse.ok ? 'Connection works' : 'Connection failed';
+                } catch (e) {
+                    connectivityTest = 'Connection test failed: ' + e.message;
+                }
+                
+                const statusText = `
 🔥 Firebase Status Report:
                 
-Connection: \${status.firebase_initialized ? '✅ Connected' : '❌ Disconnected'}
-Project ID: \${status.project_id}
-Client Email: \${status.client_email}
-Private Key: \${status.private_key}
+Connection Flag: ${status.firebase_initialized ? '✅ Connected' : '❌ Disconnected'}
+Project ID: ${status.project_id}
+Client Email: ${status.client_email}
+Private Key: ${status.private_key}
 
-Overall Status: \${status.status}
-                \`;
+Overall Status: ${status.status}
+Connectivity Test: ${connectivityTest}
+
+🔍 Diagnosis:
+${status.firebase_initialized ? 
+  'Firebase is properly initialized and ready to use.' : 
+  'Firebase shows as disconnected but may still be working. Check environment variables.'}
+                `;
                 
                 alert(statusText);
             } catch (error) {
@@ -2010,6 +2056,7 @@ Overall Status: \${status.status}
         'GET /api/device/{deviceId}/logs (requires login)',
         'GET /api/device/{deviceId}/schedules (requires login)',
         'POST /api/firebase/sync (requires admin)',
+        'POST /api/firebase/load (requires admin)',
         'GET /api/firebase/status (requires login)'
       ],
       devices: Array.from(connectedDevices.keys())
