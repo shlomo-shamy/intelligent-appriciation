@@ -140,7 +140,7 @@ function validatePhoneNumber(phone) {
         async function deleteUser(phone, email, name) {
             if (!currentDeviceId) return;
             
-            if (!confirm(\`🗑️ Delete User: \${name}?\\n\\nThis will:\\n• Remove user from device\\n• Delete Firebase records\\n• Remove dashboard access (if enabled)\\n\\nThis action cannot be undone!\`)) {
+            if (!confirm('🗑️ Delete User: ' + name + '?\\n\\nThis will:\\n• Remove user from device\\n• Delete Firebase records\\n• Remove dashboard access (if enabled)\\n\\nThis action cannot be undone!')) {
                 return;
             }
             
