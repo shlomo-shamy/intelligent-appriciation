@@ -134,6 +134,39 @@ function validatePhoneNumber(phone) {
             valid: false,
             message: `Phone number must be 10-14 digits. Received: "${cleanPhone}" (${cleanPhone.length} digits)`,
             cleanPhone: null
+        }
+        
+        // User deletion function
+        async function deleteUser(phone, email, name) {
+            if (!currentDeviceId) return;
+            
+            if (!confirm(\`🗑️ Delete User: \${name}?\\n\\nThis will:\\n• Remove user from device\\n• Delete Firebase records\\n• Remove dashboard access (if enabled)\\n\\nThis action cannot be undone!\`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/delete-user', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({
+                        phone: phone,
+                        email: email
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User Deleted Successfully!\\n\\nUser: ' + result.deletedUser.name + '\\nPhone: ' + result.deletedUser.phone + '\\nFirebase: ' + result.firebase_status);
+                    
+                    // Reload users list
+                    loadUsers();
+                } else {
+                    alert('❌ Delete Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Delete Error: ' + error.message);
+            }
         };
     }
     
@@ -740,17 +773,115 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
     return;
   }
 
-  // FIREBASE STATUS ENDPOINT
-  if (req.url === '/api/firebase/status' && req.method === 'GET') {
+  // DELETE USER ENDPOINT - require auth
+  if (req.url.includes('/delete-user') && req.method === 'DELETE') {
     requireAuth((session) => {
-      res.writeHead(200);
-      res.end(JSON.stringify({
-        firebase_initialized: firebaseInitialized,
-        project_id: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING',
-        client_email: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING',
-        private_key: process.env.FIREBASE_PRIVATE_KEY ? 'SET (' + process.env.FIREBASE_PRIVATE_KEY.length + ' chars)' : 'MISSING',
-        status: firebaseInitialized ? 'Connected' : 'Not Connected'
-      }));
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      console.log(`🗑️ User deletion for device: ${deviceId} by ${session.email}`);
+      
+      readBody(async (data) => {
+        const { phone, email } = data;
+        
+        if (!phone && !email) {
+          res.writeHead(400);
+          res.end(JSON.stringify({
+            success: false,
+            error: 'Phone or email required for deletion'
+          }));
+          return;
+        }
+        
+        // Find and remove user from local storage
+        const users = registeredUsers.get(deviceId) || [];
+        const userIndex = users.findIndex(u => 
+          (phone && u.phone === phone) || (email && u.email === email)
+        );
+        
+        if (userIndex === -1) {
+          res.writeHead(404);
+          res.end(JSON.stringify({
+            success: false,
+            error: 'User not found'
+          }));
+          return;
+        }
+        
+        const deletedUser = users[userIndex];
+        users.splice(userIndex, 1);
+        registeredUsers.set(deviceId, users);
+        
+        // Remove from dashboard users if exists
+        if (deletedUser.canLogin && deletedUser.email) {
+          DASHBOARD_USERS.delete(deletedUser.email);
+        }
+        
+        // Send delete command to ESP32
+        const deleteCommand = {
+          id: 'del_' + Date.now(),
+          action: 'delete_user',
+          phone: deletedUser.phone,
+          email: deletedUser.email,
+          timestamp: Date.now(),
+          deletedBy: session.email
+        };
+        
+        if (!deviceCommands.has(deviceId)) {
+          deviceCommands.set(deviceId, []);
+        }
+        deviceCommands.get(deviceId).push(deleteCommand);
+        
+        // FIREBASE: Remove user from Firebase if connected
+        if (firebaseInitialized) {
+          try {
+            // Remove user from gate document
+            await db.collection('gates').doc(deviceId).update({
+              [`users.${deletedUser.phone}`]: admin.firestore.FieldValue.delete()
+            });
+            
+            // Remove gate from user permissions or delete document if no gates left
+            const userPermRef = db.collection('userPermissions').doc(deletedUser.phone);
+            const userPermDoc = await userPermRef.get();
+            
+            if (userPermDoc.exists) {
+              const userData = userPermDoc.data();
+              if (userData.gates && Object.keys(userData.gates).length === 1 && userData.gates[deviceId]) {
+                // Delete entire document if this was the only gate
+                await userPermRef.delete();
+              } else {
+                // Remove just this gate
+                await userPermRef.update({
+                  [`gates.${deviceId}`]: admin.firestore.FieldValue.delete()
+                });
+              }
+            }
+            
+            console.log(`🔥 Firebase: User ${deletedUser.phone} removed from gate ${deviceId}`);
+            
+          } catch (firebaseError) {
+            console.error('🔥 Firebase user deletion error:', firebaseError);
+          }
+        }
+        
+        // Add log entry
+        addDeviceLog(deviceId, 'user_deleted', session.email, `User: ${deletedUser.name} (${deletedUser.email}/${deletedUser.phone})`);
+        
+        console.log(`🗑️ User deleted from device ${deviceId}:`, deletedUser);
+        
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: "User deleted successfully",
+          deletedUser: {
+            name: deletedUser.name,
+            email: deletedUser.email,
+            phone: deletedUser.phone
+          },
+          deviceId: deviceId,
+          firebase_status: firebaseInitialized ? 'removed' : 'local_only'
+        }));
+      });
     });
     return;
   }
@@ -1484,6 +1615,11 @@ ${session.userLevel >= 2 ? `
                                     Registered: \${new Date(user.registeredAt).toLocaleDateString()}
                                 </div>
                             </div>
+                            <button onclick="deleteUser('\${user.phone}', '\${user.email}', '\${user.name}')" 
+                                    style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;"
+                                    title="Delete User">
+                                🗑️ Delete
+                            </button>
                         </div>
                     \`;
                 }).join('');
@@ -1869,6 +2005,7 @@ Overall Status: \${status.status}
         'POST /api/device/activate',
         'POST /api/device/{deviceId}/send-command (requires login)',
         'POST /api/device/{deviceId}/register-user (requires login)',
+        'DELETE /api/device/{deviceId}/delete-user (requires login)',
         'GET /api/device/{deviceId}/users (requires login)',
         'GET /api/device/{deviceId}/logs (requires login)',
         'GET /api/device/{deviceId}/schedules (requires login)',
