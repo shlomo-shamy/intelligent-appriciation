@@ -658,19 +658,29 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
           
           // Sync all registered users to Firebase
           for (const [deviceId, users] of registeredUsers.entries()) {
+            // Check if gate document exists, create if not
+            const gateRef = db.collection('gates').doc(deviceId);
+            const gateDoc = await gateRef.get();
+            
+            const gateUsers = {};
+            let gateAdmins = [];
+            
+            // Prepare users data
             for (const user of users) {
-              // Update gate document
-              await db.collection('gates').doc(deviceId).update({
-                [`users.${user.phone}`]: {
-                  name: user.name,
-                  email: user.email,
-                  relayMask: user.relayMask,
-                  userLevel: user.userLevel,
-                  role: user.userLevel >= 2 ? 'admin' : (user.userLevel >= 1 ? 'manager' : 'user'),
-                  addedBy: user.registeredBy || 'system',
-                  addedDate: admin.firestore.FieldValue.serverTimestamp()
-                }
-              });
+              gateUsers[user.phone] = {
+                name: user.name,
+                email: user.email,
+                relayMask: user.relayMask,
+                userLevel: user.userLevel,
+                role: user.userLevel >= 2 ? 'admin' : (user.userLevel >= 1 ? 'manager' : 'user'),
+                addedBy: user.registeredBy || 'system',
+                addedDate: admin.firestore.FieldValue.serverTimestamp()
+              };
+              
+              // Collect admin phone numbers
+              if (user.userLevel >= 2) {
+                gateAdmins.push(user.phone);
+              }
               
               // Update user permissions
               await db.collection('userPermissions').doc(user.phone).set({
@@ -687,6 +697,28 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
               
               syncedUsers++;
             }
+            
+            if (!gateDoc.exists) {
+              // Create new gate document
+              const firstAdmin = users.find(u => u.userLevel >= 2);
+              await gateRef.set({
+                serial: deviceId,
+                name: `Gate ${deviceId}`,
+                location: 'Location not specified',
+                timezone: 'Asia/Jerusalem',
+                activatedBy: firstAdmin ? firstAdmin.phone : users[0]?.phone || 'unknown',
+                activationDate: admin.firestore.FieldValue.serverTimestamp(),
+                admins: gateAdmins.length > 0 ? gateAdmins : [users[0]?.phone || 'unknown'],
+                users: gateUsers
+              });
+            } else {
+              // Update existing gate document
+              await gateRef.update({
+                users: gateUsers,
+                admins: gateAdmins.length > 0 ? gateAdmins : admin.firestore.FieldValue.arrayUnion()
+              });
+            }
+            
             syncedDevices++;
           }
           
@@ -821,18 +853,46 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
         // FIREBASE INTEGRATION: Add user to Firebase if connected
         if (firebaseInitialized) {
           try {
-            // Update gate document to include new user
-            await db.collection('gates').doc(deviceId).update({
-              [`users.${cleanPhone}`]: {
-                name: data.name || 'New User',
-                email: data.email,
-                relayMask: data.relayMask || 1,
-                userLevel: data.userLevel || 0,
-                role: data.userLevel >= 2 ? 'admin' : (data.userLevel >= 1 ? 'manager' : 'user'),
-                addedBy: session.email,
-                addedDate: admin.firestore.FieldValue.serverTimestamp()
-              }
-            });
+            // Check if gate document exists, create if not
+            const gateRef = db.collection('gates').doc(deviceId);
+            const gateDoc = await gateRef.get();
+            
+            if (!gateDoc.exists) {
+              // Create new gate document
+              await gateRef.set({
+                serial: deviceId,
+                name: `Gate ${deviceId}`,
+                location: 'Location not specified',
+                timezone: 'Asia/Jerusalem',
+                activatedBy: cleanPhone,
+                activationDate: admin.firestore.FieldValue.serverTimestamp(),
+                admins: [cleanPhone],
+                users: {
+                  [cleanPhone]: {
+                    name: data.name || 'New User',
+                    email: data.email,
+                    relayMask: data.relayMask || 1,
+                    userLevel: data.userLevel || 0,
+                    role: data.userLevel >= 2 ? 'admin' : (data.userLevel >= 1 ? 'manager' : 'user'),
+                    addedBy: session.email,
+                    addedDate: admin.firestore.FieldValue.serverTimestamp()
+                  }
+                }
+              });
+            } else {
+              // Update existing gate document
+              await gateRef.update({
+                [`users.${cleanPhone}`]: {
+                  name: data.name || 'New User',
+                  email: data.email,
+                  relayMask: data.relayMask || 1,
+                  userLevel: data.userLevel || 0,
+                  role: data.userLevel >= 2 ? 'admin' : (data.userLevel >= 1 ? 'manager' : 'user'),
+                  addedBy: session.email,
+                  addedDate: admin.firestore.FieldValue.serverTimestamp()
+                }
+              });
+            }
             
             // Update or create user permissions document
             await db.collection('userPermissions').doc(cleanPhone).set({
