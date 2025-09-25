@@ -5,7 +5,7 @@ console.log('Memory usage:', process.memoryUsage());
 console.log('Environment variables set:', Object.keys(process.env).length);
 console.log('PORT from environment:', process.env.PORT);
 console.log('Current working directory:', process.cwd());
- 
+
 // Catch any unhandled errors
 process.on('uncaughtException', (error) => {
   console.error('UNCAUGHT EXCEPTION:', error);
@@ -636,16 +636,89 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
     return;
   }
 
-  // Get device schedules endpoint
-  if (req.url.startsWith('/api/device/') && req.url.endsWith('/schedules') && req.method === 'GET') {
+  // FIREBASE SYNC ENDPOINT - sync all local users to Firebase
+  if (req.url === '/api/firebase/sync' && req.method === 'POST') {
     requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
+      if (session.userLevel < 2) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'Admin access required' }));
+        return;
+      }
       
-      const schedules = deviceSchedules.get(deviceId) || [];
+      if (!firebaseInitialized) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Firebase not initialized' }));
+        return;
+      }
       
+      readBody(async (data) => {
+        try {
+          let syncedDevices = 0;
+          let syncedUsers = 0;
+          
+          // Sync all registered users to Firebase
+          for (const [deviceId, users] of registeredUsers.entries()) {
+            for (const user of users) {
+              // Update gate document
+              await db.collection('gates').doc(deviceId).update({
+                [`users.${user.phone}`]: {
+                  name: user.name,
+                  email: user.email,
+                  relayMask: user.relayMask,
+                  userLevel: user.userLevel,
+                  role: user.userLevel >= 2 ? 'admin' : (user.userLevel >= 1 ? 'manager' : 'user'),
+                  addedBy: user.registeredBy || 'system',
+                  addedDate: admin.firestore.FieldValue.serverTimestamp()
+                }
+              });
+              
+              // Update user permissions
+              await db.collection('userPermissions').doc(user.phone).set({
+                gates: {
+                  [deviceId]: {
+                    name: `Gate ${deviceId}`,
+                    relayMask: user.relayMask,
+                    role: user.userLevel >= 2 ? 'admin' : (user.userLevel >= 1 ? 'manager' : 'user'),
+                    addedBy: user.registeredBy || 'system',
+                    addedDate: admin.firestore.FieldValue.serverTimestamp()
+                  }
+                }
+              }, { merge: true });
+              
+              syncedUsers++;
+            }
+            syncedDevices++;
+          }
+          
+          res.writeHead(200);
+          res.end(JSON.stringify({
+            success: true,
+            message: 'Firebase sync completed',
+            syncedDevices: syncedDevices,
+            syncedUsers: syncedUsers
+          }));
+          
+        } catch (error) {
+          console.error('Firebase sync error:', error);
+          res.writeHead(500);
+          res.end(JSON.stringify({ error: 'Firebase sync failed: ' + error.message }));
+        }
+      });
+    });
+    return;
+  }
+
+  // FIREBASE STATUS ENDPOINT
+  if (req.url === '/api/firebase/status' && req.method === 'GET') {
+    requireAuth((session) => {
       res.writeHead(200);
-      res.end(JSON.stringify(schedules));
+      res.end(JSON.stringify({
+        firebase_initialized: firebaseInitialized,
+        project_id: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING',
+        client_email: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING',
+        private_key: process.env.FIREBASE_PRIVATE_KEY ? 'SET (' + process.env.FIREBASE_PRIVATE_KEY.length + ' chars)' : 'MISSING',
+        status: firebaseInitialized ? 'Connected' : 'Not Connected'
+      }));
     });
     return;
   }
@@ -745,6 +818,42 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
         }
         deviceCommands.get(deviceId).push(registrationCommand);
         
+        // FIREBASE INTEGRATION: Add user to Firebase if connected
+        if (firebaseInitialized) {
+          try {
+            // Update gate document to include new user
+            await db.collection('gates').doc(deviceId).update({
+              [`users.${cleanPhone}`]: {
+                name: data.name || 'New User',
+                email: data.email,
+                relayMask: data.relayMask || 1,
+                userLevel: data.userLevel || 0,
+                role: data.userLevel >= 2 ? 'admin' : (data.userLevel >= 1 ? 'manager' : 'user'),
+                addedBy: session.email,
+                addedDate: admin.firestore.FieldValue.serverTimestamp()
+              }
+            });
+            
+            // Update or create user permissions document
+            await db.collection('userPermissions').doc(cleanPhone).set({
+              gates: {
+                [deviceId]: {
+                  name: `Gate ${deviceId}`,
+                  relayMask: data.relayMask || 1,
+                  role: data.userLevel >= 2 ? 'admin' : (data.userLevel >= 1 ? 'manager' : 'user'),
+                  addedBy: session.email,
+                  addedDate: admin.firestore.FieldValue.serverTimestamp()
+                }
+              }
+            }, { merge: true });
+            
+            console.log(`🔥 Firebase: User ${cleanPhone} added to gate ${deviceId}`);
+            
+          } catch (firebaseError) {
+            console.error('🔥 Firebase user registration error:', firebaseError);
+          }
+        }
+        
         // UPDATED: Add log entry with cleaned phone
         addDeviceLog(deviceId, 'user_registered', session.email, `User: ${data.name} (${data.email}/${cleanPhone})`);
         
@@ -756,7 +865,8 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
           message: "User registration queued",
           email: data.email,
           phone: cleanPhone, // UPDATED: return cleaned phone
-          deviceId: deviceId
+          deviceId: deviceId,
+          firebase_status: firebaseInitialized ? 'synced' : 'local_only'
         }));
       });
     });
@@ -1064,6 +1174,24 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
             <p>👤 Active Sessions: ${activeSessions.size}</p>
         </div>
 
+        <div class="card">
+            <h3>🔥 Firebase Status</h3>
+            <div id="firebaseStatus">
+                <p>📡 Status: ${firebaseInitialized ? '✅ Connected' : '❌ Not Connected'}</p>
+                <p>🔑 Project ID: ${process.env.FIREBASE_PROJECT_ID ? '✅ SET' : '❌ MISSING'}</p>
+                <p>📧 Client Email: ${process.env.FIREBASE_CLIENT_EMAIL ? '✅ SET' : '❌ MISSING'}</p>
+                <p>🗝️ Private Key: ${process.env.FIREBASE_PRIVATE_KEY ? '✅ SET (' + process.env.FIREBASE_PRIVATE_KEY.length + ' chars)' : '❌ MISSING'}</p>
+            </div>
+            ${session.userLevel >= 2 ? `
+                <button onclick="syncFirebase()" style="background: #ff6b35; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 10px;">
+                    🔄 Sync All Users to Firebase
+                </button>
+                <button onclick="checkFirebaseStatus()" style="background: #17a2b8; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; margin-top: 10px; margin-left: 10px;">
+                    🔍 Check Firebase Status
+                </button>
+            ` : ''}
+        </div>
+
 ${session.userLevel >= 2 ? `
         <div class="card">
             <h3>🔧 Device Activation (Testing)</h3>
@@ -1352,7 +1480,6 @@ ${session.userLevel >= 2 ? `
             \`;
         }
 
-        // UPDATED testActivation function with phone validation
         async function testActivation() {
             const serial = document.getElementById('deviceSerial').value || 'ESP32_12345';
             const pin = document.getElementById('devicePin').value || '123456';
@@ -1381,13 +1508,59 @@ ${session.userLevel >= 2 ? `
                 const data = await response.json();
                 
                 if (data.success) {
-                    alert('✅ Device activated successfully!\\nSerial: ' + serial + '\\nUser: ' + cleanPhone);
+                    alert('✅ Device activated successfully!\\nSerial: ' + serial + '\\nUser: ' + cleanPhone + '\\nFirebase: ' + data.firebase_status);
                     location.reload(); // Refresh to see the new device
                 } else {
                     alert('❌ Activation failed: ' + data.error);
                 }
             } catch (error) {
                 alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // Firebase management functions
+        async function syncFirebase() {
+            if (!confirm('🔥 Sync all local users to Firebase?\\n\\nThis will update Firebase with all locally registered users.')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/firebase/sync', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Firebase Sync Complete!\\n\\nDevices: ' + result.syncedDevices + '\\nUsers: ' + result.syncedUsers);
+                } else {
+                    alert('❌ Firebase Sync Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Sync Error: ' + error.message);
+            }
+        }
+        
+        async function checkFirebaseStatus() {
+            try {
+                const response = await fetch('/api/firebase/status');
+                const status = await response.json();
+                
+                const statusText = \`
+🔥 Firebase Status Report:
+                
+Connection: \${status.firebase_initialized ? '✅ Connected' : '❌ Disconnected'}
+Project ID: \${status.project_id}
+Client Email: \${status.client_email}
+Private Key: \${status.private_key}
+
+Overall Status: \${status.status}
+                \`;
+                
+                alert(statusText);
+            } catch (error) {
+                alert('❌ Status Check Error: ' + error.message);
             }
         }
         
@@ -1638,7 +1811,9 @@ ${session.userLevel >= 2 ? `
         'POST /api/device/{deviceId}/register-user (requires login)',
         'GET /api/device/{deviceId}/users (requires login)',
         'GET /api/device/{deviceId}/logs (requires login)',
-        'GET /api/device/{deviceId}/schedules (requires login)'
+        'GET /api/device/{deviceId}/schedules (requires login)',
+        'POST /api/firebase/sync (requires admin)',
+        'GET /api/firebase/status (requires login)'
       ],
       devices: Array.from(connectedDevices.keys())
     };
