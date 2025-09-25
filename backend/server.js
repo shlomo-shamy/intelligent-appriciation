@@ -731,7 +731,7 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
       
       console.log(`👤 User registration for device: ${deviceId} by ${session.email}`);
       
-      readBody((data) => {
+      readBody(async (data) => {
         console.log("Registration data received:", data); // Debug log
         
         // ADDED: Validate phone number with enhanced debugging
