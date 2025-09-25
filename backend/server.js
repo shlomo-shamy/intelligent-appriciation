@@ -1743,35 +1743,16 @@ ${session.userLevel >= 2 ? `
                 const response = await fetch('/api/firebase/status');
                 const status = await response.json();
                 
-                // Test actual Firebase connectivity
-                let connectivityTest = 'Not tested';
-                try {
-                    const testResponse = await fetch('/api/firebase/sync', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ test: true })
-                    });
-                    connectivityTest = testResponse.ok ? 'Connection works' : 'Connection failed';
-                } catch (e) {
-                    connectivityTest = 'Connection test failed: ' + e.message;
-                }
-                
-                const statusText = `
+                const statusText = \`
 🔥 Firebase Status Report:
                 
-Connection Flag: ${status.firebase_initialized ? '✅ Connected' : '❌ Disconnected'}
-Project ID: ${status.project_id}
-Client Email: ${status.client_email}
-Private Key: ${status.private_key}
+Connection: \${status.firebase_initialized ? '✅ Connected' : '❌ Disconnected'}
+Project ID: \${status.project_id}
+Client Email: \${status.client_email}
+Private Key: \${status.private_key}
 
-Overall Status: ${status.status}
-Connectivity Test: ${connectivityTest}
-
-🔍 Diagnosis:
-${status.firebase_initialized ? 
-  'Firebase is properly initialized and ready to use.' : 
-  'Firebase shows as disconnected but may still be working. Check environment variables.'}
-                `;
+Overall Status: \${status.status}
+                \`;
                 
                 alert(statusText);
             } catch (error) {
