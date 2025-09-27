@@ -1810,9 +1810,10 @@ ${session.userLevel >= 3 ? '<button class="nav-btn" onclick="showScreen(\\\'manu
                                 🗑️ Delete
                             </button>
                         </div>
-                    `;
-                }).join('');
-                
+                \\`;
+            }).join('');
+        }
+                        
             } catch (error) {
                 document.getElementById('usersList').innerHTML = '<p style="color: #dc3545;">Error loading users: ' + error.message + '</p>';
             }
