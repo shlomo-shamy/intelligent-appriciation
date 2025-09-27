@@ -2064,7 +2064,40 @@ Overall Status: \\${status.status}
                 console.error("Network error:", error); // ADDED: debug log
             }
         }
-        
+
+// User deletion function
+        async function deleteUser(phone, email, name) {
+            if (!currentDeviceId) return;
+            
+            if (!confirm('🗑️ Delete User: ' + name + '?\\n\\nThis will:\\n• Remove user from device\\n• Delete Firebase records\\n• Remove dashboard access (if enabled)\\n\\nThis action cannot be undone!')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/delete-user', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({
+                        phone: phone,
+                        email: email
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User Deleted Successfully!\\n\\nUser: ' + result.deletedUser.name + '\\nPhone: ' + result.deletedUser.phone + '\\nFirebase: ' + result.firebase_status);
+                    
+                    // Reload users list
+                    loadUsers();
+                } else {
+                    alert('❌ Delete Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Delete Error: ' + error.message);
+            }
+        }
+
         function renderDevices() {
             const container = document.getElementById('devices');
             if (devices.length === 0) {
