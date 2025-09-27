@@ -1761,7 +1761,7 @@ async function loadUsers() {
             const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
             const loginStatus = user.canLogin ? '🌐 Can Login' : '🚫 No Login';
             
-            return \\`
+            return \\` 
                 <div class="user-item">
                     <div class="user-info">
                         <div class="user-name">\\${user.name} \\${user.canLogin ? '🌐' : ''}</div>
