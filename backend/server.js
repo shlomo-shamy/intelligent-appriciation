@@ -1737,54 +1737,53 @@ ${session.userLevel >= 3 ? '<button class="nav-btn" onclick="showScreen(\\\'manu
             }
         }
         
-        async function loadUsers() {
-            if (!currentDeviceId) return;
-            
-            try {
-                const response = await fetch('/api/device/' + currentDeviceId + '/users');
-                const users = await response.json();
-                
-                const usersList = document.getElementById('usersList');
-                
-                if (users.length === 0) {
-                    usersList.innerHTML = '<p style="color: #666;">No users registered yet.</p>';
-                    return;
-                }
-                
-                usersList.innerHTML = users.map(user => {
-                    const permissions = [];
-                    if (user.relayMask & 1) permissions.push('🔓 OPEN');
-                    if (user.relayMask & 2) permissions.push('⏸️ STOP');
-                    if (user.relayMask & 4) permissions.push('🔒 CLOSE');
-                    if (user.relayMask & 8) permissions.push('↗️ PARTIAL');
-                    
-                    const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
-                    const loginStatus = user.canLogin ? '🌐 Can Login' : '🚫 No Login';
-                    
-                    return \`
-                        <div class="user-item">
-                            <div class="user-info">
-                                <div class="user-name">\${user.name} \${user.canLogin ? '🌐' : ''}</div>
-                                <div class="user-details">
-                                    📧 \${user.email} | 📱 \${user.phone} | \${userLevelText} | \${loginStatus}<br>
-                                    Permissions: \${permissions.join(', ')} |
-                                    Registered: \${new Date(user.registeredAt).toLocaleDateString()}
-                                </div>
-                            </div>
-                            <button onclick="deleteUser('\${user.phone}', '\${user.email}', '\${user.name}')" 
-                                    style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;"
-                                    title="Delete User">
-                                🗑️ Delete
-                            </button>
-                        </div>
-                \\`;
-            }).join('');
+async function loadUsers() {
+    if (!currentDeviceId) return;
+    
+    try {
+        const response = await fetch('/api/device/' + currentDeviceId + '/users');
+        const users = await response.json();
         
-                        
-            } catch (error) {
-                document.getElementById('usersList').innerHTML = '<p style="color: #dc3545;">Error loading users: ' + error.message + '</p>';
-            }
+        const usersList = document.getElementById('usersList');
+        
+        if (users.length === 0) {
+            usersList.innerHTML = '<p style="color: #666;">No users registered yet.</p>';
+            return;
         }
+        
+        usersList.innerHTML = users.map(user => {
+            const permissions = [];
+            if (user.relayMask & 1) permissions.push('🔓 OPEN');
+            if (user.relayMask & 2) permissions.push('⏸️ STOP');
+            if (user.relayMask & 4) permissions.push('🔒 CLOSE');
+            if (user.relayMask & 8) permissions.push('↗️ PARTIAL');
+            
+            const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
+            const loginStatus = user.canLogin ? '🌐 Can Login' : '🚫 No Login';
+            
+            return \\`
+                <div class="user-item">
+                    <div class="user-info">
+                        <div class="user-name">\\${user.name} \\${user.canLogin ? '🌐' : ''}</div>
+                        <div class="user-details">
+                            📧 \\${user.email} | 📱 \\${user.phone} | \\${userLevelText} | \\${loginStatus}<br>
+                            Permissions: \\${permissions.join(', ')} |
+                            Registered: \\${new Date(user.registeredAt).toLocaleDateString()}
+                        </div>
+                    </div>
+                    <button onclick="deleteUser('\\${user.phone}', '\\${user.email}', '\\${user.name}')" 
+                            style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;"
+                            title="Delete User">
+                        🗑️ Delete
+                    </button>
+                </div>
+            \\`;
+        }).join('');
+        
+    } catch (error) {
+        document.getElementById('usersList').innerHTML = '<p style="color: #dc3545;">Error loading users: ' + error.message + '</p>';
+    }
+}
         
         async function loadStatus() {
             if (!currentDeviceId) return;
