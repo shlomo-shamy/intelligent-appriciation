@@ -1110,6 +1110,7 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
   // Protected dashboard - require auth
   if (req.url === '/dashboard') {
     requireAuth((session) => {
+      try {
       const dashboardHtml = `
 <!DOCTYPE html>
 <html>
@@ -2146,11 +2147,19 @@ Overall Status: \\${status.status}
 </body>
 </html>
       
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(dashboardHtml);
+            `;
+            
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(dashboardHtml);
+            
+        } catch (error) {
+            console.error('Dashboard error:', error);
+            res.writeHead(500, { 'Content-Type': 'text/plain' });
+            res.end('Dashboard error: ' + error.message);
+        }
     });
     return;
-  }
+}
 
   // Health check endpoint (public)
   if (req.url === '/health') {
