@@ -64,4 +64,386 @@ function sendCommand(deviceId, relay, action) {
     fetch('/api/device/' + deviceId + '/send-command', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
-        body: JSON
+        body: JSON.stringify({
+            id: 'web_' + Date.now(),
+            action: 'relay_activate',
+            relay: relay,
+            duration: 2000,
+            user: 'dashboard',
+            user_id: cleanUserId
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            showNotification('Command sent: ' + action, 'success');
+        } else {
+            showNotification('Command failed', 'error');
+        }
+    })
+    .catch(e => showNotification('Error: ' + e.message, 'error'));
+}
+
+// Modal functions
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.style.display = 'block';
+        document.body.style.overflow = 'hidden';
+    }
+}
+
+function closeModal(modalId = null) {
+    if (modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.style.display = 'none';
+        }
+    } else {
+        // Close any open modal
+        const modals = document.querySelectorAll('.modal');
+        modals.forEach(modal => {
+            modal.style.display = 'none';
+        });
+    }
+    document.body.style.overflow = 'auto';
+    currentDeviceId = null;
+}
+
+// Tab switching
+function switchTab(tabName, event = null) {
+    if (event) {
+        // Remove active class from all tabs
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        
+        // Add active class to selected tab
+        event.target.classList.add('active');
+        document.getElementById(tabName + '-tab').classList.add('active');
+    }
+    
+    // Load data based on tab
+    switch(tabName) {
+        case 'users': loadUsers(); break;
+        case 'status': loadStatus(); break;
+        case 'logs': loadLogs(); break;
+        case 'schedules': loadSchedules(); break;
+    }
+}
+
+// Notification system
+function showNotification(message, type = 'info') {
+    // Remove existing notifications
+    const existingNotification = document.querySelector('.notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.innerHTML = `
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()">&times;</button>
+    `;
+    
+    // Add styles
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 20px;
+        border-radius: 8px;
+        color: white;
+        font-weight: bold;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        max-width: 400px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        animation: slideInRight 0.3s ease;
+    `;
+    
+    // Set background color based on type
+    switch(type) {
+        case 'success': notification.style.background = '#28a745'; break;
+        case 'error': notification.style.background = '#dc3545'; break;
+        case 'warning': notification.style.background = '#ffc107'; notification.style.color = '#212529'; break;
+        default: notification.style.background = '#17a2b8'; break;
+    }
+    
+    // Style the close button
+    const closeBtn = notification.querySelector('button');
+    closeBtn.style.cssText = `
+        background: none;
+        border: none;
+        color: inherit;
+        font-size: 18px;
+        cursor: pointer;
+        padding: 0;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Loading state management
+function setLoading(elementId, isLoading = true) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    if (isLoading) {
+        element.classList.add('loading');
+        element.style.opacity = '0.6';
+        element.style.pointerEvents = 'none';
+    } else {
+        element.classList.remove('loading');
+        element.style.opacity = '1';
+        element.style.pointerEvents = 'auto';
+    }
+}
+
+// Form utilities
+function clearForm(formId) {
+    const form = document.getElementById(formId);
+    if (!form) return;
+    
+    const inputs = form.querySelectorAll('input, select, textarea');
+    inputs.forEach(input => {
+        if (input.type === 'checkbox' || input.type === 'radio') {
+            input.checked = false;
+        } else {
+            input.value = '';
+        }
+    });
+}
+
+function validateForm(formId, rules = {}) {
+    const form = document.getElementById(formId);
+    if (!form) return false;
+    
+    let isValid = true;
+    const errors = [];
+    
+    Object.keys(rules).forEach(fieldName => {
+        const field = form.querySelector(`[name="${fieldName}"], #${fieldName}`);
+        if (!field) return;
+        
+        const rule = rules[fieldName];
+        const value = field.value.trim();
+        
+        // Required validation
+        if (rule.required && !value) {
+            isValid = false;
+            errors.push(`${rule.label || fieldName} is required`);
+            field.classList.add('error');
+        } else {
+            field.classList.remove('error');
+        }
+        
+        // Pattern validation
+        if (value && rule.pattern && !rule.pattern.test(value)) {
+            isValid = false;
+            errors.push(rule.message || `${rule.label || fieldName} format is invalid`);
+            field.classList.add('error');
+        }
+        
+        // Min length validation
+        if (value && rule.minLength && value.length < rule.minLength) {
+            isValid = false;
+            errors.push(`${rule.label || fieldName} must be at least ${rule.minLength} characters`);
+            field.classList.add('error');
+        }
+    });
+    
+    if (!isValid) {
+        showNotification(errors.join('\n'), 'error');
+    }
+    
+    return isValid;
+}
+
+// Date formatting utilities
+function formatDate(dateString, options = {}) {
+    if (!dateString) return 'Not set';
+    
+    const date = new Date(dateString);
+    const defaultOptions = {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    };
+    
+    return date.toLocaleDateString('en-US', { ...defaultOptions, ...options });
+}
+
+function timeAgo(dateString) {
+    if (!dateString) return 'Never';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSec = Math.floor(diffMs / 1000);
+    const diffMin = Math.floor(diffSec / 60);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+    
+    if (diffSec < 60) return diffSec + 's ago';
+    if (diffMin < 60) return diffMin + 'm ago';
+    if (diffHour < 24) return diffHour + 'h ago';
+    if (diffDay < 7) return diffDay + 'd ago';
+    
+    return formatDate(dateString, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+// Local storage utilities (with fallback)
+function saveToStorage(key, data) {
+    try {
+        localStorage.setItem(key, JSON.stringify(data));
+        return true;
+    } catch (error) {
+        console.warn('Could not save to localStorage:', error);
+        return false;
+    }
+}
+
+function loadFromStorage(key, defaultValue = null) {
+    try {
+        const item = localStorage.getItem(key);
+        return item ? JSON.parse(item) : defaultValue;
+    } catch (error) {
+        console.warn('Could not load from localStorage:', error);
+        return defaultValue;
+    }
+}
+
+// API utilities
+async function apiCall(url, options = {}) {
+    const defaultOptions = {
+        headers: {
+            'Content-Type': 'application/json; charset=utf-8'
+        }
+    };
+    
+    const mergedOptions = {
+        ...defaultOptions,
+        ...options,
+        headers: {
+            ...defaultOptions.headers,
+            ...options.headers
+        }
+    };
+    
+    try {
+        const response = await fetch(url, mergedOptions);
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        
+        return data;
+    } catch (error) {
+        console.error('API call failed:', error);
+        throw error;
+    }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Set active navigation based on current page
+    const currentPage = window.location.pathname.replace('/', '') || 'dashboard';
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.page === currentPage) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Close modals when clicking outside
+    window.onclick = function(event) {
+        if (event.target.classList.contains('modal')) {
+            closeModal();
+        }
+    };
+    
+    // Handle escape key to close modals
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape') {
+            closeModal();
+        }
+    });
+    
+    // Add error styles
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .error {
+            border-color: #dc3545 !important;
+            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2) !important;
+        }
+        
+        .loading {
+            position: relative;
+        }
+        
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
+});
+
+// Export functions for use in other scripts
+window.GateController = {
+    navigateTo,
+    logout,
+    validatePhoneNumber,
+    sendCommand,
+    openModal,
+    closeModal,
+    switchTab,
+    showNotification,
+    setLoading,
+    clearForm,
+    validateForm,
+    formatDate,
+    timeAgo,
+    saveToStorage,
+    loadFromStorage,
+    apiCall
+};
