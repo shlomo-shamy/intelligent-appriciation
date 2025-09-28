@@ -1,1 +1,554 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>📱 Devices - Gate Controller</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; 
+            margin: 0; 
+            background: #f5f5f5; 
+            font-size: 14px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        /* Copy navigation styles from dashboard */
+        .nav-header { 
+            background: white; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .nav-brand h1 { margin: 0; color: #333; }
+        .user-info { color: #666; font-size: 12px; }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .nav-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .nav-btn:hover { background: #5a6268; }
+        .nav-btn.active { background: #667eea; }
+        
+        .logout-btn { 
+            background: #dc3545; 
+            color: white; 
+            border: none; 
+            padding: 10px 16px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
+        .logout-btn:hover { background: #c82333; }
+        
+        .card { 
+            background: white; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        
+        /* Device Activation Panel */
+        .activation-panel {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .activation-form {
+            display: grid;
+            grid-template-columns: 1fr 120px 1fr auto;
+            gap: 15px;
+            align-items: end;
+            margin-top: 15px;
+        }
+        
+        .activation-form input {
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+        
+        .activation-form button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .activation-form button:hover { background: #218838; }
+        
+        /* Device Grid */
+        .devices-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+        }
+        
+        .device-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid #28a745;
+            transition: transform 0.2s;
+        }
+        
+        .device-card:hover { transform: translateY(-2px); }
+        .device-card.offline { border-left-color: #dc3545; }
+        
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .device-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin: 0;
+        }
+        
+        .device-status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-online { background: #d4edda; color: #155724; }
+        .status-offline { background: #f8d7da; color: #721c24; }
+        
+        .device-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .stat-item {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .device-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr auto;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .control-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .control-btn:hover { transform: scale(1.05); }
+        .open { background: #28a745; color: white; }
+        .stop { background: #ffc107; color: black; }
+        .close { background: #dc3545; color: white; }
+        .partial { background: #6f42c1; color: white; }
+        
+        .settings-btn {
+            background: #6c757d;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .device-info {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.4;
+        }
+        
+        /* Filter and Search */
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .filters input, .filters select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .filter-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-header { flex-direction: column; align-items: stretch; }
+            .nav-buttons { justify-content: center; }
+            .activation-form { 
+                grid-template-columns: 1fr; 
+                gap: 10px; 
+            }
+            .device-controls { 
+                grid-template-columns: 1fr 1fr;
+                gap: 5px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation Header -->
+        <div class="nav-header">
+            <div class="nav-brand">
+                <h1>📱 Device Management</h1>
+                <div class="user-info">{{userName}} ({{userEmail}})</div>
+            </div>
+            
+            <nav class="nav-buttons">
+                <button class="nav-btn" onclick="navigateTo('/dashboard')" data-page="dashboard">
+                    🏠 Home
+                </button>
+                <button class="nav-btn" onclick="navigateTo('/system')" data-page="system">
+                    ⚙️ System
+                </button>
+                <button class="nav-btn active" onclick="navigateTo('/devices')" data-page="devices">
+                    📱 Devices
+                </button>
+                <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing">
+                    🏭 Manufacturing DB
+                </button>
+            </nav>
+            
+            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+        </div>
+        
+        <!-- Device Activation Panel -->
+        <div class="activation-panel" style="display: {{showActivationPanel}};">
+            <h3>🔧 Device Activation</h3>
+            <p>Activate new devices by entering their serial number, PIN, and your authorized phone number.</p>
+            <div class="activation-form">
+                <input type="text" id="deviceSerial" placeholder="Device Serial (ESP32_12345)" value="ESP32_12345">
+                <input type="text" id="devicePin" placeholder="PIN (123456)" maxlength="6" value="123456">
+                <input type="text" id="userPhone" placeholder="Your Phone (972501234567)" value="972501234567">
+                <button onclick="activateDevice()">🔧 Activate Device</button>
+            </div>
+            <p style="margin-top: 15px; font-size: 12px; opacity: 0.9;">
+                Demo Values: Serial: ESP32_12345, PIN: 123456, Phone: 972501234567
+            </p>
+        </div>
+        
+        <!-- Filters and Search -->
+        <div class="filters">
+            <input type="text" id="searchDevices" placeholder="Search devices..." onkeyup="filterDevices()">
+            <select id="statusFilter" onchange="filterDevices()">
+                <option value="all">All Status</option>
+                <option value="online">Online Only</option>
+                <option value="offline">Offline Only</option>
+            </select>
+            <select id="sortBy" onchange="sortDevices()">
+                <option value="name">Sort by Name</option>
+                <option value="status">Sort by Status</option>
+                <option value="lastSeen">Sort by Last Seen</option>
+                <option value="users">Sort by User Count</option>
+            </select>
+            <button class="filter-btn" onclick="refreshDevices()">🔄 Refresh</button>
+        </div>
+        
+        <!-- Devices Grid -->
+        <div class="devices-grid" id="devicesGrid">
+            <!-- Devices will be populated here -->
+        </div>
+        
+        <!-- No devices message -->
+        <div id="noDevicesMessage" class="card" style="text-align: center; display: none;">
+            <h3>📭 No Devices Found</h3>
+            <p>No devices are currently connected or match your filter criteria.</p>
+            <p>Devices will appear here once they send their first heartbeat to the server.</p>
+        </div>
+    </div>
 
+    <script>
+        const devices = {{devicesData}};
+        const registeredUsers = {{registeredUsersData}};
+        let filteredDevices = [...devices];
+        
+        function navigateTo(path) {
+            window.location.href = path;
+        }
+        
+        async function logout() {
+            try {
+                await fetch('/dashboard/logout', { method: 'POST' });
+                window.location.href = '/dashboard';
+            } catch (error) {
+                alert('Logout error: ' + error.message);
+            }
+        }
+        
+        async function activateDevice() {
+            const serial = document.getElementById('deviceSerial').value || 'ESP32_12345';
+            const pin = document.getElementById('devicePin').value || '123456';
+            const phone = document.getElementById('userPhone').value || '972501234567';
+            
+            const cleanPhone = phone.replace(/\D/g, '');
+            
+            if (!/^\d{10,14}$/.test(cleanPhone)) {
+                alert('Please enter a valid phone number (10-14 digits)\nReceived: ' + cleanPhone + ' (' + cleanPhone.length + ' digits)');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/activate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        serial: serial,
+                        pin: pin,
+                        activating_user: cleanPhone
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Device activated successfully!\nSerial: ' + serial + '\nUser: ' + cleanPhone + '\nFirebase: ' + data.firebase_status);
+                    location.reload();
+                } else {
+                    alert('❌ Activation failed: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        function sendCommand(deviceId, relay, action) {
+            const userId = prompt("Enter your registered phone number (10-14 digits, numbers only):");
+            if (!userId) return;
+            
+            const cleanUserId = userId.replace(/\D/g, '');
+            
+            if (!/^\d{10,14}$/.test(cleanUserId)) {
+                alert('Please enter a valid phone number (10-14 digits, numbers only)\n\nExamples:\n• US: 1234567890\n• International: 972501234567');
+                return;
+            }
+            
+            if (!confirm('Send ' + action + ' command with user ID: ' + cleanUserId + '?')) {
+                return;
+            }
+            
+            fetch('/api/device/' + deviceId + '/send-command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify({
+                    id: 'web_' + Date.now(),
+                    action: 'relay_activate',
+                    relay: relay,
+                    duration: 2000,
+                    user: 'dashboard',
+                    user_id: cleanUserId
+                })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    alert('✅ Command sent: ' + action);
+                } else {
+                    alert('❌ Command failed');
+                }
+            })
+            .catch(e => alert('❌ Error: ' + e.message));
+        }
+        
+        function openSettings(deviceId) {
+            // Navigate to settings (could open modal or separate page)
+            window.location.href = '/dashboard#settings-' + deviceId;
+        }
+        
+        function filterDevices() {
+            const searchTerm = document.getElementById('searchDevices').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            filteredDevices = devices.filter(([deviceId, info]) => {
+                const matchesSearch = deviceId.toLowerCase().includes(searchTerm);
+                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+                const matchesStatus = statusFilter === 'all' || 
+                    (statusFilter === 'online' && isOnline) || 
+                    (statusFilter === 'offline' && !isOnline);
+                
+                return matchesSearch && matchesStatus;
+            });
+            
+            renderDevices();
+        }
+        
+        function sortDevices() {
+            const sortBy = document.getElementById('sortBy').value;
+            
+            filteredDevices.sort(([aId, aInfo], [bId, bInfo]) => {
+                switch (sortBy) {
+                    case 'name':
+                        return aId.localeCompare(bId);
+                    case 'status':
+                        const aOnline = (Date.now() - new Date(aInfo.lastHeartbeat).getTime()) < 60000;
+                        const bOnline = (Date.now() - new Date(bInfo.lastHeartbeat).getTime()) < 60000;
+                        return bOnline - aOnline;
+                    case 'lastSeen':
+                        return new Date(bInfo.lastHeartbeat) - new Date(aInfo.lastHeartbeat);
+                    case 'users':
+                        const aUsers = registeredUsers.find(([id]) => id === aId);
+                        const bUsers = registeredUsers.find(([id]) => id === bId);
+                        const aCount = aUsers ? aUsers[1].length : 0;
+                        const bCount = bUsers ? bUsers[1].length : 0;
+                        return bCount - aCount;
+                    default:
+                        return 0;
+                }
+            });
+            
+            renderDevices();
+        }
+        
+        function refreshDevices() {
+            location.reload();
+        }
+        
+        function renderDevices() {
+            const container = document.getElementById('devicesGrid');
+            const noDevicesMsg = document.getElementById('noDevicesMessage');
+            
+            if (filteredDevices.length === 0) {
+                container.style.display = 'none';
+                noDevicesMsg.style.display = 'block';
+                return;
+            }
+            
+            container.style.display = 'grid';
+            noDevicesMsg.style.display = 'none';
+            
+            container.innerHTML = filteredDevices.map(([deviceId, info]) => {
+                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+                const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
+                const userCount = deviceUsers ? deviceUsers[1].length : 0;
+                const lastSeen = new Date(info.lastHeartbeat);
+                const timeSince = Math.floor((Date.now() - lastSeen.getTime()) / 1000);
+                
+                let timeString;
+                if (timeSince < 60) timeString = timeSince + 's ago';
+                else if (timeSince < 3600) timeString = Math.floor(timeSince / 60) + 'm ago';
+                else timeString = Math.floor(timeSince / 3600) + 'h ago';
+                
+                return `
+                    <div class="device-card ${isOnline ? '' : 'offline'}">
+                        <div class="device-header">
+                            <h3 class="device-title">🎛️ ${deviceId}</h3>
+                            <span class="device-status ${isOnline ? 'status-online' : 'status-offline'}">
+                                ${isOnline ? '🟢 Online' : '🔴 Offline'}
+                            </span>
+                        </div>
+                        
+                        <div class="device-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">📶 Signal</div>
+                                <div class="stat-value">${info.signalStrength} dBm</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">🔋 Battery</div>
+                                <div class="stat-value">${info.batteryLevel}%</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">👥 Users</div>
+                                <div class="stat-value">${userCount}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">⏱️ Uptime</div>
+                                <div class="stat-value">${Math.floor(info.uptime / 1000)}s</div>
+                            </div>
+                        </div>
+                        
+                        <div class="device-controls">
+                            <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                            <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                            <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                            <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                            <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
+                        </div>
+                        
+                        <div class="device-info">
+                            📡 Connection: ${info.connectionType} | 
+                            🧠 Memory: ${Math.floor(info.freeHeap / 1024)} KB | 
+                            📱 Firmware: ${info.firmwareVersion}<br>
+                            🔄 Last Seen: ${timeString} (${lastSeen.toLocaleTimeString()})
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Initialize
+        filteredDevices = [...devices];
+        renderDevices();
+    </script>
+</body>
+</html>
