@@ -1207,41 +1207,44 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
             .catch(e => alert('Error: ' + e.message));
         }
 
-        function renderDevices() {
-            const container = document.getElementById('devices');
-            if (devices.length === 0) {
-                container.innerHTML = '<div class="card"><p>No devices connected yet. Waiting for ESP32 heartbeat...</p></div>';
-                return;
-            }
-            
-            container.innerHTML = devices.map(([deviceId, info]) => {
-                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-                const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
-                const userCount = deviceUsers ? deviceUsers[1].length : 0;
-                
-                return \\`
-                    <div class="card device \\${isOnline ? '' : 'offline'}">
-                        <div class="device-info">
-                            <h3>\\${deviceId} \\${isOnline ? '🟢' : '🔴'}</h3>
-                            <div class="device-status">
-                                Signal: \\${info.signalStrength}dBm | 
-                                Battery: \\${info.batteryLevel}% | 
-                                Uptime: \\${Math.floor(info.uptime / 1000)}s |
-                                Users: \\${userCount}<br>
-                                Last Heartbeat: \\${new Date(info.lastHeartbeat).toLocaleTimeString()}
-                            </div>
-                        </div>
-                        
-                        <div class="device-actions">
-                            <button class="control-btn open" onclick="sendCommand('\\${deviceId}', 1, 'OPEN')">OPEN</button>
-                            <button class="control-btn stop" onclick="sendCommand('\\${deviceId}', 2, 'STOP')">STOP</button>
-                            <button class="control-btn close" onclick="sendCommand('\\${deviceId}', 3, 'CLOSE')">CLOSE</button>
-                            <button class="control-btn partial" onclick="sendCommand('\\${deviceId}', 4, 'PARTIAL')">PARTIAL</button>
-                        </div>
+// Find line 1223 and the surrounding renderDevices function
+// Replace the incorrect template literal with this corrected version:
+
+function renderDevices() {
+    const container = document.getElementById('devices');
+    if (devices.length === 0) {
+        container.innerHTML = '<div class="card"><p>No devices connected yet. Waiting for ESP32 heartbeat...</p></div>';
+        return;
+    }
+    
+    container.innerHTML = devices.map(([deviceId, info]) => {
+        const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+        const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
+        const userCount = deviceUsers ? deviceUsers[1].length : 0;
+        
+        return `
+            <div class="card device ${isOnline ? '' : 'offline'}">
+                <div class="device-info">
+                    <h3>${deviceId} ${isOnline ? '🟢' : '🔴'}</h3>
+                    <div class="device-status">
+                        Signal: ${info.signalStrength}dBm | 
+                        Battery: ${info.batteryLevel}% | 
+                        Uptime: ${Math.floor(info.uptime / 1000)}s |
+                        Users: ${userCount}<br>
+                        Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
                     </div>
-                \\`;
-            }).join('');
-        }
+                </div>
+                
+                <div class="device-actions">
+                    <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">OPEN</button>
+                    <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">STOP</button>
+                    <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">CLOSE</button>
+                    <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">PARTIAL</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
         
         renderDevices();
     </script>
