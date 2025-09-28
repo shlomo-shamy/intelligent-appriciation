@@ -708,6 +708,11 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
         registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
         showActivationPanel: session.userLevel >= 2 ? 'block' : 'none'
       };
+
+console.log("Dashboard route hit");
+console.log("Connected devices:", connectedDevices.size);
+console.log("Devices data:", JSON.stringify(Array.from(connectedDevices.entries())));
+console.log("Template data keys:", Object.keys(dashboardData));
       
       const dashboardHtml = renderTemplate('dashboard', dashboardData);
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
