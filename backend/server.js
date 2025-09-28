@@ -1217,35 +1217,33 @@ function renderDevices() {
         return;
     }
     
-    container.innerHTML = devices.map(([deviceId, info]) => {
+    let html = '';
+    devices.forEach(([deviceId, info]) => {
         const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
         const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
         const userCount = deviceUsers ? deviceUsers[1].length : 0;
         
-        // FIXED: Use proper template literal syntax without escaping
-        return `
-            <div class="card device ${isOnline ? '' : 'offline'}">
-                <div class="device-info">
-                    <h3>🎛️ ${deviceId} ${isOnline ? '🟢' : '🔴'}</h3>
-                    <div class="device-status">
-                        📶 Signal: ${info.signalStrength}dBm | 
-                        🔋 Battery: ${info.batteryLevel}% | 
-                        ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
-                        👥 Users: ${userCount}<br>
-                        🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
-                    </div>
-                </div>
-                
-                <div class="device-actions">
-                    <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                    <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                    <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                    <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                    <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
-                </div>
-            </div>
-        `;
-    }).join('');
+        html += '<div class="card device ' + (isOnline ? '' : 'offline') + '">';
+        html += '<div class="device-info">';
+        html += '<h3>🎛️ ' + deviceId + ' ' + (isOnline ? '🟢' : '🔴') + '</h3>';
+        html += '<div class="device-status">';
+        html += '📶 Signal: ' + info.signalStrength + 'dBm | ';
+        html += '🔋 Battery: ' + info.batteryLevel + '% | ';
+        html += '⏱️ Uptime: ' + Math.floor(info.uptime / 1000) + 's | ';
+        html += '👥 Users: ' + userCount + '<br>';
+        html += '🔄 Last Heartbeat: ' + new Date(info.lastHeartbeat).toLocaleTimeString();
+        html += '</div></div>';
+        
+        html += '<div class="device-actions">';
+        html += '<button class="control-btn open" onclick="sendCommand(\'' + deviceId + '\', 1, \'OPEN\')">🔓 OPEN</button>';
+        html += '<button class="control-btn stop" onclick="sendCommand(\'' + deviceId + '\', 2, \'STOP\')">⏸️ STOP</button>';
+        html += '<button class="control-btn close" onclick="sendCommand(\'' + deviceId + '\', 3, \'CLOSE\')">🔒 CLOSE</button>';
+        html += '<button class="control-btn partial" onclick="sendCommand(\'' + deviceId + '\', 4, \'PARTIAL\')">↗️ PARTIAL</button>';
+        html += '<button class="settings-btn" onclick="openSettings(\'' + deviceId + '\')" title="Device Settings">⚙️</button>';
+        html += '</div></div>';
+    });
+    
+    container.innerHTML = html;
 }
         
         renderDevices();
