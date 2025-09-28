@@ -1207,13 +1207,13 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
             .catch(e => alert('Error: ' + e.message));
         }
 
-// Find line 1223 and the surrounding renderDevices function
-// Replace the incorrect template literal with this corrected version:
+// Find the renderDevices function around line 1220-1230 in your server.js file
+// Replace the problematic template literal section with this corrected version:
 
 function renderDevices() {
     const container = document.getElementById('devices');
     if (devices.length === 0) {
-        container.innerHTML = '<div class="card"><p>No devices connected yet. Waiting for ESP32 heartbeat...</p></div>';
+        container.innerHTML = '<div class="card"><p>📭 No devices connected yet. Waiting for ESP32 heartbeat...</p></div>';
         return;
     }
     
@@ -1222,24 +1222,26 @@ function renderDevices() {
         const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
         const userCount = deviceUsers ? deviceUsers[1].length : 0;
         
+        // FIXED: Use proper template literal syntax without escaping
         return `
             <div class="card device ${isOnline ? '' : 'offline'}">
                 <div class="device-info">
-                    <h3>${deviceId} ${isOnline ? '🟢' : '🔴'}</h3>
+                    <h3>🎛️ ${deviceId} ${isOnline ? '🟢' : '🔴'}</h3>
                     <div class="device-status">
-                        Signal: ${info.signalStrength}dBm | 
-                        Battery: ${info.batteryLevel}% | 
-                        Uptime: ${Math.floor(info.uptime / 1000)}s |
-                        Users: ${userCount}<br>
-                        Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
+                        📶 Signal: ${info.signalStrength}dBm | 
+                        🔋 Battery: ${info.batteryLevel}% | 
+                        ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
+                        👥 Users: ${userCount}<br>
+                        🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
                     </div>
                 </div>
                 
                 <div class="device-actions">
-                    <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">OPEN</button>
-                    <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">STOP</button>
-                    <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">CLOSE</button>
-                    <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">PARTIAL</button>
+                    <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                    <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                    <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                    <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                    <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
                 </div>
             </div>
         `;
