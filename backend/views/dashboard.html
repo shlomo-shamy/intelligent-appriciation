@@ -1,1 +1,569 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>🚪 Gate Controller Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * { box-sizing: border-box; }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif; 
+            margin: 0; 
+            background: #f5f5f5; 
+            font-size: 14px;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        
+        /* Navigation Header */
+        .nav-header { 
+            background: white; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .nav-brand h1 { margin: 0; color: #333; }
+        .user-info { color: #666; font-size: 12px; }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .nav-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        .nav-btn:hover { background: #5a6268; }
+        .nav-btn.active { background: #667eea; }
+        
+        .logout-btn { 
+            background: #dc3545; 
+            color: white; 
+            border: none; 
+            padding: 10px 16px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
+        .logout-btn:hover { background: #c82333; }
+        
+        .card { 
+            background: white; 
+            padding: 20px; 
+            margin-bottom: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .device { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            border-left: 4px solid #28a745; 
+            padding: 15px 20px;
+        }
+        .device.offline { border-left-color: #dc3545; }
+        .device-info h3 { margin: 0 0 5px 0; color: #333; }
+        .device-status { font-size: 12px; color: #666; }
+        .device-actions { display: flex; gap: 10px; align-items: center; }
+        .control-btn { 
+            padding: 8px 15px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-size: 12px;
+        }
+        .open { background: #28a745; color: white; }
+        .stop { background: #ffc107; color: black; }
+        .close { background: #dc3545; color: white; }
+        .partial { background: #6f42c1; color: white; }
+        .settings-btn { 
+            background: #6c757d; 
+            color: white; 
+            padding: 8px 12px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 18px;
+        }
+        .settings-btn:hover { background: #5a6268; }
+        h1 { color: #333; margin: 0; }
+        .refresh { background: #007bff; color: white; margin-bottom: 20px; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        .modal-content {
+            background-color: white;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h2 { margin: 0; }
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 1px solid #ddd;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-weight: bold;
+            border-bottom: 3px solid transparent;
+        }
+        .tab-btn.active {
+            border-bottom-color: #667eea;
+            background: white;
+            color: #667eea;
+        }
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        /* Form Styles */
+        .form-grid { display: grid; gap: 15px; max-width: 500px; }
+        input, select { 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            width: 100%; 
+            font-size: 14px;
+        }
+        .checkbox-group { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 10px; 
+            margin: 10px 0; 
+        }
+        .checkbox-group label { 
+            display: flex; 
+            align-items: center; 
+            gap: 5px; 
+            margin: 0; 
+            font-weight: normal;
+        }
+        .register-btn { 
+            background: #17a2b8; 
+            color: white; 
+            padding: 12px 20px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
+        
+        /* Users List */
+        .users-list { margin-top: 30px; }
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+        }
+        .user-info { flex: 1; }
+        .user-name { font-weight: bold; color: #333; }
+        .user-details { font-size: 12px; color: #666; }
+        
+        /* Logs */
+        .log-item {
+            padding: 10px;
+            border-left: 3px solid #007bff;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 0 4px 4px 0;
+        }
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        .log-action { font-weight: bold; color: #333; }
+        .log-time { font-size: 12px; color: #666; }
+        .log-details { font-size: 12px; color: #666; }
+        
+        /* Status */
+        .status-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .status-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            border-left: 4px solid #28a745;
+        }
+        .status-label { font-weight: bold; color: #333; margin-bottom: 5px; }
+        .status-value { color: #666; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .nav-header { flex-direction: column; align-items: stretch; }
+            .nav-buttons { justify-content: center; }
+            .device { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .device-actions { width: 100%; justify-content: space-between; }
+            .modal-content { width: 95%; margin: 5% auto; }
+            .status-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation Header -->
+        <div class="nav-header">
+            <div class="nav-brand">
+                <h1>🚪 Gate Controller</h1>
+                <div class="user-info">{{userName}} ({{userEmail}})</div>
+            </div>
+            
+            <nav class="nav-buttons">
+                <button class="nav-btn active" onclick="navigateTo('/dashboard')" data-page="dashboard">
+                    🏠 Home
+                </button>
+                <button class="nav-btn" onclick="navigateTo('/system')" data-page="system">
+                    ⚙️ System
+                </button>
+                <button class="nav-btn" onclick="navigateTo('/devices')" data-page="devices">
+                    📱 Devices
+                </button>
+                <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing">
+                    🏭 Manufacturing DB
+                </button>
+            </nav>
+            
+            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+        </div>
+        
+        <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
+        
+        <div id="devices"></div>
+    </div>
 
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">⚙️ Device Settings</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <div class="modal-tabs">
+                <button class="tab-btn active" onclick="switchTab('users')">👥 Users</button>
+                <button class="tab-btn" onclick="switchTab('status')">📊 Status</button>
+                <button class="tab-btn" onclick="switchTab('logs')">📝 Logs</button>
+                <button class="tab-btn" onclick="switchTab('schedules')">⏰ Schedules</button>
+            </div>
+            
+            <div class="modal-body">
+                <!-- Users Tab -->
+                <div id="users-tab" class="tab-content active">
+                    <h3>➕ Add New User</h3>
+                    <div class="form-grid">
+                        <input type="email" id="modalEmail" placeholder="Email Address" required>
+                        <input type="tel" id="modalPhone" placeholder="Phone Number (10-14 digits)" maxlength="14" required>
+                        <input type="text" id="modalName" placeholder="User Name" required>
+                        <input type="password" id="modalPassword" placeholder="Password (if login allowed)" minlength="6">
+                        <select id="modalUserLevel">
+                            <option value="0">👤 Basic User</option>
+                            <option value="1">👔 Manager</option>
+                            <option value="2">🔐 Admin</option>
+                        </select>
+                        <div>
+                            <label style="font-weight: bold; margin-bottom: 5px; display: block;">🔑 Permissions:</label>
+                            <div class="checkbox-group">
+                                <label><input type="checkbox" id="modalRelay1" checked> 🔓 OPEN</label>
+                                <label><input type="checkbox" id="modalRelay2"> ⏸️ STOP</label>
+                                <label><input type="checkbox" id="modalRelay3"> 🔒 CLOSE</label>
+                                <label><input type="checkbox" id="modalRelay4"> ↗️ PARTIAL</label>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display: flex; align-items: center; gap: 5px; margin: 10px 0;">
+                                <input type="checkbox" id="modalCanLogin"> 🌐 Allow Dashboard Login
+                            </label>
+                            <small style="color: #666;">If checked, user can log in to this dashboard with email and password</small>
+                        </div>
+                        <small style="color: #17a2b8; font-weight: bold;">📱 Phone: Enter 10-14 digits (e.g., 1234567890, 972501234567, 447123456789)</small>
+                        <button class="register-btn" onclick="registerUserModal()">
+                            ➕ Register User
+                        </button>
+                    </div>
+                    
+                    <div class="users-list">
+                        <h3>👥 Registered Users</h3>
+                        <div id="usersList">
+                            <p>Loading users...</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Status Tab -->
+                <div id="status-tab" class="tab-content">
+                    <h3>📊 Device Status</h3>
+                    <div id="deviceStatus">
+                        <p>Loading status...</p>
+                    </div>
+                </div>
+                
+                <!-- Logs Tab -->
+                <div id="logs-tab" class="tab-content">
+                    <h3>📝 Device Logs</h3>
+                    <div id="deviceLogs">
+                        <p>Loading logs...</p>
+                    </div>
+                </div>
+                
+                <!-- Schedules Tab -->
+                <div id="schedules-tab" class="tab-content">
+                    <h3>⏰ Device Schedules</h3>
+                    <div id="deviceSchedules">
+                        <p>Schedules feature coming soon...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const devices = {{devicesData}};
+        const registeredUsers = {{registeredUsersData}};
+        let currentDeviceId = null;
+        
+        function navigateTo(path) {
+            window.location.href = path;
+        }
+        
+        async function logout() {
+            try {
+                await fetch('/dashboard/logout', { method: 'POST' });
+                window.location.href = '/dashboard';
+            } catch (error) {
+                alert('Logout error: ' + error.message);
+            }
+        }
+        
+        // Include all your existing JavaScript functions here...
+        // (sendCommand, openSettings, closeModal, switchTab, loadUsers, etc.)
+        
+        function sendCommand(deviceId, relay, action) {
+            const userId = prompt("Enter your registered phone number (10-14 digits, numbers only):");
+            if (!userId) return;
+            
+            const cleanUserId = userId.replace(/\D/g, '');
+            
+            if (!/^\d{10,14}$/.test(cleanUserId)) {
+                alert('Please enter a valid phone number (10-14 digits, numbers only)\n\nExamples:\n• US: 1234567890\n• International: 972501234567');
+                return;
+            }
+            
+            if (!confirm('Send ' + action + ' command with user ID: ' + cleanUserId + '?')) {
+                return;
+            }
+            
+            fetch('/api/device/' + deviceId + '/send-command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                body: JSON.stringify({
+                    id: 'web_' + Date.now(),
+                    action: 'relay_activate',
+                    relay: relay,
+                    duration: 2000,
+                    user: 'dashboard',
+                    user_id: cleanUserId
+                })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    alert('✅ Command sent: ' + action);
+                } else {
+                    alert('❌ Command failed');
+                }
+            })
+            .catch(e => alert('❌ Error: ' + e.message));
+        }
+        
+        function openSettings(deviceId) {
+            currentDeviceId = deviceId;
+            document.getElementById('modalTitle').textContent = '⚙️ Settings - ' + deviceId;
+            document.getElementById('settingsModal').style.display = 'block';
+            switchTab('users');
+            loadUsers();
+        }
+        
+        function closeModal() {
+            document.getElementById('settingsModal').style.display = 'none';
+            currentDeviceId = null;
+        }
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+            
+            switch(tabName) {
+                case 'users': loadUsers(); break;
+                case 'status': loadStatus(); break;
+                case 'logs': loadLogs(); break;
+                case 'schedules': loadSchedules(); break;
+            }
+        }
+        
+        async function loadUsers() {
+            if (!currentDeviceId) return;
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/users');
+                const users = await response.json();
+                
+                const usersList = document.getElementById('usersList');
+                
+                if (users.length === 0) {
+                    usersList.innerHTML = '<p style="color: #666;">No users registered yet.</p>';
+                    return;
+                }
+                
+                usersList.innerHTML = users.map(user => {
+                    const permissions = [];
+                    if (user.relayMask & 1) permissions.push('🔓 OPEN');
+                    if (user.relayMask & 2) permissions.push('⏸️ STOP');
+                    if (user.relayMask & 4) permissions.push('🔒 CLOSE');
+                    if (user.relayMask & 8) permissions.push('↗️ PARTIAL');
+                    
+                    const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
+                    const loginStatus = user.canLogin ? '🌐 Can Login' : '🚫 No Login';
+                    
+                    return `
+                        <div class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">${user.name} ${user.canLogin ? '🌐' : ''}</div>
+                                <div class="user-details">
+                                    📧 ${user.email} | 📱 ${user.phone} | ${userLevelText} | ${loginStatus}<br>
+                                    Permissions: ${permissions.join(', ')} |
+                                    Registered: ${new Date(user.registeredAt).toLocaleDateString()}
+                                </div>
+                            </div>
+                            <button onclick="deleteUser('${user.phone}', '${user.email}', '${user.name}')" 
+                                    style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;"
+                                    title="Delete User">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                document.getElementById('usersList').innerHTML = '<p style="color: #dc3545;">Error loading users: ' + error.message + '</p>';
+            }
+        }
+        
+        // Add other functions (loadStatus, loadLogs, loadSchedules, registerUserModal, deleteUser)...
+        
+        function renderDevices() {
+            const container = document.getElementById('devices');
+            if (devices.length === 0) {
+                container.innerHTML = '<div class="card"><p>📭 No devices connected yet. Waiting for ESP32 heartbeat...</p></div>';
+                return;
+            }
+            
+            container.innerHTML = devices.map(([deviceId, info]) => {
+                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+                const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
+                const userCount = deviceUsers ? deviceUsers[1].length : 0;
+                
+                return `
+                    <div class="card device ${isOnline ? '' : 'offline'}">
+                        <div class="device-info">
+                            <h3>🎛️ ${deviceId} ${isOnline ? '🟢' : '🔴'}</h3>
+                            <div class="device-status">
+                                📶 Signal: ${info.signalStrength}dBm | 
+                                🔋 Battery: ${info.batteryLevel}% | 
+                                ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
+                                👥 Users: ${userCount}<br>
+                                🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
+                            </div>
+                        </div>
+                        
+                        <div class="device-actions">
+                            <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                            <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                            <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                            <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                            <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('settingsModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        }
+        
+        renderDevices();
