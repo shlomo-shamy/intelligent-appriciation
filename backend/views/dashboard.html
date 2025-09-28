@@ -225,10 +225,10 @@
             </div>
             
             <div class="modal-tabs">
-                <button class="tab-btn active" onclick="switchTab('users')">👥 Users</button>
-                <button class="tab-btn" onclick="switchTab('status')">📊 Status</button>
-                <button class="tab-btn" onclick="switchTab('logs')">📝 Logs</button>
-                <button class="tab-btn" onclick="switchTab('schedules')">⏰ Schedules</button>
+                <button class="tab-btn active" onclick="switchTab('users', this)">👥 Users</button>
+                <button class="tab-btn" onclick="switchTab('status', this)">📊 Status</button>
+                <button class="tab-btn" onclick="switchTab('logs', this)">📝 Logs</button>
+                <button class="tab-btn" onclick="switchTab('schedules', this)">⏰ Schedules</button>
             </div>
             
             <div class="modal-body">
@@ -374,13 +374,13 @@
             currentDeviceId = null;
         }
         
-        function switchTab(tabName) {
+        function switchTab(tabName, clickedButton) {
             // Remove active class from all tabs
             document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
             
-            // Add active class to selected tab
-            event.target.classList.add('active');
+            // Add active class to clicked tab
+            clickedButton.classList.add('active');
             document.getElementById(tabName + '-tab').classList.add('active');
             
             // Load data based on tab
