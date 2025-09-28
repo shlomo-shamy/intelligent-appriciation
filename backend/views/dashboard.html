@@ -384,7 +384,25 @@
         </div>
     </div>
 
-    <script>
+ <script>
+    console.log("Script starting...");
+    
+    // Define navigateTo first
+    function navigateTo(path) {
+        console.log("Navigating to:", path);
+        window.location.href = path;
+    }
+    
+    // Test the function
+    console.log("navigateTo defined:", typeof navigateTo);
+    
+    const devices = {{devicesData}};
+    const registeredUsers = {{registeredUsersData}};
+    
+    console.log("Devices:", devices);
+    console.log("Users:", registeredUsers);
+    
+    // Rest of your code...
         const devices = {{devicesData}};
         const registeredUsers = {{registeredUsersData}};
         let currentDeviceId = null;
