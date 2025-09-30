@@ -1004,19 +1004,65 @@ console.log("Template data keys:", Object.keys(dashboardData));
     return;
   }
 
-  // Get device users endpoint
-  if (req.url.startsWith('/api/device/') && req.url.endsWith('/users') && req.method === 'GET') {
-    requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
+// Get device users endpoint - READ FROM FIREBASE
+if (req.url.startsWith('/api/gates/') && req.url.endsWith('/users') && req.method === 'GET') {
+  requireAuth(async (session) => {
+    const urlParts = req.url.split('/');
+    const gateId = urlParts[3];
+    
+    try {
+      if (!firebaseInitialized) {
+        // Fallback to local storage if Firebase not available
+        const users = registeredUsers.get(gateId) || [];
+        res.writeHead(200);
+        res.end(JSON.stringify(users));
+        return;
+      }
       
-      const users = registeredUsers.get(deviceId) || [];
+      // READ FROM FIREBASE
+      const gateDoc = await db.collection('gates').doc(gateId).get();
+      
+      if (!gateDoc.exists) {
+        console.log(`No gate document found for ${gateId}`);
+        res.writeHead(200);
+        res.end(JSON.stringify([]));
+        return;
+      }
+      
+      const gateData = gateDoc.data();
+      const firestoreUsers = gateData.users || {};
+      
+      // Convert Firebase user object to array format
+      const users = Object.keys(firestoreUsers).map(phone => ({
+        phone: phone,
+        email: firestoreUsers[phone].email || '',
+        name: firestoreUsers[phone].name || 'Unknown',
+        relayMask: firestoreUsers[phone].relayMask || 1,
+        userLevel: firestoreUsers[phone].userLevel || 0,
+        role: firestoreUsers[phone].role || 'user',
+        addedBy: firestoreUsers[phone].addedBy || 'system',
+        addedDate: firestoreUsers[phone].addedDate ? 
+                   firestoreUsers[phone].addedDate.toDate().toISOString() : 
+                   new Date().toISOString(),
+        registeredAt: firestoreUsers[phone].addedDate ? 
+                      firestoreUsers[phone].addedDate.toDate().toISOString() : 
+                      new Date().toISOString(),
+        active: true
+      }));
+      
+      console.log(`Firebase: Read ${users.length} users from gate ${gateId}`);
       
       res.writeHead(200);
       res.end(JSON.stringify(users));
-    });
-    return;
-  }
+      
+    } catch (error) {
+      console.error('Firebase read error:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: 'Failed to read users from Firebase: ' + error.message }));
+    }
+  });
+  return;
+}
 
   // Get device logs endpoint
   if (req.url.startsWith('/api/device/') && req.url.endsWith('/logs') && req.method === 'GET') {
