@@ -1004,6 +1004,58 @@ console.log("Template data keys:", Object.keys(dashboardData));
     return;
   }
 
+// ESP32 USER SYNC ENDPOINT - NO AUTH REQUIRED
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/users') && req.method === 'GET') {
+  const urlParts = req.url.split('/');
+  const gateId = urlParts[3];
+  
+  console.log(`📱 ESP32 user sync request from: ${gateId}`);
+  
+  // Wrap in async IIFE
+  (async () => {
+    try {
+      if (!firebaseInitialized) {
+        const users = registeredUsers.get(gateId) || [];
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify(users));
+        return;
+      }
+      
+      const gateDoc = await db.collection('gates').doc(gateId).get();
+      
+      if (!gateDoc.exists) {
+        console.log(`⚠️ No gate document found for ${gateId}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+        return;
+      }
+      
+      const gateData = gateDoc.data();
+      const firestoreUsers = gateData.users || {};
+      
+      const users = Object.keys(firestoreUsers).map(phone => ({
+        phone: phone,
+        email: firestoreUsers[phone].email || '',
+        name: firestoreUsers[phone].name || 'Unknown',
+        relayMask: firestoreUsers[phone].relayMask || 1,
+        userLevel: firestoreUsers[phone].userLevel || 0,
+        active: true
+      }));
+      
+      console.log(`✅ ESP32: Sent ${users.length} users to ${gateId}`);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(users));
+      
+    } catch (error) {
+      console.error('❌ Firebase read error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
+  })();
+  return;
+}
+  
 // Get device users endpoint - READ FROM FIREBASE
 if (req.url.startsWith('/api/gates/') && req.url.endsWith('/users') && req.method === 'GET') {
   requireAuth(async (session) => {
