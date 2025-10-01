@@ -151,8 +151,8 @@ manufacturingDevices.set('GC-2025-001', {
   activated: true,
   activatedBy: '972522554743',
   activationDate: new Date().toISOString(),
-  name: 'Main Enterance',
-  location: 'Harish West'
+  name: 'main gate',
+  location: 'test location'
 });
 
 manufacturingDevices.set('GC-2025-002', {
