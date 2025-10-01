@@ -355,16 +355,18 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
       return;
     }
     
-    // 4. Verify installer authorization
-    const installer = authorizedUsers.get(cleanPhone);
-    if (!installer || !installer.canActivateDevices) {
-      res.writeHead(403);
-      res.end(JSON.stringify({ 
-        success: false, 
-        error: 'Installer not authorized. Contact admin to register as installer.' 
-      }));
-      return;
-    }
+// 4. Get user info (or create basic profile if user doesn't exist)
+let installer = authorizedUsers.get(cleanPhone);
+if (!installer) {
+  // User doesn't exist yet - create basic profile from activation
+  installer = {
+    name: deviceName.split(' ')[0] + ' User', // Extract first word as name
+    email: cleanPhone + '@gatecontroller.local', // Generate email
+    canActivateDevices: true
+  };
+  authorizedUsers.set(cleanPhone, installer);
+  console.log(`New user created during activation: ${cleanPhone}`);
+}
     
     // 5. Update manufacturing database
     device.activated = true;
