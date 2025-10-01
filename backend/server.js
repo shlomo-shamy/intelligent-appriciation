@@ -514,40 +514,46 @@ if (!installer) {
   }
 
   // ESP32 Heartbeat endpoint (no auth required for device communication)
-  if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
-    console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
+if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
+  console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
+  
+  readBody((data) => {
+    const deviceId = data.deviceId || 'unknown';
+    const timestamp = new Date().toISOString();
     
-    readBody((data) => {
-      const deviceId = data.deviceId || 'unknown';
-      const timestamp = new Date().toISOString();
-      
-      // Store/update device info
-      connectedDevices.set(deviceId, {
-        lastHeartbeat: timestamp,
-        status: data.status || 'online',
-        signalStrength: data.signalStrength || 0,
-        batteryLevel: data.batteryLevel || 0,
-        firmwareVersion: data.firmwareVersion || '1.0.0',
-        uptime: data.uptime || 0,
-        freeHeap: data.freeHeap || 0,
-        connectionType: data.connectionType || 'wifi'
-      });
-      
-      // Add log entry
-      addDeviceLog(deviceId, 'heartbeat', 'system', `Signal: ${data.signalStrength}dBm, Battery: ${data.batteryLevel}%`);
-      
-      console.log(`💓 Device ${deviceId} heartbeat received:`, connectedDevices.get(deviceId));
-      
-      res.writeHead(200);
-      res.end(JSON.stringify({
-        success: true,
-        message: "Heartbeat received",
-        timestamp: timestamp,
-        deviceId: deviceId
-      }));
+    // Check if device exists in manufacturing DB to get name/location
+    const mfgDevice = manufacturingDevices.get(deviceId);
+    
+    // Store/update device info with metadata from manufacturing
+    connectedDevices.set(deviceId, {
+      lastHeartbeat: timestamp,
+      status: data.status || 'online',
+      signalStrength: data.signalStrength || 0,
+      batteryLevel: data.batteryLevel || 0,
+      firmwareVersion: data.firmwareVersion || '1.0.0',
+      uptime: data.uptime || 0,
+      freeHeap: data.freeHeap || 0,
+      connectionType: data.connectionType || 'wifi',
+      macAddress: data.macAddress || 'Unknown',
+      // Add device metadata from manufacturing DB
+      name: mfgDevice ? mfgDevice.name : deviceId,
+      location: mfgDevice ? mfgDevice.location : 'Unknown location'
     });
-    return;
-  }
+    
+    addDeviceLog(deviceId, 'heartbeat', 'system', `Signal: ${data.signalStrength}dBm`);
+    
+    console.log(`💓 Device ${deviceId} heartbeat received`);
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      success: true,
+      message: "Heartbeat received",
+      timestamp: timestamp,
+      deviceId: deviceId
+    }));
+  });
+  return;
+}
 
   // ESP32 Command check endpoint - GET /api/device/{deviceId}/commands (no auth required)
   if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
