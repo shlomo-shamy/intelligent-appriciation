@@ -703,15 +703,23 @@ async function loadUsers() {
             container.style.display = 'block';
             noDevicesMsg.style.display = 'none';
             
-            container.innerHTML = devices.map(([deviceId, info]) => {
-                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-                const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
-                const userCount = deviceUsers ? deviceUsers[1].length : 0;
-                
-                return `
-                    <div class="card device ${isOnline ? '' : 'offline'}">
-                        <div class="device-info">
-                            <h3>🎛️ ${deviceId} ${isOnline ? '🟢' : '🔴'}</h3>
+container.innerHTML = devices.map(([deviceId, info]) => {
+    const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+    const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
+    const userCount = deviceUsers ? deviceUsers[1].length : 0;
+    
+    // Get device name and location from manufacturing data if available
+    const deviceName = info.name || deviceId;
+    const deviceLocation = info.location || 'No location';
+    const macAddress = info.macAddress || 'Unknown';
+    
+    return `
+        <div class="card device ${isOnline ? '' : 'offline'}">
+            <div class="device-info">
+                <h3>🎛️ ${deviceName} ${isOnline ? '🟢' : '🔴'}</h3>
+                <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
+                    📍 ${deviceLocation} | 🆔 ${deviceId} | 🔗 MAC: ${macAddress}
+                </div>
                             <div class="device-status">
                                 📶 Signal: ${info.signalStrength}dBm | 
                                 🔋 Battery: ${info.batteryLevel}% | 
