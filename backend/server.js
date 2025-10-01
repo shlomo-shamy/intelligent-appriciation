@@ -140,12 +140,33 @@ authorizedUsers.set('972501234567', {
   canActivateDevices: true
 });
 
-manufacturingDevices.set('ESP32_12345', {
+// Manufacturing Devices - Pre-registered during production
+manufacturingDevices.set('GC-2025-001', {
+  serial: 'GC-2025-001',
   pin: '123456',
+  activationCode: '123456',
+  hardwareVersion: 'v1.0',
+  firmwareVersion: '1.0.0',
+  manufactureDate: new Date().toISOString(),
   activated: false,
-  createdDate: new Date().toISOString(),
-  activatedDate: null,
-  activatedBy: null
+  activatedBy: null,
+  activationDate: null,
+  name: null,
+  location: null
+});
+
+manufacturingDevices.set('GC-2025-002', {
+  serial: 'GC-2025-002',
+  pin: '654321',
+  activationCode: '654321',
+  hardwareVersion: 'v1.0',
+  firmwareVersion: '1.0.0',
+  manufactureDate: new Date().toISOString(),
+  activated: false,
+  activatedBy: null,
+  activationDate: null,
+  name: null,
+  location: null
 });
 
 // Simple dashboard authentication - Default admin users
@@ -287,105 +308,148 @@ const server = http.createServer((req, res) => {
     }
   }
 
-// UPDATED DEVICE ACTIVATION ENDPOINT - add phone validation
+// DEVICE ACTIVATION ENDPOINT - Updated for proper flow
 if (req.url === '/api/device/activate' && req.method === 'POST') {
   readBody(async (data) => {
-    const { serial, pin, activating_user } = data;
+    const { serial, activationCode, deviceName, location, installerPhone } = data;
     
-    // ADDED: Clean the activating_user phone number
-    const phoneValidation = validatePhoneNumber(activating_user);
+    console.log(`Activation attempt: ${serial} by installer ${installerPhone}`);
+    
+    // Validate phone number
+    const phoneValidation = validatePhoneNumber(installerPhone);
     if (!phoneValidation.valid) {
       res.writeHead(400);
       res.end(JSON.stringify({ success: false, error: phoneValidation.message }));
       return;
     }
+    const cleanPhone = phoneValidation.cleanPhone;
     
-    const cleanActivatingUser = phoneValidation.cleanPhone;
-    
-    // Validate device exists
+    // 1. Check manufacturing database
     const device = manufacturingDevices.get(serial);
-    if (!device || device.pin !== pin) {
+    if (!device) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ 
+        success: false, 
+        error: 'Device not found in manufacturing database' 
+      }));
+      return;
+    }
+    
+    // 2. Verify activation code (renamed from 'pin')
+    if (device.pin !== activationCode && device.activationCode !== activationCode) {
       res.writeHead(400);
-      res.end(JSON.stringify({ success: false, error: 'Invalid device credentials' }));
+      res.end(JSON.stringify({ 
+        success: false, 
+        error: 'Invalid activation code' 
+      }));
       return;
     }
     
-    // UPDATED: Validate user authorized with cleaned phone
-    const user = authorizedUsers.get(cleanActivatingUser);
-    if (!user || !user.canActivateDevices) {
+    // 3. Check if already activated
+    if (device.activated) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ 
+        success: false, 
+        error: `Device already activated on ${device.activationDate}` 
+      }));
+      return;
+    }
+    
+    // 4. Verify installer authorization
+    const installer = authorizedUsers.get(cleanPhone);
+    if (!installer || !installer.canActivateDevices) {
       res.writeHead(403);
-      res.end(JSON.stringify({ success: false, error: 'User not authorized' }));
+      res.end(JSON.stringify({ 
+        success: false, 
+        error: 'Installer not authorized. Contact admin to register as installer.' 
+      }));
       return;
     }
     
-    // Mark device as activated locally
+    // 5. Update manufacturing database
     device.activated = true;
-    device.activatedDate = new Date().toISOString();
-    device.activatedBy = cleanActivatingUser;
+    device.activatedBy = cleanPhone;
+    device.activationDate = new Date().toISOString();
+    device.name = deviceName || `Gate ${serial}`;
+    device.location = location || 'Location not specified';
     
-    // Add to local registered users
-    if (!registeredUsers.has(serial)) {
-      registeredUsers.set(serial, []);
-    }
-    registeredUsers.get(serial).push({
-      email: user.email,
-      phone: cleanActivatingUser, // UPDATED: use cleaned phone
-      name: user.name,
-      relayMask: 15,
-      userLevel: 2
-    });
-    
-    // CREATE FIREBASE DOCUMENTS
+    // 6. Create Firebase gate document using serial as key
     if (firebaseInitialized) {
       try {
-        // Create gate document
-        const gateData = {
+        await db.collection('gates').doc(serial).set({
           serial: serial,
-          name: `Gate ${serial}`,
-          location: 'Location not specified',
+          name: device.name,
+          location: device.location,
           timezone: 'Asia/Jerusalem',
-          activatedBy: cleanActivatingUser, // UPDATED: use cleaned phone
+          hardwareVersion: device.hardwareVersion || 'v1.0',
+          firmwareVersion: device.firmwareVersion || '1.0.0',
+          manufactureDate: device.manufactureDate || new Date().toISOString(),
+          activatedBy: cleanPhone,
           activationDate: admin.firestore.FieldValue.serverTimestamp(),
-          admins: [cleanActivatingUser], // UPDATED: use cleaned phone
+          admins: [cleanPhone],
           users: {
-            [cleanActivatingUser]: { // UPDATED: use cleaned phone
-              name: user.name,
+            [cleanPhone]: {
+              name: installer.name,
+              email: installer.email,
               relayMask: 15,
+              userLevel: 2,
               role: 'admin',
-              addedBy: 'system',
+              addedBy: 'activation',
               addedDate: admin.firestore.FieldValue.serverTimestamp()
             }
           }
-        };
+        });
         
-        await db.collection('gates').doc(serial).set(gateData);
-        console.log('Firebase gate document created:', serial);
-        
-        // Create user permissions document
-        await db.collection('userPermissions').doc(cleanActivatingUser).set({ // UPDATED: use cleaned phone
+        // Create user permissions
+        await db.collection('userPermissions').doc(cleanPhone).set({
           gates: {
             [serial]: {
-              name: gateData.name,
+              name: device.name,
               relayMask: 15,
               role: 'admin',
-              addedBy: 'system',
+              addedBy: 'activation',
               addedDate: admin.firestore.FieldValue.serverTimestamp()
             }
           }
         }, { merge: true });
         
-        console.log('Firebase user permissions created:', cleanActivatingUser);
+        console.log(`Device activated: ${serial} by ${installer.name}`);
         
       } catch (firebaseError) {
-        console.error('Firebase write error:', firebaseError);
+        console.error('Firebase activation error:', firebaseError);
+        res.writeHead(500);
+        res.end(JSON.stringify({ 
+          success: false, 
+          error: 'Firebase write failed: ' + firebaseError.message 
+        }));
+        return;
       }
     }
+    
+    // Add to local storage
+    if (!registeredUsers.has(serial)) {
+      registeredUsers.set(serial, []);
+    }
+    registeredUsers.get(serial).push({
+      email: installer.email,
+      phone: cleanPhone,
+      name: installer.name,
+      relayMask: 15,
+      userLevel: 2
+    });
+    
+    addDeviceLog(serial, 'activation', installer.name, 
+      `Device: ${device.name}, Location: ${device.location}`);
     
     res.writeHead(200);
     res.end(JSON.stringify({
       success: true,
       message: 'Device activated successfully',
-      firebase_status: firebaseInitialized ? 'connected' : 'local_mode'
+      serial: serial,
+      deviceName: device.name,
+      location: device.location,
+      installerName: installer.name,
+      firebase_status: firebaseInitialized ? 'synced' : 'local_only'
     }));
   });
   return;
