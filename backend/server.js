@@ -151,8 +151,8 @@ manufacturingDevices.set('GC-2025-001', {
   activated: true,
   activatedBy: '972522554743',
   activationDate: new Date().toISOString(),
-  name: 'test gate',
-  location: 'test location'
+  name: 'שער כניסה ראשי',
+  location: 'רחוב כלנית חריש'
 });
 
 manufacturingDevices.set('GC-2025-002', {
