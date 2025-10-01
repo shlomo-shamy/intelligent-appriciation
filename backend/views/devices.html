@@ -299,11 +299,23 @@
 </div>
 
 <script>
+    function navigateTo(path) {
+        window.location.href = path;
+    }
+    
+    async function logout() {
+        try {
+            await fetch('/dashboard/logout', { method: 'POST' });
+            window.location.href = '/dashboard';
+        } catch (error) {
+            alert('Logout error: ' + error.message);
+        }
+    }    
 async function activateDevice() {
     const serial = document.getElementById('deviceSerial').value.trim();
     const activationCode = document.getElementById('deviceActivationCode').value.trim();
     const deviceName = document.getElementById('deviceName').value.trim();
-    const location = document.getElementById('deviceLocation').value.trim();
+    const deviceLocation = document.getElementById('deviceLocation').value.trim();
     const phone = document.getElementById('installerPhone').value.trim();
     
     if (!serial || !activationCode || !deviceName || !location || !phone) {
@@ -321,21 +333,19 @@ async function activateDevice() {
         const response = await fetch('/api/device/activate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                serial: serial,
-                activationCode: activationCode,
-                deviceName: deviceName,
-                location: location,
-                installerPhone: cleanPhone
-            })
-        });
+body: JSON.stringify({
+    serial: serial,
+    activationCode: activationCode,
+    deviceName: deviceName,
+    location: deviceLocation,  // Changed from 'location'
+    installerPhone: cleanPhone
+})
         
         const result = await response.json();
         
         if (result.success) {
             alert(`Device Activated!\n\nSerial: ${result.serial}\nName: ${result.deviceName}\nLocation: ${result.location}\nInstaller: ${result.installerName}\n\nFirebase: ${result.firebase_status}`);
-            location.reload();
-        } else {
+            window.location.reload();        } else {
             alert('Activation Failed: ' + result.error);
         }
     } catch (error) {
