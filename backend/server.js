@@ -151,8 +151,8 @@ manufacturingDevices.set('GC-2025-001', {
   activated: true,
   activatedBy: '972522554743',
   activationDate: new Date().toISOString(),
-  name: 'שער כניסה ראשי',
-  location: 'רחוב כלנית חריש'
+  name: 'Main Enterance',
+  location: 'Harish West'
 });
 
 manufacturingDevices.set('GC-2025-002', {
