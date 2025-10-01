@@ -148,11 +148,11 @@ manufacturingDevices.set('GC-2025-001', {
   hardwareVersion: 'v1.0',
   firmwareVersion: '1.0.0',
   manufactureDate: new Date().toISOString(),
-  activated: false,
-  activatedBy: null,
-  activationDate: null,
-  name: null,
-  location: null
+  activated: true,
+  activatedBy: '972522554743',
+  activationDate: new Date().toISOString(),
+  name: 'test gate',
+  location: 'test location'
 });
 
 manufacturingDevices.set('GC-2025-002', {
