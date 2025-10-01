@@ -14,7 +14,6 @@
         }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         
-        /* Copy navigation styles from dashboard */
         .nav-header { 
             background: white; 
             padding: 20px; 
@@ -68,7 +67,6 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
         }
         
-        /* Device Activation Panel */
         .activation-panel {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -79,9 +77,8 @@
         
         .activation-form {
             display: grid;
-            grid-template-columns: 1fr 120px 1fr auto;
-            gap: 15px;
-            align-items: end;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
             margin-top: 15px;
         }
         
@@ -101,11 +98,11 @@
             cursor: pointer;
             font-weight: bold;
             font-size: 14px;
+            grid-column: 1 / -1;
         }
         
         .activation-form button:hover { background: #218838; }
         
-        /* Device Grid */
         .devices-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -176,9 +173,8 @@
         
         .device-controls {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr auto;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
             gap: 8px;
-            margin-bottom: 15px;
         }
         
         .control-btn {
@@ -197,23 +193,6 @@
         .close { background: #dc3545; color: white; }
         .partial { background: #6f42c1; color: white; }
         
-        .settings-btn {
-            background: #6c757d;
-            color: white;
-            padding: 8px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-        
-        .device-info {
-            font-size: 12px;
-            color: #666;
-            line-height: 1.4;
-        }
-        
-        /* Filter and Search */
         .filters {
             background: white;
             padding: 20px;
@@ -242,18 +221,11 @@
             font-size: 14px;
         }
         
-        /* Responsive */
         @media (max-width: 768px) {
             .nav-header { flex-direction: column; align-items: stretch; }
             .nav-buttons { justify-content: center; }
-            .activation-form { 
-                grid-template-columns: 1fr; 
-                gap: 10px; 
-            }
-            .device-controls { 
-                grid-template-columns: 1fr 1fr;
-                gap: 5px;
-            }
+            .activation-form { grid-template-columns: 1fr; }
+            .device-controls { grid-template-columns: 1fr 1fr; gap: 5px; }
         }
     </style>
 </head>
@@ -267,16 +239,16 @@
             </div>
             
             <nav class="nav-buttons">
-                <button class="nav-btn" onclick="navigateTo('/dashboard')" data-page="dashboard">
+                <button class="nav-btn" onclick="navigateTo('/dashboard')">
                     🏠 Home
                 </button>
-                <button class="nav-btn" onclick="navigateTo('/system')" data-page="system">
+                <button class="nav-btn" onclick="navigateTo('/system')">
                     ⚙️ System
                 </button>
-                <button class="nav-btn active" onclick="navigateTo('/devices')" data-page="devices">
+                <button class="nav-btn active" onclick="navigateTo('/devices')">
                     📱 Devices
                 </button>
-                <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing">
+                <button class="nav-btn" onclick="navigateTo('/manufacturing')">
                     🏭 Manufacturing DB
                 </button>
             </nav>
@@ -285,28 +257,13 @@
         </div>
 
         <!-- Device Activation Panel -->
-<div class="activation-panel" style="display: {{showActivationPanel}};">
-    <h3>Activate New Device</h3>
-    <p>Activate devices using serial number and activation code from manufacturing</p>
-    <div class="activation-form" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
-        <input type="text" id="deviceSerial" placeholder="Serial (GC-2025-001)">
-        <input type="text" id="deviceActivationCode" placeholder="Activation Code (6 digits)" maxlength="6">
-        <input type="text" id="deviceName" placeholder="Device Name (Main Gate)">
-        <input type="text" id="deviceLocation" placeholder="Address">
-        <input type="tel" id="installerPhone" placeholder="Your Phone (972...)">
-        <button onclick="activateDevice()">Activate Device</button>
-    </div>
-</div>
-
-<script>
-<!-- Device Activation Panel -->
         <div class="activation-panel" style="display: {{showActivationPanel}};">
             <h3>Activate New Device</h3>
             <p>Activate devices using serial number and activation code from manufacturing</p>
-            <div class="activation-form" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+            <div class="activation-form">
                 <input type="text" id="deviceSerial" placeholder="Serial (GC-2025-001)">
-                <input type="text" id="deviceActivationCode" placeholder="Activation Code (6 digits)" maxlength="6">
-                <input type="text" id="deviceName" placeholder="Device Name (Main Gate)">
+                <input type="text" id="deviceActivationCode" placeholder="Activation Code" maxlength="6">
+                <input type="text" id="deviceName" placeholder="Device Name">
                 <input type="text" id="deviceLocation" placeholder="Address">
                 <input type="tel" id="installerPhone" placeholder="Your Phone (972...)">
                 <button onclick="activateDevice()">Activate Device</button>
@@ -325,9 +282,7 @@
         </div>
         
         <!-- Devices Grid -->
-        <div class="devices-grid" id="devicesGrid">
-            <!-- Devices will be populated here -->
-        </div>
+        <div class="devices-grid" id="devicesGrid"></div>
         
         <!-- No devices message -->
         <div id="noDevicesMessage" class="card" style="text-align: center; display: none;">
@@ -495,7 +450,7 @@
             }).join('');
         }
         
-        // Initialize
+        // Initialize on page load
         renderDevices();
     </script>
 </body>
