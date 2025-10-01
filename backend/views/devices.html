@@ -299,60 +299,204 @@
 </div>
 
 <script>
-    function navigateTo(path) {
-        window.location.href = path;
-    }
-    
-    async function logout() {
-        try {
-            await fetch('/dashboard/logout', { method: 'POST' });
-            window.location.href = '/dashboard';
-        } catch (error) {
-            alert('Logout error: ' + error.message);
-        }
-    }    
-async function activateDevice() {
-    const serial = document.getElementById('deviceSerial').value.trim();
-    const activationCode = document.getElementById('deviceActivationCode').value.trim();
-    const deviceName = document.getElementById('deviceName').value.trim();
-    const deviceLocation = document.getElementById('deviceLocation').value.trim();
-    const phone = document.getElementById('installerPhone').value.trim();
-    
-    if (!serial || !activationCode || !deviceName || !location || !phone) {
-        alert('Please fill all fields');
-        return;
-    }
-    
-    const cleanPhone = phone.replace(/\D/g, '');
-    if (!/^\d{10,14}$/.test(cleanPhone)) {
-        alert('Phone must be 10-14 digits');
-        return;
-    }
-    
-    try {
-        const response = await fetch('/api/device/activate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({
-    serial: serial,
-    activationCode: activationCode,
-    deviceName: deviceName,
-    location: deviceLocation,  // Changed from 'location'
-    installerPhone: cleanPhone
-})
+<!-- Device Activation Panel -->
+        <div class="activation-panel" style="display: {{showActivationPanel}};">
+            <h3>Activate New Device</h3>
+            <p>Activate devices using serial number and activation code from manufacturing</p>
+            <div class="activation-form" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                <input type="text" id="deviceSerial" placeholder="Serial (GC-2025-001)">
+                <input type="text" id="deviceActivationCode" placeholder="Activation Code (6 digits)" maxlength="6">
+                <input type="text" id="deviceName" placeholder="Device Name (Main Gate)">
+                <input type="text" id="deviceLocation" placeholder="Address">
+                <input type="tel" id="installerPhone" placeholder="Your Phone (972...)">
+                <button onclick="activateDevice()">Activate Device</button>
+            </div>
+        </div>
         
-        const result = await response.json();
+        <!-- Filters and Search -->
+        <div class="filters">
+            <input type="text" id="searchDevices" placeholder="Search devices..." onkeyup="filterDevices()">
+            <select id="statusFilter" onchange="filterDevices()">
+                <option value="all">All Status</option>
+                <option value="online">Online Only</option>
+                <option value="offline">Offline Only</option>
+            </select>
+            <button class="filter-btn" onclick="refreshDevices()">🔄 Refresh</button>
+        </div>
         
-        if (result.success) {
-            alert(`Device Activated!\n\nSerial: ${result.serial}\nName: ${result.deviceName}\nLocation: ${result.location}\nInstaller: ${result.installerName}\n\nFirebase: ${result.firebase_status}`);
-            window.location.reload();        } else {
-            alert('Activation Failed: ' + result.error);
-        }
-    } catch (error) {
-        alert('Error: ' + error.message);
-    }
-}
-</script>
+        <!-- Devices Grid -->
+        <div class="devices-grid" id="devicesGrid">
+            <!-- Devices will be populated here -->
+        </div>
+        
+        <!-- No devices message -->
+        <div id="noDevicesMessage" class="card" style="text-align: center; display: none;">
+            <h3>📭 No Devices Found</h3>
+            <p>No devices match your filter criteria.</p>
+        </div>
+    </div>
 
+    <script>
+        // Navigation functions
+        function navigateTo(path) {
+            window.location.href = path;
+        }
+        
+        async function logout() {
+            try {
+                await fetch('/dashboard/logout', { method: 'POST' });
+                window.location.href = '/dashboard';
+            } catch (error) {
+                alert('Logout error: ' + error.message);
+            }
+        }
+        
+        // Initialize data
+        const devices = {{devicesData}};
+        const registeredUsers = {{registeredUsersData}};
+        let filteredDevices = [...devices];
+        
+        // Activation function
+        async function activateDevice() {
+            const serial = document.getElementById('deviceSerial').value.trim();
+            const activationCode = document.getElementById('deviceActivationCode').value.trim();
+            const deviceName = document.getElementById('deviceName').value.trim();
+            const deviceLocation = document.getElementById('deviceLocation').value.trim();
+            const phone = document.getElementById('installerPhone').value.trim();
+            
+            if (!serial || !activationCode || !deviceName || !deviceLocation || !phone) {
+                alert('Please fill all fields');
+                return;
+            }
+            
+            const cleanPhone = phone.replace(/\D/g, '');
+            if (!/^\d{10,14}$/.test(cleanPhone)) {
+                alert('Phone must be 10-14 digits');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/activate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        serial: serial,
+                        activationCode: activationCode,
+                        deviceName: deviceName,
+                        location: deviceLocation,
+                        installerPhone: cleanPhone
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('Device Activated!\n\nSerial: ' + result.serial + '\nName: ' + result.deviceName + '\nLocation: ' + result.location + '\nInstaller: ' + result.installerName);
+                    window.location.reload();
+                } else {
+                    alert('Activation Failed: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        }
+        
+        function sendCommand(deviceId, relay, action) {
+            const userId = prompt("Enter your phone number:");
+            if (!userId) return;
+            
+            const cleanUserId = userId.replace(/\D/g, '');
+            if (!/^\d{10,14}$/.test(cleanUserId)) {
+                alert('Invalid phone number');
+                return;
+            }
+            
+            fetch('/api/device/' + deviceId + '/send-command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'relay_activate',
+                    relay: relay,
+                    user_id: cleanUserId
+                })
+            })
+            .then(r => r.json())
+            .then(d => alert(d.success ? '✅ Command sent' : '❌ Failed'))
+            .catch(e => alert('Error: ' + e.message));
+        }
+        
+        function filterDevices() {
+            const searchTerm = document.getElementById('searchDevices').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            
+            filteredDevices = devices.filter(([deviceId, info]) => {
+                const matchesSearch = deviceId.toLowerCase().includes(searchTerm);
+                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+                const matchesStatus = statusFilter === 'all' || 
+                    (statusFilter === 'online' && isOnline) || 
+                    (statusFilter === 'offline' && !isOnline);
+                
+                return matchesSearch && matchesStatus;
+            });
+            
+            renderDevices();
+        }
+        
+        function refreshDevices() {
+            window.location.reload();
+        }
+        
+        function renderDevices() {
+            const container = document.getElementById('devicesGrid');
+            const noDevicesMsg = document.getElementById('noDevicesMessage');
+            
+            if (filteredDevices.length === 0) {
+                container.style.display = 'none';
+                noDevicesMsg.style.display = 'block';
+                return;
+            }
+            
+            container.style.display = 'grid';
+            noDevicesMsg.style.display = 'none';
+            
+            container.innerHTML = filteredDevices.map(([deviceId, info]) => {
+                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+                const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
+                const userCount = deviceUsers ? deviceUsers[1].length : 0;
+                
+                return `
+                    <div class="device-card ${isOnline ? '' : 'offline'}">
+                        <div class="device-header">
+                            <h3 class="device-title">${deviceId}</h3>
+                            <span class="device-status ${isOnline ? 'status-online' : 'status-offline'}">
+                                ${isOnline ? '🟢 Online' : '🔴 Offline'}
+                            </span>
+                        </div>
+                        
+                        <div class="device-stats">
+                            <div class="stat-item">
+                                <div class="stat-label">📶 Signal</div>
+                                <div class="stat-value">${info.signalStrength} dBm</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">👥 Users</div>
+                                <div class="stat-value">${userCount}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="device-controls">
+                            <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                            <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                            <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                            <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        // Initialize
+        renderDevices();
+    </script>
 </body>
 </html>
