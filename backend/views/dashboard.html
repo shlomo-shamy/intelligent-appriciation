@@ -416,43 +416,7 @@
             currentDeviceId = null;
         }
         
-        function switchTab(tabName, clickedButton) {
-            // Remove active class from all tabs
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            // Add active class to clicked tab
-            if (clickedButton) {
-                clickedButton.classList.add('active');
-            }
-            document.getElementById(tabName + '-tab').classList.add('active');
-            
-            // Force hide all tab content first
-            document.getElementById('users-tab').style.display = 'none';
-            document.getElementById('status-tab').style.display = 'none';
-            document.getElementById('logs-tab').style.display = 'none';
-            document.getElementById('schedules-tab').style.display = 'none';
-            
-            // Show only the selected tab
-            document.getElementById(tabName + '-tab').style.display = 'block';
-            
-            // Load data based on tab
-            switch(tabName) {
-                case 'users':
-                    loadUsers();
-                    break;
-                case 'status':
-                    loadStatus();
-                    break;
-                case 'logs':
-                    loadLogs();
-                    break;
-                case 'schedules':
-                    loadSchedules();
-                    break;
-            }
-        }
-        
+
 async function loadUsers() {
     if (!currentDeviceId) return;
     
