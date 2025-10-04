@@ -1202,6 +1202,90 @@ if (req.url.startsWith('/api/gates/') && req.url.endsWith('/users') && req.metho
     return;
   }
 
+// Status reporting endpoint (no auth - ESP32 direct)
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/status') && req.method === 'POST') {
+  readBody(async (data) => {
+    const { deviceId, gateState, photoBlocked, edgeContact, fccPosition, fcaPosition } = data;
+    
+    console.log(`📊 Status update from ${deviceId}: ${gateState}`);
+    
+    // Update local storage
+    if (connectedDevices.has(deviceId)) {
+      const device = connectedDevices.get(deviceId);
+      device.gateState = gateState;
+      device.photoBlocked = photoBlocked;
+      device.edgeContact = edgeContact;
+      device.fccPosition = fccPosition;
+      device.fcaPosition = fcaPosition;
+      device.lastStatusUpdate = new Date().toISOString();
+      connectedDevices.set(deviceId, device);
+    }
+    
+    // Update Firebase
+    if (firebaseInitialized) {
+      try {
+        await db.collection('gates').doc(deviceId).update({
+          'status.gateState': gateState,
+          'status.photoBlocked': photoBlocked,
+          'status.edgeContact': edgeContact,
+          'status.fccPosition': fccPosition,
+          'status.fcaPosition': fcaPosition,
+          'status.lastUpdate': admin.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (error) {
+        console.error('Firebase status update error:', error);
+      }
+    }
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({ success: true }));
+  });
+  return;
+}
+
+// Command result endpoint (no auth - ESP32 direct)
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/command-result') && req.method === 'POST') {
+  readBody((data) => {
+    const { deviceId, command, success, message } = data;
+    console.log(`📝 Command result from ${deviceId}: ${command} - ${success ? 'SUCCESS' : 'FAILED'}`);
+    
+    addDeviceLog(deviceId, `command_result_${success ? 'success' : 'failed'}`, 'system', 
+      `Command: ${command}, Message: ${message}`);
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({ success: true }));
+  });
+  return;
+}
+
+// Safety event endpoint (no auth - ESP32 direct)
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/safety-event') && req.method === 'POST') {
+  readBody(async (data) => {
+    const { deviceId, eventType, details } = data;
+    console.log(`🚨 Safety event from ${deviceId}: ${eventType}`);
+    
+    addDeviceLog(deviceId, 'safety_event', 'system', `${eventType}: ${details}`);
+    
+    // Store in Firebase errors collection
+    if (firebaseInitialized) {
+      try {
+        await db.collection('gates').doc(deviceId).collection('errors').add({
+          type: eventType,
+          details: details,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          resolved: false
+        });
+      } catch (error) {
+        console.error('Firebase error logging failed:', error);
+      }
+    }
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({ success: true }));
+  });
+  return;
+}
+  
   // FIREBASE SYNC ENDPOINT - sync all local users to Firebase
   if (req.url === '/api/firebase/sync' && req.method === 'POST') {
     requireAuth((session) => {
