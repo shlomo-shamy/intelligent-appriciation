@@ -1225,31 +1225,48 @@ if (req.url.startsWith('/api/gates/') && req.url.endsWith('/users') && req.metho
 // ESP32 Status reporting endpoint (no auth - direct from device)
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/status') && req.method === 'POST') {
   readBody((data) => {
-    const { deviceId, gateState, photoBlocked, edgeContact, fccPosition, fcaPosition } = data;
+    const { 
+      deviceId, gateState, lastCommand,
+      relay1, relay2, relay3, relay4,
+      photoIntBlocked, photoExtBlocked, photoBlocked,
+      edgeIntContact, edgeExtContact, edgeContact,
+      fccPosition, fcaPosition,
+      learningMode, remoteOpen, remoteStop, modeSwitch,
+      autoCloseEnabled, autoCloseTimer, autoCloseRemaining,
+      partialActive, emergencyLock, userCount
+    } = data;
     
     console.log(`📊 Status update from ${deviceId}: ${gateState}`);
     
-    // Update device info in memory
+    // Update device info in memory - STORE ALL FIELDS
     if (connectedDevices.has(deviceId)) {
       const device = connectedDevices.get(deviceId);
       device.gateState = gateState;
+      device.lastCommand = lastCommand;
+      device.relay1 = relay1;
+      device.relay2 = relay2;
+      device.relay3 = relay3;
+      device.relay4 = relay4;
+      device.photoIntBlocked = photoIntBlocked;
+      device.photoExtBlocked = photoExtBlocked;
       device.photoBlocked = photoBlocked;
+      device.edgeIntContact = edgeIntContact;
+      device.edgeExtContact = edgeExtContact;
       device.edgeContact = edgeContact;
       device.fccPosition = fccPosition;
       device.fcaPosition = fcaPosition;
+      device.learningMode = learningMode;
+      device.remoteOpen = remoteOpen;
+      device.remoteStop = remoteStop;
+      device.modeSwitch = modeSwitch;
+      device.autoCloseEnabled = autoCloseEnabled;
+      device.autoCloseTimer = autoCloseTimer;
+      device.autoCloseRemaining = autoCloseRemaining;
+      device.partialActive = partialActive;
+      device.emergencyLock = emergencyLock;
+      device.userCount = userCount;
       device.lastStatusUpdate = new Date().toISOString();
       connectedDevices.set(deviceId, device);
-    } else {
-      // Device not yet registered, create entry
-      connectedDevices.set(deviceId, {
-        gateState: gateState,
-        photoBlocked: photoBlocked,
-        edgeContact: edgeContact,
-        fccPosition: fccPosition,
-        fcaPosition: fcaPosition,
-        lastStatusUpdate: new Date().toISOString(),
-        lastHeartbeat: new Date().toISOString()
-      });
     }
     
     res.writeHead(200);
