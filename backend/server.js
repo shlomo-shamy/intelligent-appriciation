@@ -230,9 +230,9 @@ function addDeviceLog(deviceId, action, user, details = '') {
   const logs = deviceLogs.get(deviceId);
   logs.unshift(log); // Add to beginning
   
-  // Keep only last 100 logs per device
-  if (logs.length > 100) {
-    logs.splice(100);
+  // Keep only last 500 logs per device
+  if (logs.length > 500) {
+    logs.splice(500);
   }
   
   deviceLogs.set(deviceId, logs);
