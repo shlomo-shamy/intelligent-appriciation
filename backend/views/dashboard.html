@@ -479,52 +479,136 @@ async function loadUsers() {
     }
 }
         
-        async function loadStatus() {
-            if (!currentDeviceId) return;
-            
-            const device = devices.find(([id]) => id === currentDeviceId);
-            if (!device) return;
-            
-            const [deviceId, info] = device;
-            const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-            
-            document.getElementById('deviceStatus').innerHTML = `
-                <div class="status-grid">
-                    <div class="status-item">
-                        <div class="status-label">🌐 Connection Status</div>
-                        <div class="status-value">${isOnline ? '🟢 Online' : '🔴 Offline'}</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-label">📶 Signal Strength</div>
-                        <div class="status-value">${info.signalStrength} dBm</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-label">🔋 Battery Level</div>
-                        <div class="status-value">${info.batteryLevel}%</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-label">⏱️ Uptime</div>
-                        <div class="status-value">${Math.floor(info.uptime / 1000)} seconds</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-label">🧠 Free Memory</div>
-                        <div class="status-value">${info.freeHeap} bytes</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-label">🔄 Last Heartbeat</div>
-                        <div class="status-value">${new Date(info.lastHeartbeat).toLocaleString()}</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-label">📱 Firmware Version</div>
-                        <div class="status-value">${info.firmwareVersion}</div>
-                    </div>
-                    <div class="status-item">
-                        <div class="status-label">🌐 Connection Type</div>
-                        <div class="status-value">${info.connectionType}</div>
+async function loadStatus() {
+    if (!currentDeviceId) return;
+    
+    try {
+        const response = await fetch('/api/gates/' + currentDeviceId + '/status');
+        const status = await response.json();
+        
+        const device = devices.find(([id]) => id === currentDeviceId);
+        if (!device) return;
+        
+        const [deviceId, info] = device;
+        const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+        
+        // Gate status indicators
+        const gateStateEmoji = {
+            'FULLY_CLOSED': '🔒',
+            'FULLY_OPEN': '🔓',
+            'OPENING': '⬆️',
+            'CLOSING': '⬇️',
+            'INTERMEDIATE': '↔️',
+            'PARTIAL': '↗️',
+            'FAULT': '⚠️'
+        };
+        
+        document.getElementById('deviceStatus').innerHTML = `
+            <div class="status-grid">
+                <div class="status-item status-highlight">
+                    <div class="status-label">🚪 Gate Position</div>
+                    <div class="status-value status-large">
+                        ${gateStateEmoji[status.gateState] || '❓'} ${status.gateState || 'UNKNOWN'}
                     </div>
                 </div>
-            `;
-        }
+                
+                <div class="status-item ${status.photoBlocked ? 'status-alert' : ''}">
+                    <div class="status-label">📷 Photo Beams</div>
+                    <div class="status-value">${status.photoBlocked ? '🚫 BLOCKED' : '✅ Clear'}</div>
+                </div>
+                
+                <div class="status-item ${status.edgeContact ? 'status-alert' : ''}">
+                    <div class="status-label">🛡️ Safety Edges</div>
+                    <div class="status-value">${status.edgeContact ? '⚠️ CONTACT' : '✅ Clear'}</div>
+                </div>
+                
+                <div class="status-item">
+                    <div class="status-label">🔵 FCC (Closed Limit)</div>
+                    <div class="status-value">${status.fccPosition ? '✅ Active' : '⭕ Inactive'}</div>
+                </div>
+                
+                <div class="status-item">
+                    <div class="status-label">🟢 FCA (Open Limit)</div>
+                    <div class="status-value">${status.fcaPosition ? '✅ Active' : '⭕ Inactive'}</div>
+                </div>
+                
+                <div class="status-item">
+                    <div class="status-label">🌐 Connection</div>
+                    <div class="status-value">${isOnline ? '🟢 Online' : '🔴 Offline'}</div>
+                </div>
+                
+                <div class="status-item">
+                    <div class="status-label">📶 Signal Strength</div>
+                    <div class="status-value">${info.signalStrength} dBm</div>
+                </div>
+                
+                <div class="status-item">
+                    <div class="status-label">🔋 Battery</div>
+                    <div class="status-value">${info.batteryLevel}%</div>
+                </div>
+                
+                <div class="status-item">
+                    <div class="status-label">⏱️ Uptime</div>
+                    <div class="status-value">${Math.floor(info.uptime / 1000)} seconds</div>
+                </div>
+                
+                <div class="status-item">
+                    <div class="status-label">🧠 Free Memory</div>
+                    <div class="status-value">${info.freeHeap} bytes</div>
+                </div>
+                
+                <div class="status-item">
+                    <div class="status-label">🔄 Last Update</div>
+                    <div class="status-value">${new Date(status.lastUpdate || info.lastHeartbeat).toLocaleTimeString()}</div>
+                </div>
+                
+                <div class="status-item">
+                    <div class="status-label">📱 Firmware</div>
+                    <div class="status-value">${info.firmwareVersion}</div>
+                </div>
+            </div>
+            
+            <style>
+                .status-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
+                }
+                .status-item {
+                    background: #f8f9fa;
+                    padding: 15px;
+                    border-radius: 8px;
+                    border-left: 4px solid #28a745;
+                }
+                .status-highlight {
+                    grid-column: span 2;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    color: white;
+                }
+                .status-alert {
+                    border-left-color: #dc3545;
+                    background: #ffe6e6;
+                }
+                .status-label {
+                    font-weight: bold;
+                    margin-bottom: 5px;
+                    font-size: 14px;
+                }
+                .status-value {
+                    font-size: 16px;
+                }
+                .status-large {
+                    font-size: 24px;
+                    font-weight: bold;
+                }
+            </style>
+        `;
+        
+    } catch (error) {
+        document.getElementById('deviceStatus').innerHTML = 
+            '<p style="color: #dc3545;">Error loading status: ' + error.message + '</p>';
+    }
+}
         
         async function loadLogs() {
             if (!currentDeviceId) return;
