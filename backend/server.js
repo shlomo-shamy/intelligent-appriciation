@@ -934,6 +934,26 @@ console.log("Template data keys:", Object.keys(dashboardData));
     return;
   }
 
+// Get device info endpoint (requires auth)
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/info') && req.method === 'GET') {
+  requireAuth((session) => {
+    const urlParts = req.url.split('/');
+    const deviceId = urlParts[3];
+    
+    const device = connectedDevices.get(deviceId);
+    
+    if (!device) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'Device not found' }));
+      return;
+    }
+    
+    res.writeHead(200);
+    res.end(JSON.stringify(device));
+  });
+  return;
+}
+  
   // Restart server endpoint
   if (req.url === '/api/system/restart' && req.method === 'POST') {
     requireAuth((session) => {
