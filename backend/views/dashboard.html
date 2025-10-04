@@ -540,123 +540,164 @@ async function loadStatus() {
         const timeSinceHeartbeat = now - lastHeartbeatTime;
         const isOnline = timeSinceHeartbeat < 60000;
         
-        const gateStateEmoji = {
-            'FULLY_CLOSED': '🔒',
-            'FULLY_OPEN': '🔓',
-            'OPENING': '⬆️',
-            'CLOSING': '⬇️',
-            'INTERMEDIATE': '↔️',
-            'PARTIAL': '↗️',
-            'FAULT': '⚠️'
-        };
-        
         document.getElementById('deviceStatus').innerHTML = `
-            <div class="status-grid">
-                <div class="status-item status-highlight">
-                    <div class="status-label">🚪 Gate Position</div>
-                    <div class="status-value status-large">
-                        ${gateStateEmoji[statusData.gateState] || '❓'} ${statusData.gateState || 'UNKNOWN'}
-                    </div>
-                </div>
-                
-<div class="status-item ${statusData.photoBlocked ? 'status-alert' : ''}">
-    <div class="status-label">📷 Photo Beams</div>
-    <div class="status-value">
-        INT=${statusData.photoIntBlocked ? 'BLOCKED' : 'CLEAR'} | 
-        EXT=${statusData.photoExtBlocked ? 'BLOCKED' : 'CLEAR'}
-        ${statusData.photoBlocked ? ' ⚠️ CLOSE BLOCKED' : ' ✅'}
-    </div>
-</div>
-
-<div class="status-item ${statusData.edgeContact ? 'status-alert' : ''}">
-    <div class="status-label">🛡️ Safety Edges</div>
-    <div class="status-value">
-        INT=${statusData.edgeIntContact ? 'CONTACT' : 'CLEAR'} | 
-        EXT=${statusData.edgeExtContact ? 'CONTACT' : 'CLEAR'}
-        ${statusData.edgeContact ? ' ⚠️ ACTIVE' : ' ✅'}
-    </div>
-</div>
-                
-<div class="status-item">
-    <div class="status-label">🔵 FCC (Closed Limit)</div>
-    <div class="status-value">${statusData.fccPosition ? 'CLOSED' : 'OPEN'}</div>
-</div>
-
-<div class="status-item">
-    <div class="status-label">🟢 FCA (Open Limit)</div>
-    <div class="status-value">${statusData.fcaPosition ? 'CLOSED' : 'OPEN'}</div>
-</div>
-                
-                <div class="status-item ${!isOnline ? 'status-alert' : ''}">
-                    <div class="status-label">🌐 Connection</div>
-                    <div class="status-value">${isOnline ? '🟢 Online' : '🔴 Offline'} (${Math.floor(timeSinceHeartbeat/1000)}s ago)</div>
-                </div>
-                
-                <div class="status-item">
-                    <div class="status-label">📶 Signal Strength</div>
-                    <div class="status-value">${deviceInfo.signalStrength} dBm</div>
-                </div>
-                
-                <div class="status-item">
-                    <div class="status-label">🔋 Battery</div>
-                    <div class="status-value">${deviceInfo.batteryLevel}%</div>
-                </div>
-                
-                <div class="status-item">
-                    <div class="status-label">⏱️ Uptime</div>
-                    <div class="status-value">${Math.floor(deviceInfo.uptime / 1000)} seconds</div>
-                </div>
-                
-                <div class="status-item">
-                    <div class="status-label">🧠 Free Memory</div>
-                    <div class="status-value">${deviceInfo.freeHeap} bytes</div>
-                </div>
-                
-                <div class="status-item">
-                    <div class="status-label">🔄 Last Heartbeat</div>
-                    <div class="status-value">${new Date(deviceInfo.lastHeartbeat).toLocaleString()}</div>
-                </div>
-                
-                <div class="status-item">
-                    <div class="status-label">📱 Firmware</div>
-                    <div class="status-value">${deviceInfo.firmwareVersion}</div>
-                </div>
-            </div>
-            
             <style>
-                .status-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-                    gap: 15px;
-                }
-                .status-item {
-                    background: #f8f9fa;
-                    padding: 15px;
+                .status-container {
+                    font-family: 'Courier New', monospace;
+                    background: #1e1e1e;
+                    color: #00ff00;
+                    padding: 20px;
                     border-radius: 8px;
-                    border-left: 4px solid #28a745;
+                    font-size: 14px;
+                    line-height: 1.8;
                 }
-                .status-highlight {
-                    grid-column: span 2;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
+                .status-header {
+                    text-align: center;
+                    border-bottom: 2px solid #00ff00;
+                    padding-bottom: 10px;
+                    margin-bottom: 15px;
+                    font-weight: bold;
+                    font-size: 16px;
                 }
-                .status-alert {
-                    border-left-color: #dc3545;
-                    background: #ffe6e6;
+                .status-line {
+                    margin: 8px 0;
                 }
                 .status-label {
                     font-weight: bold;
-                    margin-bottom: 5px;
-                    font-size: 14px;
+                    color: #00ff00;
                 }
                 .status-value {
-                    font-size: 16px;
+                    color: #ffff00;
                 }
-                .status-large {
-                    font-size: 24px;
-                    font-weight: bold;
+                .status-ok { color: #00ff00; }
+                .status-warn { color: #ff9900; }
+                .status-alert { color: #ff0000; }
+                .status-footer {
+                    text-align: center;
+                    border-top: 2px solid #00ff00;
+                    padding-top: 10px;
+                    margin-top: 15px;
                 }
             </style>
+            
+            <div class="status-container">
+                <div class="status-header">=== SYSTEM STATUS ===</div>
+                
+                <div class="status-line">
+                    <span class="status-label">Gate Logic State:</span>
+                    <span class="status-value">${statusData.gateState || 'UNKNOWN'}</span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Last Command:</span>
+                    <span class="status-value">${statusData.lastCommand || 'NONE'}</span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Active Relays:</span>
+                    <span class="status-value">
+                        OPEN=${statusData.relay1 ? 'ON' : 'OFF'} | 
+                        STOP=${statusData.relay2 ? 'ON' : 'OFF'} | 
+                        CLOSE=${statusData.relay3 ? 'ON' : 'OFF'} | 
+                        PARTIAL=${statusData.relay4 ? 'ON' : 'OFF'}
+                    </span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Limit Switches:</span>
+                    <span class="status-value">
+                        FCC=${statusData.fccPosition ? 'CLOSED' : 'OPEN'} | 
+                        FCA=${statusData.fcaPosition ? 'CLOSED' : 'OPEN'}
+                    </span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Photo Beams:</span>
+                    <span class="status-value">
+                        INT=${statusData.photoIntBlocked ? 'BLOCKED' : 'CLEAR'} | 
+                        EXT=${statusData.photoExtBlocked ? 'BLOCKED' : 'CLEAR'}
+                    </span>
+                    ${statusData.photoBlocked ? '<span class="status-alert"> ⚠️ CLOSE BLOCKED</span>' : '<span class="status-ok"> ✅</span>'}
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Safety Edges:</span>
+                    <span class="status-value">
+                        INT=${statusData.edgeIntContact ? 'CONTACT' : 'CLEAR'} | 
+                        EXT=${statusData.edgeExtContact ? 'CONTACT' : 'CLEAR'}
+                    </span>
+                    ${statusData.edgeContact ? '<span class="status-alert"> ⚠️ ACTIVE</span>' : '<span class="status-ok"> ✅</span>'}
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Learning Mode:</span>
+                    <span class="status-value">${statusData.learningMode ? 'ACTIVE' : 'INACTIVE'}</span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Remote Controls:</span>
+                    <span class="status-value">
+                        OPEN=${statusData.remoteOpen ? 'PRESSED' : 'UP'} | 
+                        STOP=${statusData.remoteStop ? 'PRESSED' : 'UP'}
+                    </span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Mode Switch:</span>
+                    <span class="status-value">${statusData.modeSwitch || 'AUTO'}</span>
+                    ${statusData.modeSwitch === 'AUTO' ? '<span class="status-ok"> ✅</span>' : '<span class="status-warn"> ⚠️ Remote OPEN blocked</span>'}
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Auto-Close:</span>
+                    <span class="status-value">${statusData.autoCloseEnabled ? 'ENABLED' : 'DISABLED'}</span>
+                    ${statusData.autoCloseTimer ? `<span class="status-warn"> [Timer: ${statusData.autoCloseRemaining}s remaining]</span>` : ''}
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Partial Sequence:</span>
+                    <span class="status-value">${statusData.partialActive ? 'ACTIVE' : 'INACTIVE'}</span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Emergency Lock:</span>
+                    <span class="status-value">${statusData.emergencyLock || 'NORMAL'}</span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Connection:</span>
+                    <span class="${isOnline ? 'status-ok' : 'status-alert'}">
+                        ${isOnline ? '🟢 Online' : '🔴 Offline'} (${Math.floor(timeSinceHeartbeat / 1000)}s ago)
+                    </span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Users:</span>
+                    <span class="status-value">${statusData.userCount || 0}/100</span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Free Heap:</span>
+                    <span class="status-value">${deviceInfo.freeHeap} bytes</span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Signal Strength:</span>
+                    <span class="status-value">${deviceInfo.signalStrength} dBm</span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Uptime:</span>
+                    <span class="status-value">${Math.floor(deviceInfo.uptime / 1000)} seconds</span>
+                </div>
+                
+                <div class="status-line">
+                    <span class="status-label">Firmware:</span>
+                    <span class="status-value">${deviceInfo.firmwareVersion}</span>
+                </div>
+                
+                <div class="status-footer">====================</div>
+            </div>
         `;
         
     } catch (error) {
