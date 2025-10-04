@@ -1267,6 +1267,36 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/status') && req.met
       device.userCount = userCount;
       device.lastStatusUpdate = new Date().toISOString();
       connectedDevices.set(deviceId, device);
+    } else {
+      // Device not yet in map - create new entry with ALL fields
+      connectedDevices.set(deviceId, {
+        gateState: gateState,
+        lastCommand: lastCommand,
+        relay1: relay1,
+        relay2: relay2,
+        relay3: relay3,
+        relay4: relay4,
+        photoIntBlocked: photoIntBlocked,
+        photoExtBlocked: photoExtBlocked,
+        photoBlocked: photoBlocked,
+        edgeIntContact: edgeIntContact,
+        edgeExtContact: edgeExtContact,
+        edgeContact: edgeContact,
+        fccPosition: fccPosition,
+        fcaPosition: fcaPosition,
+        learningMode: learningMode,
+        remoteOpen: remoteOpen,
+        remoteStop: remoteStop,
+        modeSwitch: modeSwitch,
+        autoCloseEnabled: autoCloseEnabled,
+        autoCloseTimer: autoCloseTimer,
+        autoCloseRemaining: autoCloseRemaining,
+        partialActive: partialActive,
+        emergencyLock: emergencyLock,
+        userCount: userCount,
+        lastStatusUpdate: new Date().toISOString(),
+        lastHeartbeat: new Date().toISOString()
+      });
     }
     
     res.writeHead(200);
@@ -1288,21 +1318,37 @@ if (req.url.startsWith('/api/gates/') && req.url.endsWith('/status') && req.meth
       res.end(JSON.stringify({ 
         error: 'Device not found',
         gateState: 'UNKNOWN',
-        photoBlocked: false,
-        edgeContact: false,
-        fccPosition: false,
-        fcaPosition: false
       }));
       return;
     }
     
+    // Return ALL fields stored in the device object
     res.writeHead(200);
     res.end(JSON.stringify({
       gateState: device.gateState || 'UNKNOWN',
+      lastCommand: device.lastCommand || 'NONE',
+      relay1: device.relay1 || false,
+      relay2: device.relay2 || false,
+      relay3: device.relay3 || false,
+      relay4: device.relay4 || false,
+      photoIntBlocked: device.photoIntBlocked || false,
+      photoExtBlocked: device.photoExtBlocked || false,
       photoBlocked: device.photoBlocked || false,
+      edgeIntContact: device.edgeIntContact || false,
+      edgeExtContact: device.edgeExtContact || false,
       edgeContact: device.edgeContact || false,
       fccPosition: device.fccPosition || false,
       fcaPosition: device.fcaPosition || false,
+      learningMode: device.learningMode || false,
+      remoteOpen: device.remoteOpen || false,
+      remoteStop: device.remoteStop || false,
+      modeSwitch: device.modeSwitch || 'AUTO',
+      autoCloseEnabled: device.autoCloseEnabled || false,
+      autoCloseTimer: device.autoCloseTimer || false,
+      autoCloseRemaining: device.autoCloseRemaining || 0,
+      partialActive: device.partialActive || false,
+      emergencyLock: device.emergencyLock || 'NORMAL',
+      userCount: device.userCount || 0,
       lastUpdate: device.lastStatusUpdate || device.lastHeartbeat
     }));
   });
