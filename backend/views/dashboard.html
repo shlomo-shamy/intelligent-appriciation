@@ -483,6 +483,18 @@ async function loadStatus() {
     if (!currentDeviceId) return;
     
     try {
+        // Fetch BOTH status AND device info fresh
+        const [statusResponse, deviceResponse] = await Promise.all([
+            fetch('/api/gates/' + currentDeviceId + '/status'),
+            fetch('/api/device/' + currentDeviceId + '/info') // NEW ENDPOINT NEEDED
+        ]);
+        
+        const status = await statusResponse.json();
+        const deviceInfo = await deviceResponse.json();
+        
+        // Calculate online status from fresh heartbeat
+        const isOnline = (Date.now() - new Date(deviceInfo.lastHeartbeat).getTime()) < 60000;
+        
         const response = await fetch('/api/gates/' + currentDeviceId + '/status');
         const status = await response.json();
         
@@ -609,6 +621,50 @@ async function loadStatus() {
             '<p style="color: #dc3545;">Error loading status: ' + error.message + '</p>';
     }
 }
+
+// ADD THIS: Auto-refresh every 3 seconds when status tab is open
+let statusRefreshInterval = null;
+
+function switchTab(tabName, clickedButton) {
+    // ... existing tab switching code ...
+    
+    // Clear any existing refresh interval
+    if (statusRefreshInterval) {
+        clearInterval(statusRefreshInterval);
+        statusRefreshInterval = null;
+    }
+    
+    // Load data based on tab
+    switch(tabName) {
+        case 'users':
+            loadUsers();
+            break;
+        case 'status':
+            loadStatus();
+            // Start auto-refresh for status tab
+            statusRefreshInterval = setInterval(() => {
+                loadStatus();
+            }, 3000); // Refresh every 3 seconds
+            break;
+        case 'logs':
+            loadLogs();
+            break;
+        case 'schedules':
+            loadSchedules();
+            break;
+    }
+}
+
+// ALSO ADD: Stop refresh when modal closes
+function closeModal() {
+    if (statusRefreshInterval) {
+        clearInterval(statusRefreshInterval);
+        statusRefreshInterval = null;
+    }
+    document.getElementById('settingsModal').style.display = 'none';
+    currentDeviceId = null;
+}
+
         
         async function loadLogs() {
             if (!currentDeviceId) return;
