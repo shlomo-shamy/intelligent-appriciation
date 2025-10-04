@@ -559,25 +559,33 @@ async function loadStatus() {
                     </div>
                 </div>
                 
-                <div class="status-item ${statusData.photoBlocked ? 'status-alert' : ''}">
-                    <div class="status-label">📷 Photo Beams</div>
-                    <div class="status-value">${statusData.photoBlocked ? '🚫 BLOCKED' : '✅ Clear'}</div>
-                </div>
+<div class="status-item ${statusData.photoBlocked ? 'status-alert' : ''}">
+    <div class="status-label">📷 Photo Beams</div>
+    <div class="status-value">
+        INT=${statusData.photoIntBlocked ? 'BLOCKED' : 'CLEAR'} | 
+        EXT=${statusData.photoExtBlocked ? 'BLOCKED' : 'CLEAR'}
+        ${!statusData.photoBlocked ? ' ✅' : ' ⚠️ CLOSE BLOCKED'}
+    </div>
+</div>
+
+<div class="status-item ${statusData.edgeContact ? 'status-alert' : ''}">
+    <div class="status-label">🛡️ Safety Edges</div>
+    <div class="status-value">
+        INT=${statusData.edgeIntContact ? 'CONTACT' : 'CLEAR'} | 
+        EXT=${statusData.edgeExtContact ? 'CONTACT' : 'CLEAR'}
+        ${!statusData.edgeContact ? ' ✅' : ' ⚠️ ACTIVE'}
+    </div>
+</div>
                 
-                <div class="status-item ${statusData.edgeContact ? 'status-alert' : ''}">
-                    <div class="status-label">🛡️ Safety Edges</div>
-                    <div class="status-value">${statusData.edgeContact ? '⚠️ CONTACT' : '✅ Clear'}</div>
-                </div>
-                
-                <div class="status-item">
-                    <div class="status-label">🔵 FCC (Closed Limit)</div>
-                    <div class="status-value">${statusData.fccPosition ? '✅ Active' : '⭕ Inactive'}</div>
-                </div>
-                
-                <div class="status-item">
-                    <div class="status-label">🟢 FCA (Open Limit)</div>
-                    <div class="status-value">${statusData.fcaPosition ? '✅ Active' : '⭕ Inactive'}</div>
-                </div>
+<div class="status-item">
+    <div class="status-label">🔵 FCC (Closed Limit)</div>
+    <div class="status-value">${statusData.fccPosition ? 'CLOSED' : 'OPEN'}</div>
+</div>
+
+<div class="status-item">
+    <div class="status-label">🟢 FCA (Open Limit)</div>
+    <div class="status-value">${statusData.fcaPosition ? 'CLOSED' : 'OPEN'}</div>
+</div>
                 
                 <div class="status-item ${!isOnline ? 'status-alert' : ''}">
                     <div class="status-label">🌐 Connection</div>
