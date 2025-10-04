@@ -1272,28 +1272,6 @@ if (req.url.startsWith('/api/gates/') && req.url.endsWith('/status') && req.meth
   return;
 }
     
-    // Update Firebase
-    if (firebaseInitialized) {
-      try {
-        await db.collection('gates').doc(deviceId).update({
-          'status.gateState': gateState,
-          'status.photoBlocked': photoBlocked,
-          'status.edgeContact': edgeContact,
-          'status.fccPosition': fccPosition,
-          'status.fcaPosition': fcaPosition,
-          'status.lastUpdate': admin.firestore.FieldValue.serverTimestamp()
-        });
-      } catch (error) {
-        console.error('Firebase status update error:', error);
-      }
-    }
-    
-    res.writeHead(200);
-    res.end(JSON.stringify({ success: true }));
-  });
-  return;
-}
-
 // Command result endpoint (no auth - ESP32 direct)
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/command-result') && req.method === 'POST') {
   readBody((data) => {
