@@ -483,26 +483,20 @@ async function loadStatus() {
     if (!currentDeviceId) return;
     
     try {
-        // Fetch BOTH status AND device info fresh
-        const [statusResponse, deviceResponse] = await Promise.all([
-            fetch('/api/gates/' + currentDeviceId + '/status'),
-            fetch('/api/device/' + currentDeviceId + '/info') // NEW ENDPOINT NEEDED
-        ]);
-        
-        const status = await statusResponse.json();
-        const deviceInfo = await deviceResponse.json();
-        
-        // Calculate online status from fresh heartbeat
-        const isOnline = (Date.now() - new Date(deviceInfo.lastHeartbeat).getTime()) < 60000;
-        
-        const response = await fetch('/api/gates/' + currentDeviceId + '/status');
-        const status = await response.json();
+        // Fetch status data
+        const statusResponse = await fetch('/api/gates/' + currentDeviceId + '/status');
+        const statusData = await statusResponse.json();  // RENAME to statusData, not status
         
         const device = devices.find(([id]) => id === currentDeviceId);
         if (!device) return;
         
         const [deviceId, info] = device;
-        const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+        
+        // Calculate online status from heartbeat
+        const lastHeartbeatTime = new Date(info.lastHeartbeat).getTime();
+        const now = Date.now();
+        const timeSinceHeartbeat = now - lastHeartbeatTime;
+        const isOnline = timeSinceHeartbeat < 60000;
         
         // Gate status indicators
         const gateStateEmoji = {
@@ -514,6 +508,8 @@ async function loadStatus() {
             'PARTIAL': '↗️',
             'FAULT': '⚠️'
         };
+        
+        // ... rest of your display code ...
         
         document.getElementById('deviceStatus').innerHTML = `
             <div class="status-grid">
