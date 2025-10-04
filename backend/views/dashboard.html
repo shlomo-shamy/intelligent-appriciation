@@ -525,15 +525,17 @@ async function loadStatus() {
     if (!currentDeviceId) return;
     
     try {
-        const statusResponse = await fetch('/api/gates/' + currentDeviceId + '/status');
+        // Fetch BOTH status and fresh device info
+        const [statusResponse, devicesResponse] = await Promise.all([
+            fetch('/api/gates/' + currentDeviceId + '/status'),
+            fetch('/api/device/' + currentDeviceId + '/info')
+        ]);
+        
         const statusData = await statusResponse.json();
+        const deviceInfo = await devicesResponse.json();
         
-        const device = devices.find(([id]) => id === currentDeviceId);
-        if (!device) return;
-        
-        const [deviceId, info] = device;
-        
-        const lastHeartbeatTime = new Date(info.lastHeartbeat).getTime();
+        // Calculate online status from FRESH heartbeat
+        const lastHeartbeatTime = new Date(deviceInfo.lastHeartbeat).getTime();
         const now = Date.now();
         const timeSinceHeartbeat = now - lastHeartbeatTime;
         const isOnline = timeSinceHeartbeat < 60000;
@@ -577,39 +579,39 @@ async function loadStatus() {
                     <div class="status-value">${statusData.fcaPosition ? '✅ Active' : '⭕ Inactive'}</div>
                 </div>
                 
-                <div class="status-item">
+                <div class="status-item ${!isOnline ? 'status-alert' : ''}">
                     <div class="status-label">🌐 Connection</div>
                     <div class="status-value">${isOnline ? '🟢 Online' : '🔴 Offline'} (${Math.floor(timeSinceHeartbeat/1000)}s ago)</div>
                 </div>
                 
                 <div class="status-item">
                     <div class="status-label">📶 Signal Strength</div>
-                    <div class="status-value">${info.signalStrength} dBm</div>
+                    <div class="status-value">${deviceInfo.signalStrength} dBm</div>
                 </div>
                 
                 <div class="status-item">
                     <div class="status-label">🔋 Battery</div>
-                    <div class="status-value">${info.batteryLevel}%</div>
+                    <div class="status-value">${deviceInfo.batteryLevel}%</div>
                 </div>
                 
                 <div class="status-item">
                     <div class="status-label">⏱️ Uptime</div>
-                    <div class="status-value">${Math.floor(info.uptime / 1000)} seconds</div>
+                    <div class="status-value">${Math.floor(deviceInfo.uptime / 1000)} seconds</div>
                 </div>
                 
                 <div class="status-item">
                     <div class="status-label">🧠 Free Memory</div>
-                    <div class="status-value">${info.freeHeap} bytes</div>
+                    <div class="status-value">${deviceInfo.freeHeap} bytes</div>
                 </div>
                 
                 <div class="status-item">
-                    <div class="status-label">🔄 Last Update</div>
-                    <div class="status-value">${new Date(statusData.lastUpdate || info.lastHeartbeat).toLocaleTimeString()}</div>
+                    <div class="status-label">🔄 Last Heartbeat</div>
+                    <div class="status-value">${new Date(deviceInfo.lastHeartbeat).toLocaleString()}</div>
                 </div>
                 
                 <div class="status-item">
                     <div class="status-label">📱 Firmware</div>
-                    <div class="status-value">${info.firmwareVersion}</div>
+                    <div class="status-value">${deviceInfo.firmwareVersion}</div>
                 </div>
             </div>
             
@@ -654,7 +656,7 @@ async function loadStatus() {
             '<p style="color: #dc3545;">Error loading status: ' + error.message + '</p>';
     }
 }
-
+        
 // ADD THIS: Auto-refresh every 3 seconds when status tab is open
 let statusRefreshInterval = null;
 
