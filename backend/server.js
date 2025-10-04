@@ -1202,14 +1202,14 @@ if (req.url.startsWith('/api/gates/') && req.url.endsWith('/users') && req.metho
     return;
   }
 
-// Status reporting endpoint (no auth - ESP32 direct)
+// ESP32 Status reporting endpoint (no auth - direct from device)
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/status') && req.method === 'POST') {
-  readBody(async (data) => {
+  readBody((data) => {
     const { deviceId, gateState, photoBlocked, edgeContact, fccPosition, fcaPosition } = data;
     
     console.log(`📊 Status update from ${deviceId}: ${gateState}`);
     
-    // Update local storage
+    // Update device info in memory
     if (connectedDevices.has(deviceId)) {
       const device = connectedDevices.get(deviceId);
       device.gateState = gateState;
@@ -1219,7 +1219,58 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/status') && req.met
       device.fcaPosition = fcaPosition;
       device.lastStatusUpdate = new Date().toISOString();
       connectedDevices.set(deviceId, device);
+    } else {
+      // Device not yet registered, create entry
+      connectedDevices.set(deviceId, {
+        gateState: gateState,
+        photoBlocked: photoBlocked,
+        edgeContact: edgeContact,
+        fccPosition: fccPosition,
+        fcaPosition: fcaPosition,
+        lastStatusUpdate: new Date().toISOString(),
+        lastHeartbeat: new Date().toISOString()
+      });
     }
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({ success: true }));
+  });
+  return;
+}
+
+// Dashboard status fetch endpoint (requires auth)
+if (req.url.startsWith('/api/gates/') && req.url.endsWith('/status') && req.method === 'GET') {
+  requireAuth((session) => {
+    const urlParts = req.url.split('/');
+    const gateId = urlParts[3];
+    
+    const device = connectedDevices.get(gateId);
+    
+    if (!device) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ 
+        error: 'Device not found',
+        gateState: 'UNKNOWN',
+        photoBlocked: false,
+        edgeContact: false,
+        fccPosition: false,
+        fcaPosition: false
+      }));
+      return;
+    }
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      gateState: device.gateState || 'UNKNOWN',
+      photoBlocked: device.photoBlocked || false,
+      edgeContact: device.edgeContact || false,
+      fccPosition: device.fccPosition || false,
+      fcaPosition: device.fcaPosition || false,
+      lastUpdate: device.lastStatusUpdate || device.lastHeartbeat
+    }));
+  });
+  return;
+}
     
     // Update Firebase
     if (firebaseInitialized) {
