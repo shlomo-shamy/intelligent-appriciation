@@ -564,7 +564,7 @@ async function loadStatus() {
     <div class="status-value">
         INT=${statusData.photoIntBlocked ? 'BLOCKED' : 'CLEAR'} | 
         EXT=${statusData.photoExtBlocked ? 'BLOCKED' : 'CLEAR'}
-        ${!statusData.photoBlocked ? ' ✅' : ' ⚠️ CLOSE BLOCKED'}
+        ${statusData.photoBlocked ? ' ⚠️ CLOSE BLOCKED' : ' ✅'}
     </div>
 </div>
 
@@ -573,7 +573,7 @@ async function loadStatus() {
     <div class="status-value">
         INT=${statusData.edgeIntContact ? 'CONTACT' : 'CLEAR'} | 
         EXT=${statusData.edgeExtContact ? 'CONTACT' : 'CLEAR'}
-        ${!statusData.edgeContact ? ' ✅' : ' ⚠️ ACTIVE'}
+        ${statusData.edgeContact ? ' ⚠️ ACTIVE' : ' ✅'}
     </div>
 </div>
                 
