@@ -1119,21 +1119,34 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.m
   readBody((data) => {
     const deviceId = data.deviceId;
     
+    const settings = {
+      commandDuration: data.commandDuration,
+      motorReverseDelay: data.motorReverseDelay,
+      partialTime: data.partialTime,
+      gateMode: data.gateMode,
+      magneticLoopMode: data.magneticLoopMode,
+      emergencyLock: data.emergencyLock,
+      autoCloseEnabled: data.autoCloseEnabled,
+      autoCloseDelay: data.autoCloseDelay,
+      openTimeLearned: data.openTimeLearned,
+      closeTimeLearned: data.closeTimeLearned
+    };
+    
     if (connectedDevices.has(deviceId)) {
       const device = connectedDevices.get(deviceId);
-      device.settings = {
-        commandDuration: data.commandDuration,
-        motorReverseDelay: data.motorReverseDelay,
-        partialTime: data.partialTime,
-        gateMode: data.gateMode,
-        magneticLoopMode: data.magneticLoopMode,
-        emergencyLock: data.emergencyLock,
-        autoCloseEnabled: data.autoCloseEnabled,
-        autoCloseDelay: data.autoCloseDelay,
-        openTimeLearned: data.openTimeLearned,
-        closeTimeLearned: data.closeTimeLearned
-      };
+      device.settings = settings;
       connectedDevices.set(deviceId, device);
+      console.log(`📊 Settings updated for ${deviceId}`);
+    } else {
+      // Device not in map yet - create minimal entry with settings
+      const mfgDevice = manufacturingDevices.get(deviceId);
+      connectedDevices.set(deviceId, {
+        settings: settings,
+        lastHeartbeat: new Date().toISOString(),
+        name: mfgDevice ? mfgDevice.name : deviceId,
+        location: mfgDevice ? mfgDevice.location : 'Unknown'
+      });
+      console.log(`📊 Settings stored for new device ${deviceId}`);
     }
     
     res.writeHead(200);
