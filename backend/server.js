@@ -1173,6 +1173,9 @@ if (req.url.startsWith('/api/device/') && req.url.includes('/settings/update') &
   requireAuth((session) => {
     readBody((data) => {
       const deviceId = req.url.split('/')[3];
+
+      console.log(`⚙️ Settings update request for ${deviceId}`);
+      console.log(`⚙️ Settings data:`, data);
       
       // Queue command to ESP32
       const settingsCommand = {
@@ -1186,7 +1189,9 @@ if (!deviceCommands.has(deviceId)) {
     deviceCommands.set(deviceId, []);
 }
 deviceCommands.get(deviceId).push(settingsCommand);
-      
+           
+      console.log(`⚙️ Command queued. Queue length: ${deviceCommands.get(deviceId).length}`);
+
       res.writeHead(200);
       res.end(JSON.stringify({ success: true }));
     });
