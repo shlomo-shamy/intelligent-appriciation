@@ -532,40 +532,37 @@ async function loadSettings() {
                             <option value="3" ${settings.magneticLoopMode === 3 ? 'selected' : ''}>Conditional</option>
                         </select>
                     </div>
-                    <div class="form-row">
-                        <label class="form-label">Emergency Lock</label>
-                        <select id="emergencyLock" class="form-select">
-                            <option value="0" ${settings.emergencyLock === 0 ? 'selected' : ''}>Normal</option>
-                            <option value="1" ${settings.emergencyLock === 1 ? 'selected' : ''}>Lock Open</option>
-                            <option value="2" ${settings.emergencyLock === 2 ? 'selected' : ''}>Lock Closed</option>
-                        </select>
-                    </div>
+                   <div class="form-row">
+    <label class="form-label">Emergency Lock</label>
+    <select id="emergencyLock" class="form-select">
+        <option value="0" ${settings.emergencyLock === 0 ? 'selected' : ''}>Normal</option>
+        <option value="1" ${settings.emergencyLock === 1 ? 'selected' : ''}>Lock Open</option>
+        <option value="2" ${settings.emergencyLock === 2 ? 'selected' : ''}>Lock Closed</option>
+    </select>
+</div>
 
-<div class="form-group">
-    <label>Manual Mode (Software Override)</label>
-    <select id="manualModeEnabled" class="form-input">
+<div class="form-row">
+    <label class="form-label">Manual Mode (Software Override)</label>
+    <select id="manualModeEnabled" class="form-select">
         <option value="false" ${settings.manualModeEnabled === false ? 'selected' : ''}>Disabled - Remote Commands Allowed</option>
         <option value="true" ${settings.manualModeEnabled === true ? 'selected' : ''}>Enabled - Only Physical Buttons Work</option>
     </select>
-    <small class="help-text">When enabled, blocks all remote commands (WiFi, BLE, Cloud). Works together with hardware switch.</small>
 </div>
-                </div>
 
-                
-                <div class="form-group">
-                    <h4>Auto-Close</h4>
-                    <div class="form-row">
-                        <label class="form-label">Auto-Close Enabled</label>
-                        <input type="checkbox" id="autoCloseEnabled" 
-                               ${settings.autoCloseEnabled ? 'checked' : ''}>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Auto-Close Delay</label>
-                        <input type="number" id="autoCloseDelay" class="form-input" 
-                               value="${settings.autoCloseDelay / 1000}" min="1" max="300" step="1">
-                        <span style="color: #666; font-size: 12px;">seconds</span>
-                    </div>
-                </div>
+<div class="form-group">
+    <h4>Auto-Close</h4>
+    <div class="form-row">
+        <label class="form-label">Auto-Close Enabled</label>
+        <input type="checkbox" id="autoCloseEnabled" 
+               ${settings.autoCloseEnabled ? 'checked' : ''}>
+    </div>
+    <div class="form-row">
+        <label class="form-label">Auto-Close Delay</label>
+        <input type="number" id="autoCloseDelay" class="form-input" 
+               value="${settings.autoCloseDelay / 1000}" min="1" max="300" step="1">
+        <span style="color: #666; font-size: 12px;">seconds</span>
+    </div>
+</div>
                 
                 <div class="form-group">
                     <h4>Learned Timings (Read-Only)</h4>
