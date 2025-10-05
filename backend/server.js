@@ -523,11 +523,13 @@ if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
     
     // Check if device exists in manufacturing DB to get name/location
     const mfgDevice = manufacturingDevices.get(deviceId);
-    
+
+    const existingDevice = connectedDevices.get(deviceId) || {};
+
     // Store/update device info with metadata from manufacturing
     connectedDevices.set(deviceId, {
       lastHeartbeat: timestamp,
-      status: data.status || 'online',
+      : data. || 'online',
       signalStrength: data.signalStrength || 0,
       batteryLevel: data.batteryLevel || 0,
       firmwareVersion: data.firmwareVersion || '1.0.0',
@@ -772,7 +774,7 @@ if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
         currentTime: new Date().toISOString(),
         deviceCount: connectedDevices.size,
         activeSessionsCount: activeSessions.size,
-        firebaseStatus: firebaseInitialized ? 'Connected' : 'Not Connected',
+        firebase: firebaseInitialized ? 'Connected' : 'Not Connected',
         firebaseProjectId: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING',
         firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING',
         firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY ? `SET (${process.env.FIREBASE_PRIVATE_KEY.length} chars)` : 'MISSING',
@@ -803,7 +805,7 @@ console.log("Template data keys:", Object.keys(dashboardData));
         currentTime: new Date().toISOString(),
         deviceCount: connectedDevices.size,
         activeSessionsCount: activeSessions.size,
-        firebaseStatus: firebaseInitialized ? 'Connected' : 'Not Connected',
+        firebase: firebaseInitialized ? 'Connected' : 'Not Connected',
         firebaseProjectId: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING',
         firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING',
         firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY ? `SET (${process.env.FIREBASE_PRIVATE_KEY.length} chars)` : 'MISSING',
@@ -1081,8 +1083,8 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/info') && req.metho
     return;
   }
 
-  // Firebase status endpoint
-  if (req.url === '/api/firebase/status' && req.method === 'GET') {
+  // Firebase  endpoint
+  if (req.url === '/api/firebase/' && req.method === 'GET') {
     requireAuth((session) => {
       res.writeHead(200);
       res.end(JSON.stringify({
@@ -1090,7 +1092,7 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/info') && req.metho
         project_id: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING',
         client_email: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING',
         private_key: process.env.FIREBASE_PRIVATE_KEY ? `SET (${process.env.FIREBASE_PRIVATE_KEY.length} chars)` : 'MISSING',
-        status: firebaseInitialized ? 'Connected' : 'Not Connected'
+        : firebaseInitialized ? 'Connected' : 'Not Connected'
       }));
     });
     return;
@@ -1128,7 +1130,8 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.m
   return;
 }
 // ESP32 reports settings (no auth - direct from device)
-if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.method === 'POST') {
+// ESP32 reports settings - MUST come BEFORE  endpoint
+if (req.url.match(/^\/api\/device\/[^\/]+\/settings$/) && req.method === 'POST') {
   readBody((data) => {
     const deviceId = data.deviceId;
     
@@ -1151,7 +1154,6 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.m
       connectedDevices.set(deviceId, device);
       console.log(`📊 Settings updated for ${deviceId}`);
     } else {
-      // Device not in map yet - create minimal entry with settings
       const mfgDevice = manufacturingDevices.get(deviceId);
       connectedDevices.set(deviceId, {
         settings: settings,
@@ -1159,7 +1161,7 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.m
         name: mfgDevice ? mfgDevice.name : deviceId,
         location: mfgDevice ? mfgDevice.location : 'Unknown'
       });
-      console.log(`📊 Settings stored for new device ${deviceId}`);
+      console.log(`📊 Settings created for new device ${deviceId}`);
     }
     
     res.writeHead(200);
@@ -1320,7 +1322,7 @@ if (req.url.startsWith('/api/gates/') && req.url.endsWith('/users') && req.metho
     return;
   }
 
-// ESP32 Status reporting endpoint (no auth - direct from device)
+// ESP32  reporting endpoint (no auth - direct from device)
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/status') && req.method === 'POST') {
   readBody((data) => {
     const { 
@@ -1335,7 +1337,8 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/status') && req.met
     } = data;
     
     console.log(`📊 Status update from ${deviceId}: ${gateState}`);
-    
+    const existingDevice = connectedDevices.get(deviceId) || {};
+
     // Update device info in memory - STORE ALL FIELDS
     if (connectedDevices.has(deviceId)) {
       const device = connectedDevices.get(deviceId);
