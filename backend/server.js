@@ -1096,6 +1096,78 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/info') && req.metho
     return;
   }
 
+// Get device settings
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.method === 'GET') {
+  requireAuth((session) => {
+    const deviceId = req.url.split('/')[3];
+    
+    const device = connectedDevices.get(deviceId);
+    if (!device || !device.settings) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'Settings not found' }));
+      return;
+    }
+    
+    res.writeHead(200);
+    res.end(JSON.stringify(device.settings));
+  });
+  return;
+}
+
+// ESP32 reports settings (no auth - direct from device)
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.method === 'POST') {
+  readBody((data) => {
+    const deviceId = data.deviceId;
+    
+    if (connectedDevices.has(deviceId)) {
+      const device = connectedDevices.get(deviceId);
+      device.settings = {
+        commandDuration: data.commandDuration,
+        motorReverseDelay: data.motorReverseDelay,
+        partialTime: data.partialTime,
+        gateMode: data.gateMode,
+        magneticLoopMode: data.magneticLoopMode,
+        emergencyLock: data.emergencyLock,
+        autoCloseEnabled: data.autoCloseEnabled,
+        autoCloseDelay: data.autoCloseDelay,
+        openTimeLearned: data.openTimeLearned,
+        closeTimeLearned: data.closeTimeLearned
+      };
+      connectedDevices.set(deviceId, device);
+    }
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({ success: true }));
+  });
+  return;
+}
+
+// Update device settings (from dashboard)
+if (req.url.startsWith('/api/device/') && req.url.includes('/settings/update') && req.method === 'POST') {
+  requireAuth((session) => {
+    readBody((data) => {
+      const deviceId = req.url.split('/')[3];
+      
+      // Queue command to ESP32
+      const settingsCommand = {
+        id: 'settings_' + Date.now(),
+        action: 'update_settings',
+        settings: data,
+        timestamp: new Date().toISOString()
+      };
+      
+      if (!commandQueues.has(deviceId)) {
+        commandQueues.set(deviceId, []);
+      }
+      commandQueues.get(deviceId).push(settingsCommand);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({ success: true }));
+    });
+  });
+  return;
+}
+  
 // ESP32 USER SYNC ENDPOINT - NO AUTH REQUIRED
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/users') && req.method === 'GET') {
   const urlParts = req.url.split('/');
