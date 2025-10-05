@@ -555,6 +555,23 @@ if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
   return;
 }
 
+// ESP32 Command check endpoint - GET /api/device/{deviceId}/commands (no auth required)
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
+  const urlParts = req.url.split('/');
+  const deviceId = urlParts[3];
+  
+  console.log(`📥 Command check from ESP32 device: ${deviceId}`);
+  
+  const deviceCommandQueue = deviceCommands.get(deviceId) || [];
+  deviceCommands.set(deviceId, []);
+  
+  console.log(`📋 Sending ${deviceCommandQueue.length} commands to device ${deviceId}`);
+  
+  res.writeHead(200);
+  res.end(JSON.stringify(deviceCommandQueue));
+  return;
+}
+  
   // ESP32 Authentication endpoint (no auth required)
   if (req.url === '/api/device/auth' && req.method === 'POST') {
     console.log(`🔐 Auth request from ESP32: ${req.method} ${req.url}`);
