@@ -1099,15 +1099,30 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/info') && req.metho
 // Get device settings
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.method === 'GET') {
   requireAuth((session) => {
-    const deviceId = req.url.split('/')[3];
+    const urlParts = req.url.split('/');
+    const deviceId = urlParts[3];
+    
+    console.log(`🔍 GET settings request for device: ${deviceId}`);
+    console.log(`🔍 Connected devices:`, Array.from(connectedDevices.keys()));
     
     const device = connectedDevices.get(deviceId);
-    if (!device || !device.settings) {
+    
+    if (!device) {
+      console.log(`❌ Device ${deviceId} not in connectedDevices`);
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'Device not found' }));
+      return;
+    }
+    
+    if (!device.settings) {
+      console.log(`❌ Device ${deviceId} has no settings property`);
+      console.log(`📋 Device object:`, device);
       res.writeHead(404);
       res.end(JSON.stringify({ error: 'Settings not found' }));
       return;
     }
     
+    console.log(`✅ Returning settings for ${deviceId}`);
     res.writeHead(200);
     res.end(JSON.stringify(device.settings));
   });
