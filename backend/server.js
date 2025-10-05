@@ -1143,7 +1143,7 @@ if (req.url.match(/^\/api\/device\/[^\/]+\/settings$/) && req.method === 'POST')
       autoCloseEnabled: data.autoCloseEnabled,
       autoCloseDelay: data.autoCloseDelay,
       openTimeLearned: data.openTimeLearned,
-      closeTimeLearned: data.closeTimeLearned
+      closeTimeLearned: data.closeTimeLearned,
       manualModeEnabled: data.manualModeEnabled
     };
     
