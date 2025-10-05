@@ -1315,39 +1315,37 @@ if (req.url.startsWith('/api/gates/') && req.url.endsWith('/status') && req.meth
     
     if (!device) {
       res.writeHead(404);
-      res.end(JSON.stringify({ 
-        error: 'Device not found',
-        gateState: 'UNKNOWN'
-      }));
+      res.end(JSON.stringify({ error: 'Device not found' }));
       return;
     }
     
+    // Return all fields with safe defaults - never return undefined
     res.writeHead(200);
     res.end(JSON.stringify({
       gateState: device.gateState || 'UNKNOWN',
       lastCommand: device.lastCommand || 'NONE',
-      relay1: device.relay1 !== undefined ? device.relay1 : false,
-      relay2: device.relay2 !== undefined ? device.relay2 : false,
-      relay3: device.relay3 !== undefined ? device.relay3 : false,
-      relay4: device.relay4 !== undefined ? device.relay4 : false,
-      photoIntBlocked: device.photoIntBlocked !== undefined ? device.photoIntBlocked : false,
-      photoExtBlocked: device.photoExtBlocked !== undefined ? device.photoExtBlocked : false,
-      photoBlocked: device.photoBlocked !== undefined ? device.photoBlocked : false,
-      edgeIntContact: device.edgeIntContact !== undefined ? device.edgeIntContact : false,
-      edgeExtContact: device.edgeExtContact !== undefined ? device.edgeExtContact : false,
-      edgeContact: device.edgeContact !== undefined ? device.edgeContact : false,
-      fccPosition: device.fccPosition !== undefined ? device.fccPosition : false,
-      fcaPosition: device.fcaPosition !== undefined ? device.fcaPosition : false,
-      learningMode: device.learningMode !== undefined ? device.learningMode : false,
-      remoteOpen: device.remoteOpen !== undefined ? device.remoteOpen : false,
-      remoteStop: device.remoteStop !== undefined ? device.remoteStop : false,
+      relay1: Boolean(device.relay1),
+      relay2: Boolean(device.relay2),
+      relay3: Boolean(device.relay3),
+      relay4: Boolean(device.relay4),
+      photoIntBlocked: Boolean(device.photoIntBlocked),
+      photoExtBlocked: Boolean(device.photoExtBlocked),
+      photoBlocked: Boolean(device.photoBlocked),
+      edgeIntContact: Boolean(device.edgeIntContact),
+      edgeExtContact: Boolean(device.edgeExtContact),
+      edgeContact: Boolean(device.edgeContact),
+      fccPosition: Boolean(device.fccPosition),
+      fcaPosition: Boolean(device.fcaPosition),
+      learningMode: Boolean(device.learningMode),
+      remoteOpen: Boolean(device.remoteOpen),
+      remoteStop: Boolean(device.remoteStop),
       modeSwitch: device.modeSwitch || 'AUTO',
-      autoCloseEnabled: device.autoCloseEnabled !== undefined ? device.autoCloseEnabled : false,
-      autoCloseTimer: device.autoCloseTimer !== undefined ? device.autoCloseTimer : false,
-      autoCloseRemaining: device.autoCloseRemaining || 0,
-      partialActive: device.partialActive !== undefined ? device.partialActive : false,
+      autoCloseEnabled: Boolean(device.autoCloseEnabled),
+      autoCloseTimer: Boolean(device.autoCloseTimer),
+      autoCloseRemaining: Number(device.autoCloseRemaining) || 0,
+      partialActive: Boolean(device.partialActive),
       emergencyLock: device.emergencyLock || 'NORMAL',
-      userCount: device.userCount || 0,
+      userCount: Number(device.userCount) || 0,
       lastUpdate: device.lastStatusUpdate || device.lastHeartbeat
     }));
   });
