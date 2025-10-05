@@ -514,6 +514,7 @@ if (!installer) {
   }
 
   // ESP32 Heartbeat endpoint (no auth required for device communication)
+// ESP32 Heartbeat endpoint (no auth required for device communication)
 if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
   console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
   
@@ -521,15 +522,13 @@ if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
     const deviceId = data.deviceId || 'unknown';
     const timestamp = new Date().toISOString();
     
-    // Check if device exists in manufacturing DB to get name/location
     const mfgDevice = manufacturingDevices.get(deviceId);
-
     const existingDevice = connectedDevices.get(deviceId) || {};
 
-    // Store/update device info with metadata from manufacturing
     connectedDevices.set(deviceId, {
+      ...existingDevice,  // Preserve ALL existing fields including settings
       lastHeartbeat: timestamp,
-      : data. || 'online',
+      status: data.status || 'online',  // FIXED: was missing 'status'
       signalStrength: data.signalStrength || 0,
       batteryLevel: data.batteryLevel || 0,
       firmwareVersion: data.firmwareVersion || '1.0.0',
@@ -537,7 +536,6 @@ if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
       freeHeap: data.freeHeap || 0,
       connectionType: data.connectionType || 'wifi',
       macAddress: data.macAddress || 'Unknown',
-      // Add device metadata from manufacturing DB
       name: mfgDevice ? mfgDevice.name : deviceId,
       location: mfgDevice ? mfgDevice.location : 'Unknown location'
     });
@@ -556,23 +554,6 @@ if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
   });
   return;
 }
-
-  // ESP32 Command check endpoint - GET /api/device/{deviceId}/commands (no auth required)
-  if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
-    const urlParts = req.url.split('/');
-    const deviceId = urlParts[3];
-    
-    console.log(`📥 Command check from ESP32 device: ${deviceId}`);
-    
-    const deviceCommandQueue = deviceCommands.get(deviceId) || [];
-    deviceCommands.set(deviceId, []);
-    
-    console.log(`📋 Sending ${deviceCommandQueue.length} commands to device ${deviceId}`);
-    
-    res.writeHead(200);
-    res.end(JSON.stringify(deviceCommandQueue));
-    return;
-  }
 
   // ESP32 Authentication endpoint (no auth required)
   if (req.url === '/api/device/auth' && req.method === 'POST') {
