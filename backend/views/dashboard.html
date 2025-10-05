@@ -888,23 +888,26 @@ function switchTab(tabName, clickedButton) {
         window.statusRefreshInterval = null;
     }
     
-    // Load data based on tab
-    switch(tabName) {
-        case 'users':
-            loadUsers();
-            break;
-        case 'status':
-            loadStatus();
-            // Start auto-refresh for status tab only
-            window.statusRefreshInterval = setInterval(loadStatus, 3000);
-            break;
-        case 'logs':
-            loadLogs();
-            break;
-        case 'schedules':
-            loadSchedules();
-            break;
-    }
+// Load data based on tab
+switch(tabName) {
+    case 'users':
+        loadUsers();
+        break;
+    case 'status':
+        loadStatus();
+        // Start auto-refresh for status tab only
+        window.statusRefreshInterval = setInterval(loadStatus, 3000);
+        break;
+    case 'settings':  // ADD THIS
+        loadSettings();
+        break;
+    case 'logs':
+        loadLogs();
+        break;
+    case 'schedules':
+        loadSchedules();
+        break;
+}
 }
 
 // ALSO ADD: Stop refresh when modal closes
