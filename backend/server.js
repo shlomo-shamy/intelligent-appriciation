@@ -1073,7 +1073,7 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/info') && req.metho
         project_id: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING',
         client_email: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING',
         private_key: process.env.FIREBASE_PRIVATE_KEY ? `SET (${process.env.FIREBASE_PRIVATE_KEY.length} chars)` : 'MISSING',
-        : firebaseInitialized ? 'Connected' : 'Not Connected'
+        status: firebaseInitialized ? 'Connected' : 'Not Connected'
       }));
     });
     return;
