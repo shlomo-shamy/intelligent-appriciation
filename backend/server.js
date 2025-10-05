@@ -1182,10 +1182,10 @@ if (req.url.startsWith('/api/device/') && req.url.includes('/settings/update') &
         timestamp: new Date().toISOString()
       };
       
-      if (!commandQueues.has(deviceId)) {
-        commandQueues.set(deviceId, []);
-      }
-      commandQueues.get(deviceId).push(settingsCommand);
+if (!deviceCommands.has(deviceId)) {
+    deviceCommands.set(deviceId, []);
+}
+deviceCommands.get(deviceId).push(settingsCommand);
       
       res.writeHead(200);
       res.end(JSON.stringify({ success: true }));
