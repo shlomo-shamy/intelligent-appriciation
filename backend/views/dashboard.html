@@ -540,7 +540,6 @@ async function loadSettings() {
                             <option value="2" ${settings.emergencyLock === 2 ? 'selected' : ''}>Lock Closed</option>
                         </select>
                     </div>
-                </div>
 
 <div class="form-group">
     <label>Manual Mode (Software Override)</label>
@@ -550,6 +549,8 @@ async function loadSettings() {
     </select>
     <small class="help-text">When enabled, blocks all remote commands (WiFi, BLE, Cloud). Works together with hardware switch.</small>
 </div>
+                </div>
+
                 
                 <div class="form-group">
                     <h4>Auto-Close</h4>
