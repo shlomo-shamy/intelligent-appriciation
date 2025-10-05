@@ -1096,39 +1096,37 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/info') && req.metho
     return;
   }
 
-// Get device settings
+// Get device settings - TEMPORARY: No auth for debugging
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.method === 'GET') {
-  requireAuth((session) => {
-    const urlParts = req.url.split('/');
-    const deviceId = urlParts[3];
-    
-    console.log(`🔍 GET settings request for device: ${deviceId}`);
-    console.log(`🔍 Connected devices:`, Array.from(connectedDevices.keys()));
-    
-    const device = connectedDevices.get(deviceId);
-    
-    if (!device) {
-      console.log(`❌ Device ${deviceId} not in connectedDevices`);
-      res.writeHead(404);
-      res.end(JSON.stringify({ error: 'Device not found' }));
-      return;
-    }
-    
-    if (!device.settings) {
-      console.log(`❌ Device ${deviceId} has no settings property`);
-      console.log(`📋 Device object:`, device);
-      res.writeHead(404);
-      res.end(JSON.stringify({ error: 'Settings not found' }));
-      return;
-    }
-    
-    console.log(`✅ Returning settings for ${deviceId}`);
-    res.writeHead(200);
-    res.end(JSON.stringify(device.settings));
-  });
+  const urlParts = req.url.split('/');
+  const deviceId = urlParts[3];
+  
+  console.log(`🔍 GET settings request for device: ${deviceId}`);
+  console.log(`🔍 URL was: ${req.url}`);
+  console.log(`🔍 Connected devices:`, Array.from(connectedDevices.keys()));
+  
+  const device = connectedDevices.get(deviceId);
+  
+  if (!device) {
+    console.log(`❌ Device ${deviceId} not in connectedDevices`);
+    res.writeHead(404);
+    res.end(JSON.stringify({ error: 'Device not found' }));
+    return;
+  }
+  
+  if (!device.settings) {
+    console.log(`❌ Device ${deviceId} has no settings property`);
+    console.log(`📋 Device object keys:`, Object.keys(device));
+    res.writeHead(404);
+    res.end(JSON.stringify({ error: 'Settings not found' }));
+    return;
+  }
+  
+  console.log(`✅ Returning settings for ${deviceId}`);
+  res.writeHead(200);
+  res.end(JSON.stringify(device.settings));
   return;
 }
-
 // ESP32 reports settings (no auth - direct from device)
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.method === 'POST') {
   readBody((data) => {
