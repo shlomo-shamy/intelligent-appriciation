@@ -1049,6 +1049,41 @@ function closeModal() {
                 alert('❌ Error: ' + error.message);
             }
         }
+
+async function saveSettings(event) {
+    event.preventDefault();
+    
+    if (!currentDeviceId) return;
+    
+    const settings = {
+        commandDuration: parseInt(document.getElementById('commandDuration').value),
+        motorReverseDelay: parseInt(document.getElementById('motorReverseDelay').value),
+        partialTime: parseInt(document.getElementById('partialTime').value),
+        gateMode: parseInt(document.getElementById('gateMode').value),
+        magneticLoopMode: parseInt(document.getElementById('magneticLoopMode').value),
+        emergencyLock: parseInt(document.getElementById('emergencyLock').value),
+        autoCloseEnabled: document.getElementById('autoCloseEnabled').checked,
+        autoCloseDelay: parseInt(document.getElementById('autoCloseDelay').value) * 1000
+    };
+    
+    try {
+        const response = await fetch('/api/device/' + currentDeviceId + '/settings/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Settings saved! ESP32 will apply changes within 5 seconds.');
+        } else {
+            alert('Failed to save settings');
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
         
         async function deleteUser(phone, email, name) {
             if (!currentDeviceId) return;
