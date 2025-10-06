@@ -700,5 +700,13 @@ window.GateController = {
     timeAgo,
     saveToStorage,
     loadFromStorage,
-    apiCall
+    apiCall,
+    // Schedule functions
+    loadSchedules,
+    displaySchedules,
+    showAddScheduleModal,
+    closeScheduleModal,
+    saveSchedule,
+    editSchedule,
+    deleteSchedule
 };
