@@ -489,30 +489,7 @@ async function loadSettings() {
                 }
             </style>
             
-            <form class="settings-form" onsubmit="saveSettings(event)">
-                <div class="form-group">
-                    <h4>Gate Operation</h4>
-                    <div class="form-row">
-                        <label class="form-label">Command Duration</label>
-                        <input type="number" id="commandDuration" class="form-input" 
-                               value="${settings.commandDuration}" min="100" max="10000" step="100">
-                        <span style="color: #666; font-size: 12px;">ms</span>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Motor Reverse Delay</label>
-                        <input type="number" id="motorReverseDelay" class="form-input" 
-                               value="${settings.motorReverseDelay}" min="0" max="2000" step="100">
-                        <span style="color: #666; font-size: 12px;">ms</span>
-                    </div>
-                    <div class="form-row">
-                        <label class="form-label">Partial Open Time</label>
-                        <input type="number" id="partialTime" class="form-input" 
-                               value="${settings.partialTime}" min="1000" max="30000" step="1000">
-                        <span style="color: #666; font-size: 12px;">ms</span>
-                    </div>
-                </div>
-                
-                <div class="form-group">
+<div class="form-group">
                     <h4>Operating Modes</h4>
                     <div class="form-row">
                         <label class="form-label">Gate Mode</label>
@@ -532,59 +509,37 @@ async function loadSettings() {
                             <option value="3" ${settings.magneticLoopMode === 3 ? 'selected' : ''}>Conditional</option>
                         </select>
                     </div>
-                   <div class="form-row">
-    <label class="form-label">Emergency Lock</label>
-    <select id="emergencyLock" class="form-select">
-        <option value="0" ${settings.emergencyLock === 0 ? 'selected' : ''}>Normal</option>
-        <option value="1" ${settings.emergencyLock === 1 ? 'selected' : ''}>Lock Open</option>
-        <option value="2" ${settings.emergencyLock === 2 ? 'selected' : ''}>Lock Closed</option>
-    </select>
-</div>
-
-<div class="form-row">
-    <label class="form-label">Manual Mode (Software Override)</label>
-    <select id="manualModeEnabled" class="form-select">
-        <option value="false" ${settings.manualModeEnabled === false ? 'selected' : ''}>Disabled - Remote Commands Allowed</option>
-        <option value="true" ${settings.manualModeEnabled === true ? 'selected' : ''}>Enabled - Only Physical Buttons Work</option>
-    </select>
-</div>
-
-<div class="form-group">
-    <h4>Auto-Close</h4>
-    <div class="form-row">
-        <label class="form-label">Auto-Close Enabled</label>
-        <input type="checkbox" id="autoCloseEnabled" 
-               ${settings.autoCloseEnabled ? 'checked' : ''}>
-    </div>
-    <div class="form-row">
-        <label class="form-label">Auto-Close Delay</label>
-        <input type="number" id="autoCloseDelay" class="form-input" 
-               value="${settings.autoCloseDelay / 1000}" min="1" max="300" step="1">
-        <span style="color: #666; font-size: 12px;">seconds</span>
-    </div>
-</div>
-                
-                <div class="form-group">
-                    <h4>Learned Timings (Read-Only)</h4>
                     <div class="form-row">
-                        <label class="form-label">Open Time</label>
-                        <span class="readonly-value">${(settings.openTimeLearned / 1000).toFixed(1)}s</span>
+                        <label class="form-label">Emergency Lock</label>
+                        <select id="emergencyLock" class="form-select">
+                            <option value="0" ${settings.emergencyLock === 0 ? 'selected' : ''}>Normal</option>
+                            <option value="1" ${settings.emergencyLock === 1 ? 'selected' : ''}>Lock Open</option>
+                            <option value="2" ${settings.emergencyLock === 2 ? 'selected' : ''}>Lock Closed</option>
+                        </select>
                     </div>
                     <div class="form-row">
-                        <label class="form-label">Close Time</label>
-                        <span class="readonly-value">${(settings.closeTimeLearned / 1000).toFixed(1)}s</span>
+                        <label class="form-label">Manual Mode (Software Override)</label>
+                        <select id="manualModeEnabled" class="form-select">
+                            <option value="false" ${settings.manualModeEnabled === false ? 'selected' : ''}>Disabled - Remote Commands Allowed</option>
+                            <option value="true" ${settings.manualModeEnabled === true ? 'selected' : ''}>Enabled - Only Physical Buttons Work</option>
+                        </select>
                     </div>
                 </div>
                 
-                <button type="submit" class="save-btn">💾 Save Settings</button>
-            </form>
-        `;
-        
-    } catch (error) {
-        document.getElementById('deviceSettings').innerHTML = 
-            '<p style="color: #dc3545;">Error loading settings: ' + error.message + '</p>';
-    }
-}
+                <div class="form-group">
+                    <h4>Auto-Close</h4>
+                    <div class="form-row">
+                        <label class="form-label">Auto-Close Enabled</label>
+                        <input type="checkbox" id="autoCloseEnabled" 
+                               ${settings.autoCloseEnabled ? 'checked' : ''}>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Auto-Close Delay</label>
+                        <input type="number" id="autoCloseDelay" class="form-input" 
+                               value="${settings.autoCloseDelay / 1000}" min="1" max="300" step="1">
+                        <span style="color: #666; font-size: 12px;">seconds</span>
+                    </div>
+                </div>
         
         function closeModal() {
             document.getElementById('settingsModal').style.display = 'none';
