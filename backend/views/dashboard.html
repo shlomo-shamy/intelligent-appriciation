@@ -341,17 +341,166 @@
                     </div>
                 </div>
                 
-                <!-- Schedules Tab -->
-                <div id="schedules-tab" class="tab-content">
-                    <h3>⏰ Device Schedules</h3>
-                    <div id="deviceSchedules">
-                        <p>Schedules feature coming soon...</p>
-                    </div>
-                </div>
+<!-- Schedules Tab -->
+<div id="schedules-tab" class="tab-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3>⏰ Device Schedules</h3>
+        <button onclick="showAddScheduleModal()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+            ➕ Add Schedule
+        </button>
+    </div>
+    
+    <div id="schedulesContainer">
+        <p style="color: #666;">Loading schedules...</p>
+    </div>
+</div>
             </div>
         </div>
     </div>
-
+<!-- Schedule Modal -->
+<div id="scheduleModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2 id="scheduleModalTitle">➕ Add Schedule</h2>
+            <button class="close-btn" onclick="closeScheduleModal()">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+            <form id="scheduleForm" onsubmit="saveSchedule(event)">
+                <input type="hidden" id="scheduleId">
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Schedule Name</label>
+                    <input type="text" id="scheduleName" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Schedule Type</label>
+                    <select id="scheduleType" onchange="updateScheduleFormFields()" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                        <option value="1">Gate Automation</option>
+                        <option value="2">Group Block</option>
+                        <option value="3">User Block</option>
+                    </select>
+                </div>
+                
+                <!-- Automation Fields -->
+                <div id="automationFields">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Day</label>
+                            <select id="triggerDay" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                                <option value="0">Sunday</option>
+                                <option value="1">Monday</option>
+                                <option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option>
+                                <option value="4">Thursday</option>
+                                <option value="5">Friday</option>
+                                <option value="6">Saturday</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Time</label>
+                            <input type="time" id="triggerTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Relay</label>
+                            <select id="relayNumber" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                                <option value="1">Relay 1 (OPEN)</option>
+                                <option value="2">Relay 2 (STOP)</option>
+                                <option value="3">Relay 3 (CLOSE)</option>
+                                <option value="4">Relay 4 (PARTIAL)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Action</label>
+                        <select id="scheduleAction" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                            <option value="1">Turn ON</option>
+                            <option value="2">Turn OFF</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Blocking Fields -->
+                <div id="blockingFields" style="display: none;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Start Day</label>
+                            <select id="startDay" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                                <option value="0">Sunday</option>
+                                <option value="1">Monday</option>
+                                <option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option>
+                                <option value="4">Thursday</option>
+                                <option value="5">Friday</option>
+                                <option value="6">Saturday</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Start Time</label>
+                            <input type="time" id="startTime" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">End Day</label>
+                            <select id="endDay" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                                <option value="0">Sunday</option>
+                                <option value="1">Monday</option>
+                                <option value="2">Tuesday</option>
+                                <option value="3">Wednesday</option>
+                                <option value="4">Thursday</option>
+                                <option value="5">Friday</option>
+                                <option value="6">Saturday</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">End Time</label>
+                            <input type="time" id="endTime" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Blocked Relays</label>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="blockRelay1" value="1"> OPEN
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="blockRelay2" value="2"> STOP
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="blockRelay3" value="4"> CLOSE
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="blockRelay4" value="8"> PARTIAL
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div id="userSelectField" style="display: none; margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Select User</label>
+                        <select id="scheduleUserId" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                            <option value="0">Select user...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 5px;">
+                        <input type="checkbox" id="scheduleEnabled" checked> Enabled
+                    </label>
+                </div>
+                
+                <button type="submit" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                    Save Schedule
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
     <script>
         // Initialize data from server
         const devices = {{devicesData}};
@@ -901,7 +1050,7 @@ switch(tabName) {
         // Start auto-refresh for status tab only
         window.statusRefreshInterval = setInterval(loadStatus, 3000);
         break;
-    case 'settings':  // ADD THIS
+    case 'settings': 
         loadSettings();
         break;
     case 'logs':
