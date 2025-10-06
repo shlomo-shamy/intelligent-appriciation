@@ -1895,6 +1895,117 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/safety-event') && r
     return;
   }
 
+// ==================== SCHEDULE MANAGEMENT ====================
+
+// Initialize schedule storage
+function initializeSchedules(deviceId) {
+  if (!deviceSchedules.has(deviceId)) {
+    deviceSchedules.set(deviceId, []);
+  }
+}
+
+// Get all schedules for a device
+if (req.url.match(/^\/api\/device\/[^\/]+\/schedules$/) && req.method === 'GET') {
+  requireAuth((session) => {
+    const deviceId = req.url.split('/')[3];
+    const schedules = deviceSchedules.get(deviceId) || [];
+    
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(schedules));
+  });
+  return;
+}
+
+// Create new schedule
+if (req.url.match(/^\/api\/device\/[^\/]+\/schedules$/) && req.method === 'POST') {
+  requireAuth((session) => {
+    readBody((data) => {
+      const deviceId = req.url.split('/')[3];
+      
+      if (!data.id) {
+        data.id = Date.now();
+      }
+      
+      initializeSchedules(deviceId);
+      const schedules = deviceSchedules.get(deviceId);
+      schedules.push(data);
+      deviceSchedules.set(deviceId, schedules);
+      
+      addDeviceLog(deviceId, 'schedule_created', session.email, `Schedule: ${data.name}`);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, schedule: data }));
+    });
+  });
+  return;
+}
+
+// Update schedule
+if (req.url.match(/^\/api\/device\/[^\/]+\/schedules\/\d+$/) && req.method === 'PUT') {
+  requireAuth((session) => {
+    readBody((data) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      const scheduleId = parseInt(urlParts[5]);
+      
+      initializeSchedules(deviceId);
+      const schedules = deviceSchedules.get(deviceId);
+      
+      const index = schedules.findIndex(s => s.id == scheduleId);
+      if (index === -1) {
+        res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8' });
+        res.end(JSON.stringify({ error: 'Schedule not found' }));
+        return;
+      }
+      
+      schedules[index] = { ...schedules[index], ...data };
+      deviceSchedules.set(deviceId, schedules);
+      
+      addDeviceLog(deviceId, 'schedule_updated', session.email, `Schedule: ${schedules[index].name}`);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ success: true, schedule: schedules[index] }));
+    });
+  });
+  return;
+}
+
+// Delete schedule
+if (req.url.match(/^\/api\/device\/[^\/]+\/schedules\/\d+$/) && req.method === 'DELETE') {
+  requireAuth((session) => {
+    const urlParts = req.url.split('/');
+    const deviceId = urlParts[3];
+    const scheduleId = parseInt(urlParts[5]);
+    
+    initializeSchedules(deviceId);
+    const schedules = deviceSchedules.get(deviceId);
+    
+    const filtered = schedules.filter(s => s.id != scheduleId);
+    deviceSchedules.set(deviceId, filtered);
+    
+    addDeviceLog(deviceId, 'schedule_deleted', session.email, `Schedule ID: ${scheduleId}`);
+    
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ success: true }));
+  });
+  return;
+}
+
+// Log schedule execution (from ESP32)
+if (req.url.match(/^\/api\/device\/[^\/]+\/schedule-execution$/) && req.method === 'POST') {
+  readBody((data) => {
+    const deviceId = req.url.split('/')[3];
+    const { scheduleId, scheduleName } = data;
+    
+    console.log(`⏰ Schedule executed on ${deviceId}: ${scheduleName}`);
+    addDeviceLog(deviceId, 'schedule_execution', 'system', `Schedule: ${scheduleName}`);
+    
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ success: true }));
+  });
+  return;
+}
+  
   // Command injection endpoint - require auth
   if (req.url.includes('/send-command') && req.method === 'POST') {
     requireAuth((session) => {
