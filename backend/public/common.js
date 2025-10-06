@@ -428,6 +428,261 @@ document.addEventListener('DOMContentLoaded', function() {
     document.head.appendChild(style);
 });
 
+// ==================== SCHEDULE FUNCTIONS ====================
+
+function loadSchedules() {
+    if (!currentDeviceId) return;
+    
+    setLoading('schedulesContainer', true);
+    
+    fetch('/api/device/' + currentDeviceId + '/schedules')
+        .then(response => response.json())
+        .then(data => {
+            window.schedules = data || [];
+            displaySchedules();
+        })
+        .catch(error => {
+            console.error('Error loading schedules:', error);
+            document.getElementById('schedulesContainer').innerHTML = 
+                '<p style="color: #dc3545;">Failed to load schedules</p>';
+        })
+        .finally(() => {
+            setLoading('schedulesContainer', false);
+        });
+}
+
+function displaySchedules() {
+    const container = document.getElementById('schedulesContainer');
+    const schedules = window.schedules || [];
+    
+    if (schedules.length === 0) {
+        container.innerHTML = '<p style="color: #666;">No schedules configured. Click "Add Schedule" to create your first schedule.</p>';
+        return;
+    }
+    
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    
+    let html = '<div style="display: grid; gap: 15px;">';
+    schedules.forEach(schedule => {
+        const typeLabel = schedule.type === 1 ? 'Automation' : 
+                         schedule.type === 2 ? 'Group Block' : 'User Block';
+        const typeBadge = schedule.type === 1 ? '#28a745' : '#ffc107';
+        
+        let timeInfo = '';
+        if (schedule.type === 1) {
+            const action = schedule.action === 1 ? 'ON' : 'OFF';
+            const relay = ['OPEN', 'STOP', 'CLOSE', 'PARTIAL'][schedule.relayNumber - 1];
+            timeInfo = `${days[schedule.triggerDay]} ${String(schedule.triggerHour).padStart(2,'0')}:${String(schedule.triggerMinute).padStart(2,'0')} → ${relay} ${action}`;
+        } else {
+            timeInfo = `${days[schedule.triggerDay]} ${String(schedule.triggerHour).padStart(2,'0')}:${String(schedule.triggerMinute).padStart(2,'0')} → ${days[schedule.endDay]} ${String(schedule.endHour).padStart(2,'0')}:${String(schedule.endMinute).padStart(2,'0')}`;
+        }
+        
+        html += `
+            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid ${typeBadge};">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="flex: 1;">
+                        <h4 style="margin: 0 0 5px 0;">${schedule.name}</h4>
+                        <div style="display: flex; gap: 10px; margin-bottom: 5px;">
+                            <span style="background: ${typeBadge}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${typeLabel}</span>
+                            <span style="background: ${schedule.enabled ? '#28a745' : '#6c757d'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${schedule.enabled ? 'ENABLED' : 'DISABLED'}</span>
+                        </div>
+                        <small style="color: #666;">${timeInfo}</small>
+                    </div>
+                    <div style="display: flex; gap: 5px;">
+                        <button onclick="editSchedule(${schedule.id})" class="btn btn-primary" style="padding: 8px 12px; font-size: 12px;">
+                            Edit
+                        </button>
+                        <button onclick="deleteSchedule(${schedule.id})" class="btn btn-danger" style="padding: 8px 12px; font-size: 12px;">
+                            Delete
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    container.innerHTML = html;
+}
+
+function showAddScheduleModal() {
+    document.getElementById('scheduleForm').reset();
+    document.getElementById('scheduleId').value = '';
+    document.getElementById('scheduleModalTitle').textContent = '➕ Add Schedule';
+    document.getElementById('scheduleEnabled').checked = true;
+    updateScheduleFormFields();
+    document.getElementById('scheduleModal').style.display = 'block';
+}
+
+function closeScheduleModal() {
+    document.getElementById('scheduleModal').style.display = 'none';
+}
+
+function updateScheduleFormFields() {
+    const type = parseInt(document.getElementById('scheduleType').value);
+    
+    if (type === 1) {
+        document.getElementById('automationFields').style.display = 'block';
+        document.getElementById('blockingFields').style.display = 'none';
+    } else {
+        document.getElementById('automationFields').style.display = 'none';
+        document.getElementById('blockingFields').style.display = 'block';
+        document.getElementById('userSelectField').style.display = type === 3 ? 'block' : 'none';
+        
+        if (type === 3) {
+            loadUsersForSchedule();
+        }
+    }
+}
+
+function loadUsersForSchedule() {
+    fetch('/api/gates/' + currentDeviceId + '/users')
+        .then(response => response.json())
+        .then(users => {
+            const select = document.getElementById('scheduleUserId');
+            select.innerHTML = '<option value="0">Select user...</option>';
+            
+            const usersArray = Array.isArray(users) ? users : Object.values(users);
+            usersArray.forEach(user => {
+                select.innerHTML += `<option value="${user.phone}">${user.name}</option>`;
+            });
+        });
+}
+
+function saveSchedule(event) {
+    event.preventDefault();
+    
+    const type = parseInt(document.getElementById('scheduleType').value);
+    const scheduleId = document.getElementById('scheduleId').value;
+    
+    let scheduleData = {
+        name: document.getElementById('scheduleName').value,
+        type: type,
+        enabled: document.getElementById('scheduleEnabled').checked
+    };
+    
+    if (type === 1) {
+        const time = document.getElementById('triggerTime').value.split(':');
+        scheduleData.action = parseInt(document.getElementById('scheduleAction').value);
+        scheduleData.triggerDay = parseInt(document.getElementById('triggerDay').value);
+        scheduleData.triggerHour = parseInt(time[0]);
+        scheduleData.triggerMinute = parseInt(time[1]);
+        scheduleData.relayNumber = parseInt(document.getElementById('relayNumber').value);
+        scheduleData.userId = 0;
+        scheduleData.endDay = 0;
+        scheduleData.endHour = 0;
+        scheduleData.endMinute = 0;
+    } else {
+        const startTime = document.getElementById('startTime').value.split(':');
+        const endTime = document.getElementById('endTime').value.split(':');
+        
+        scheduleData.action = 3;
+        scheduleData.triggerDay = parseInt(document.getElementById('startDay').value);
+        scheduleData.triggerHour = parseInt(startTime[0]);
+        scheduleData.triggerMinute = parseInt(startTime[1]);
+        scheduleData.endDay = parseInt(document.getElementById('endDay').value);
+        scheduleData.endHour = parseInt(endTime[0]);
+        scheduleData.endMinute = parseInt(endTime[1]);
+        
+        let relayMask = 0;
+        if (document.getElementById('blockRelay1').checked) relayMask |= 1;
+        if (document.getElementById('blockRelay2').checked) relayMask |= 2;
+        if (document.getElementById('blockRelay3').checked) relayMask |= 4;
+        if (document.getElementById('blockRelay4').checked) relayMask |= 8;
+        scheduleData.relayNumber = relayMask;
+        
+        if (type === 3) {
+            scheduleData.userId = parseInt(document.getElementById('scheduleUserId').value);
+        } else {
+            scheduleData.userId = 0;
+        }
+    }
+    
+    const method = scheduleId ? 'PUT' : 'POST';
+    const url = scheduleId 
+        ? '/api/device/' + currentDeviceId + '/schedules/' + scheduleId
+        : '/api/device/' + currentDeviceId + '/schedules';
+    
+    fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        body: JSON.stringify(scheduleData)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            closeScheduleModal();
+            loadSchedules();
+            showNotification('Schedule saved successfully!', 'success');
+        } else {
+            showNotification('Failed to save schedule', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error saving schedule:', error);
+        showNotification('Error saving schedule: ' + error.message, 'error');
+    });
+}
+
+function editSchedule(scheduleId) {
+    const schedule = (window.schedules || []).find(s => s.id === scheduleId);
+    if (!schedule) return;
+    
+    document.getElementById('scheduleId').value = schedule.id;
+    document.getElementById('scheduleName').value = schedule.name;
+    document.getElementById('scheduleType').value = schedule.type;
+    document.getElementById('scheduleEnabled').checked = schedule.enabled;
+    
+    if (schedule.type === 1) {
+        document.getElementById('triggerDay').value = schedule.triggerDay;
+        document.getElementById('triggerTime').value = 
+            `${String(schedule.triggerHour).padStart(2,'0')}:${String(schedule.triggerMinute).padStart(2,'0')}`;
+        document.getElementById('scheduleAction').value = schedule.action;
+        document.getElementById('relayNumber').value = schedule.relayNumber;
+    } else {
+        document.getElementById('startDay').value = schedule.triggerDay;
+        document.getElementById('startTime').value = 
+            `${String(schedule.triggerHour).padStart(2,'0')}:${String(schedule.triggerMinute).padStart(2,'0')}`;
+        document.getElementById('endDay').value = schedule.endDay;
+        document.getElementById('endTime').value = 
+            `${String(schedule.endHour).padStart(2,'0')}:${String(schedule.endMinute).padStart(2,'0')}`;
+        
+        document.getElementById('blockRelay1').checked = !!(schedule.relayNumber & 1);
+        document.getElementById('blockRelay2').checked = !!(schedule.relayNumber & 2);
+        document.getElementById('blockRelay3').checked = !!(schedule.relayNumber & 4);
+        document.getElementById('blockRelay4').checked = !!(schedule.relayNumber & 8);
+        
+        if (schedule.type === 3) {
+            document.getElementById('scheduleUserId').value = schedule.userId;
+        }
+    }
+    
+    updateScheduleFormFields();
+    document.getElementById('scheduleModalTitle').textContent = '✏️ Edit Schedule';
+    document.getElementById('scheduleModal').style.display = 'block';
+}
+
+function deleteSchedule(scheduleId) {
+    if (!confirm('Delete this schedule? This action cannot be undone.')) return;
+    
+    fetch('/api/device/' + currentDeviceId + '/schedules/' + scheduleId, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            loadSchedules();
+            showNotification('Schedule deleted successfully!', 'success');
+        } else {
+            showNotification('Failed to delete schedule', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting schedule:', error);
+        showNotification('Error deleting schedule: ' + error.message, 'error');
+    });
+}
+
 // Export functions for use in other scripts
 window.GateController = {
     navigateTo,
