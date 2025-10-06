@@ -540,14 +540,16 @@ async function loadSettings() {
                             <option value="2" ${settings.emergencyLock === 2 ? 'selected' : ''}>Lock Closed</option>
                         </select>
                     </div>
-// Comment out SW Mode Switch overuling:
-/*                    <div class="form-row">
-                        <label class="form-label">Manual Mode (Software Override)</label>
-                        <select id="manualModeEnabled" class="form-select">
-                            <option value="false" ${settings.manualModeEnabled === false ? 'selected' : ''}>Disabled - Remote Commands Allowed</option>
-                            <option value="true" ${settings.manualModeEnabled === true ? 'selected' : ''}>Enabled - Only Physical Buttons Work</option>
-                        </select>
-*/                    </div>
+// Comment out or delete this entire block temporarily:
+/*
+<div class="form-row">
+    <label class="form-label">Manual Mode (Software Override)</label>
+    <select id="manualModeEnabled" class="form-select">
+        <option value="false" ${settings.manualModeEnabled === false ? 'selected' : ''}>Disabled - Remote Commands Allowed</option>
+        <option value="true" ${settings.manualModeEnabled === true ? 'selected' : ''}>Enabled - Only Physical Buttons Work</option>
+    </select>
+</div>
+*/            
                 </div>
                 
                 <div class="form-group">
