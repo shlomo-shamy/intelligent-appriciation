@@ -635,6 +635,13 @@ function saveSchedule(event) {
     
     console.log('Sending to:', url, 'Method:', method);
     
+    // Disable the save button to prevent double-clicks
+    const saveButton = event.target.querySelector('button[type="submit"]');
+    if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.textContent = 'Saving...';
+    }
+    
     fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
@@ -647,16 +654,35 @@ function saveSchedule(event) {
     .then(result => {
         console.log('Server response:', result);
         if (result.success) {
-            alert('Schedule saved!');
+            console.log('Schedule saved successfully, closing modal and refreshing list');
             closeScheduleModal();
-            loadSchedules();
+            
+            // Wait a moment before reloading schedules to ensure server has updated
+            setTimeout(() => {
+                loadSchedules();
+            }, 300);
+            
+            // Show success notification
+            setTimeout(() => {
+                alert('✅ Schedule saved successfully!');
+            }, 400);
         } else {
-            alert('Failed to save: ' + (result.error || 'Unknown error'));
+            alert('❌ Failed to save: ' + (result.error || 'Unknown error'));
+            // Re-enable the save button on error
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.textContent = 'Save Schedule';
+            }
         }
     })
     .catch(error => {
         console.error('Fetch error:', error);
-        alert('Error: ' + error.message);
+        alert('❌ Error: ' + error.message);
+        // Re-enable the save button on error
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save Schedule';
+        }
     });
 }
 
