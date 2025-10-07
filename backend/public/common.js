@@ -555,6 +555,8 @@ function saveSchedule(event) {
     const type = parseInt(document.getElementById('scheduleType').value);
     const scheduleId = document.getElementById('scheduleId').value;
     
+    console.log('Save schedule clicked, type:', type);
+    
     let scheduleData = {
         name: document.getElementById('scheduleName').value,
         type: type,
@@ -562,47 +564,44 @@ function saveSchedule(event) {
     };
     
     if (type === 1) {
-        // Automation schedule
-        const timeValue = document.getElementById('triggerTime').value;
-        
-        if (!timeValue) {
-            showNotification('Please select a time for the automation', 'error');
+        // Gate Automation
+        const time = document.getElementById('triggerTime').value;
+        if (!time) {
+            alert('Please select a time');
             return;
         }
         
-        const time = timeValue.split(':');
+        const timeParts = time.split(':');
         scheduleData.action = parseInt(document.getElementById('scheduleAction').value);
         scheduleData.triggerDay = parseInt(document.getElementById('triggerDay').value);
-        scheduleData.triggerHour = parseInt(time[0]);
-        scheduleData.triggerMinute = parseInt(time[1]);
+        scheduleData.triggerHour = parseInt(timeParts[0]);
+        scheduleData.triggerMinute = parseInt(timeParts[1]);
         scheduleData.relayNumber = parseInt(document.getElementById('relayNumber').value);
         scheduleData.userId = 0;
         scheduleData.endDay = 0;
         scheduleData.endHour = 0;
         scheduleData.endMinute = 0;
     } else {
-        // Blocking schedule (Group or User)
-        const startTimeValue = document.getElementById('startTime').value;
-        const endTimeValue = document.getElementById('endTime').value;
+        // Group Block or User Block
+        const startTime = document.getElementById('startTime').value;
+        const endTime = document.getElementById('endTime').value;
         
-        // Validate times are filled
-        if (!startTimeValue || !endTimeValue) {
-            showNotification('Please fill in both start and end times for blocking schedules', 'error');
+        if (!startTime || !endTime) {
+            alert('Please fill in both start and end times');
             return;
         }
         
-        const startTime = startTimeValue.split(':');
-        const endTime = endTimeValue.split(':');
+        const startParts = startTime.split(':');
+        const endParts = endTime.split(':');
         
         scheduleData.action = 3;
         scheduleData.triggerDay = parseInt(document.getElementById('startDay').value);
-        scheduleData.triggerHour = parseInt(startTime[0]);
-        scheduleData.triggerMinute = parseInt(startTime[1]);
+        scheduleData.triggerHour = parseInt(startParts[0]);
+        scheduleData.triggerMinute = parseInt(startParts[1]);
         scheduleData.endDay = parseInt(document.getElementById('endDay').value);
-        scheduleData.endHour = parseInt(endTime[0]);
-        scheduleData.endMinute = parseInt(endTime[1]);
+        scheduleData.endHour = parseInt(endParts[0]);
+        scheduleData.endMinute = parseInt(endParts[1]);
         
-        // Validate at least one relay is selected for blocking
         let relayMask = 0;
         if (document.getElementById('blockRelay1').checked) relayMask |= 1;
         if (document.getElementById('blockRelay2').checked) relayMask |= 2;
@@ -610,51 +609,54 @@ function saveSchedule(event) {
         if (document.getElementById('blockRelay4').checked) relayMask |= 8;
         
         if (relayMask === 0) {
-            showNotification('Please select at least one relay to block', 'error');
+            alert('Please select at least one relay to block');
             return;
         }
         
         scheduleData.relayNumber = relayMask;
         
-        // User Block - validate user selection
         if (type === 3) {
-            const userId = parseInt(document.getElementById('scheduleUserId').value);
-            if (userId === 0) {
-                showNotification('Please select a user for user blocking schedule', 'error');
+            scheduleData.userId = parseInt(document.getElementById('scheduleUserId').value) || 0;
+            if (scheduleData.userId === 0) {
+                alert('Please select a user');
                 return;
             }
-            scheduleData.userId = userId;
         } else {
             scheduleData.userId = 0;
         }
     }
     
-    console.log('Saving schedule:', scheduleData); // Debug log
+    console.log('Schedule data to save:', scheduleData);
     
     const method = scheduleId ? 'PUT' : 'POST';
     const url = scheduleId 
         ? '/api/device/' + currentDeviceId + '/schedules/' + scheduleId
         : '/api/device/' + currentDeviceId + '/schedules';
     
+    console.log('Sending to:', url, 'Method:', method);
+    
     fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(scheduleData)
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+    })
     .then(result => {
-        console.log('Save result:', result); // Debug log
+        console.log('Server response:', result);
         if (result.success) {
+            alert('Schedule saved!');
             closeScheduleModal();
             loadSchedules();
-            showNotification('Schedule saved successfully!', 'success');
         } else {
-            showNotification('Failed to save schedule: ' + (result.error || 'Unknown error'), 'error');
+            alert('Failed to save: ' + (result.error || 'Unknown error'));
         }
     })
     .catch(error => {
-        console.error('Error saving schedule:', error);
-        showNotification('Error saving schedule: ' + error.message, 'error');
+        console.error('Fetch error:', error);
+        alert('Error: ' + error.message);
     });
 }
 
