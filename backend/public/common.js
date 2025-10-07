@@ -608,9 +608,20 @@ function saveSchedule(event) {
     console.log('=== SAVE SCHEDULE (New Logic) ===');
     console.log('Type:', type);
     
+    // Get submit button reference FIRST
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    
+    // Helper function to restore button
+    function restoreButton() {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+    }
+    
     // Validate currentDeviceId
     if (!currentDeviceId) {
         alert('❌ Error: No device selected');
+        restoreButton();
         return;
     }
     
@@ -618,6 +629,7 @@ function saveSchedule(event) {
     const name = document.getElementById('scheduleName').value.trim();
     if (!name) {
         alert('Please enter a schedule name');
+        restoreButton();
         return;
     }
     
@@ -632,6 +644,7 @@ function saveSchedule(event) {
     
     if (daysMask === 0) {
         alert('Please select at least one day');
+        restoreButton();
         return;
     }
     
@@ -641,6 +654,7 @@ function saveSchedule(event) {
     
     if (!startTime || !endTime) {
         alert('Please fill in both start and end times');
+        restoreButton();
         return;
     }
     
@@ -674,6 +688,7 @@ function saveSchedule(event) {
         
         if (relayMask === 0) {
             alert('Please select at least one relay for authorization');
+            restoreButton();
             return;
         }
         
@@ -685,6 +700,7 @@ function saveSchedule(event) {
         const userId = document.getElementById('scheduleUserId').value;
         if (!userId || userId === '0') {
             alert('Please select a user');
+            restoreButton();
             return;
         }
         
@@ -696,6 +712,7 @@ function saveSchedule(event) {
         
         if (relayMask === 0) {
             alert('Please select at least one relay for user authorization');
+            restoreButton();
             return;
         }
         
@@ -707,8 +724,6 @@ function saveSchedule(event) {
     console.log('Schedule data:', JSON.stringify(scheduleData, null, 2));
     
     // Disable submit button
-    const submitBtn = event.target.querySelector('button[type="submit"]');
-    const originalText = submitBtn.textContent;
     submitBtn.disabled = true;
     submitBtn.textContent = '⏳ Saving...';
     
@@ -717,14 +732,17 @@ function saveSchedule(event) {
         ? '/api/device/' + currentDeviceId + '/schedules/' + scheduleId
         : '/api/device/' + currentDeviceId + '/schedules';
     
+    console.log('Sending to:', url, 'Method:', method);
+    
     fetch(url, {
         method: method,
         headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(scheduleData)
     })
     .then(response => {
+        console.log('Response status:', response.status);
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}`);
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
         return response.json();
     })
@@ -732,18 +750,41 @@ function saveSchedule(event) {
         console.log('Server response:', result);
         
         if (result.success) {
+            console.log('✅ Save successful');
             closeScheduleModal();
-            setTimeout(() => loadSchedules(), 300);
-            setTimeout(() => alert('✅ Schedule saved successfully!'), 400);
+            
+            // Reload schedules
+            setTimeout(() => {
+                loadSchedules();
+            }, 300);
+            
+            // Show success message
+            setTimeout(() => {
+                alert('✅ Schedule saved successfully!');
+            }, 400);
         } else {
+            console.error('❌ Server returned success=false');
             throw new Error(result.error || 'Save failed');
         }
     })
     .catch(error => {
-        console.error('Save error:', error);
-        alert('❌ Failed to save: ' + error.message);
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
+        console.error('❌ Save error:', error);
+        console.error('Error details:', {
+            message: error.message,
+            stack: error.stack
+        });
+        
+        alert('❌ Failed to save schedule:\n\n' + error.message);
+        restoreButton();
+    })
+    .finally(() => {
+        // Safety net - restore button after 5 seconds no matter what
+        setTimeout(() => {
+            if (submitBtn.disabled) {
+                console.warn('Button still disabled after 5s, force restoring');
+                restoreButton();
+            }
+        }, 5000);
     });
 }
 
