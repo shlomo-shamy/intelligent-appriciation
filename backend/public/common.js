@@ -562,7 +562,15 @@ function saveSchedule(event) {
     };
     
     if (type === 1) {
-        const time = document.getElementById('triggerTime').value.split(':');
+        // Automation schedule
+        const timeValue = document.getElementById('triggerTime').value;
+        
+        if (!timeValue) {
+            showNotification('Please select a time for the automation', 'error');
+            return;
+        }
+        
+        const time = timeValue.split(':');
         scheduleData.action = parseInt(document.getElementById('scheduleAction').value);
         scheduleData.triggerDay = parseInt(document.getElementById('triggerDay').value);
         scheduleData.triggerHour = parseInt(time[0]);
@@ -573,8 +581,18 @@ function saveSchedule(event) {
         scheduleData.endHour = 0;
         scheduleData.endMinute = 0;
     } else {
-        const startTime = document.getElementById('startTime').value.split(':');
-        const endTime = document.getElementById('endTime').value.split(':');
+        // Blocking schedule (Group or User)
+        const startTimeValue = document.getElementById('startTime').value;
+        const endTimeValue = document.getElementById('endTime').value;
+        
+        // Validate times are filled
+        if (!startTimeValue || !endTimeValue) {
+            showNotification('Please fill in both start and end times for blocking schedules', 'error');
+            return;
+        }
+        
+        const startTime = startTimeValue.split(':');
+        const endTime = endTimeValue.split(':');
         
         scheduleData.action = 3;
         scheduleData.triggerDay = parseInt(document.getElementById('startDay').value);
@@ -584,19 +602,34 @@ function saveSchedule(event) {
         scheduleData.endHour = parseInt(endTime[0]);
         scheduleData.endMinute = parseInt(endTime[1]);
         
+        // Validate at least one relay is selected for blocking
         let relayMask = 0;
         if (document.getElementById('blockRelay1').checked) relayMask |= 1;
         if (document.getElementById('blockRelay2').checked) relayMask |= 2;
         if (document.getElementById('blockRelay3').checked) relayMask |= 4;
         if (document.getElementById('blockRelay4').checked) relayMask |= 8;
+        
+        if (relayMask === 0) {
+            showNotification('Please select at least one relay to block', 'error');
+            return;
+        }
+        
         scheduleData.relayNumber = relayMask;
         
+        // User Block - validate user selection
         if (type === 3) {
-            scheduleData.userId = parseInt(document.getElementById('scheduleUserId').value);
+            const userId = parseInt(document.getElementById('scheduleUserId').value);
+            if (userId === 0) {
+                showNotification('Please select a user for user blocking schedule', 'error');
+                return;
+            }
+            scheduleData.userId = userId;
         } else {
             scheduleData.userId = 0;
         }
     }
+    
+    console.log('Saving schedule:', scheduleData); // Debug log
     
     const method = scheduleId ? 'PUT' : 'POST';
     const url = scheduleId 
@@ -610,12 +643,13 @@ function saveSchedule(event) {
     })
     .then(response => response.json())
     .then(result => {
+        console.log('Save result:', result); // Debug log
         if (result.success) {
             closeScheduleModal();
             loadSchedules();
             showNotification('Schedule saved successfully!', 'success');
         } else {
-            showNotification('Failed to save schedule', 'error');
+            showNotification('Failed to save schedule: ' + (result.error || 'Unknown error'), 'error');
         }
     })
     .catch(error => {
