@@ -555,13 +555,28 @@ function saveSchedule(event) {
     const type = parseInt(document.getElementById('scheduleType').value);
     const scheduleId = document.getElementById('scheduleId').value;
     
-    console.log('Save schedule clicked, type:', type);
+    console.log('=== SAVE SCHEDULE START ===');
+    console.log('Type:', type, 'Schedule ID:', scheduleId);
+    console.log('Current Device ID:', currentDeviceId);
+    
+    // Validate currentDeviceId exists
+    if (!currentDeviceId) {
+        alert('❌ Error: No device selected');
+        console.error('No currentDeviceId set!');
+        return;
+    }
     
     let scheduleData = {
-        name: document.getElementById('scheduleName').value,
+        name: document.getElementById('scheduleName').value.trim(),
         type: type,
         enabled: document.getElementById('scheduleEnabled').checked
     };
+    
+    // Validate name
+    if (!scheduleData.name) {
+        alert('Please enter a schedule name');
+        return;
+    }
     
     if (type === 1) {
         // Gate Automation
@@ -626,62 +641,90 @@ function saveSchedule(event) {
         }
     }
     
-    console.log('Schedule data to save:', scheduleData);
+    console.log('Schedule data prepared:', JSON.stringify(scheduleData, null, 2));
     
     const method = scheduleId ? 'PUT' : 'POST';
     const url = scheduleId 
         ? '/api/device/' + currentDeviceId + '/schedules/' + scheduleId
         : '/api/device/' + currentDeviceId + '/schedules';
     
-    console.log('Sending to:', url, 'Method:', method);
+    console.log('Request URL:', url);
+    console.log('Request Method:', method);
     
-    // Disable the save button to prevent double-clicks
-    const saveButton = event.target.querySelector('button[type="submit"]');
-    if (saveButton) {
-        saveButton.disabled = true;
-        saveButton.textContent = 'Saving...';
-    }
+    // Show loading state
+    const form = document.getElementById('scheduleForm');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalBtnText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Saving...';
     
     fetch(url, {
         method: method,
-        headers: { 'Content-Type': 'application/json; charset=utf-8' },
+        headers: { 
+            'Content-Type': 'application/json; charset=utf-8'
+        },
         body: JSON.stringify(scheduleData)
     })
     .then(response => {
-        console.log('Response status:', response.status);
-        return response.json();
+        console.log('HTTP Status:', response.status);
+        console.log('Response OK:', response.ok);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        return response.text().then(text => {
+            console.log('Raw response text:', text);
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('JSON parse error:', e);
+                throw new Error('Server returned invalid JSON: ' + text);
+            }
+        });
     })
     .then(result => {
-        console.log('Server response:', result);
+        console.log('Parsed server response:', result);
+        
         if (result.success) {
-            console.log('Schedule saved successfully, closing modal and refreshing list');
+            console.log('✅ Save confirmed by server');
+            
+            // Close modal
             closeScheduleModal();
             
-            // Wait a moment before reloading schedules to ensure server has updated
+            // Reload schedules with a small delay
+            console.log('Reloading schedules...');
             setTimeout(() => {
                 loadSchedules();
-            }, 300);
+            }, 500);
             
-            // Show success notification
+            // Show success message
             setTimeout(() => {
-                alert('✅ Schedule saved successfully!');
-            }, 400);
+                if (typeof showNotification === 'function') {
+                    showNotification('Schedule saved successfully!', 'success');
+                } else {
+                    alert('✅ Schedule saved successfully!');
+                }
+            }, 600);
+            
         } else {
-            alert('❌ Failed to save: ' + (result.error || 'Unknown error'));
-            // Re-enable the save button on error
-            if (saveButton) {
-                saveButton.disabled = false;
-                saveButton.textContent = 'Save Schedule';
-            }
+            console.error('❌ Server returned success=false:', result);
+            throw new Error(result.error || result.message || 'Server rejected the schedule');
         }
     })
     .catch(error => {
-        console.error('Fetch error:', error);
-        alert('❌ Error: ' + error.message);
-        // Re-enable the save button on error
-        if (saveButton) {
-            saveButton.disabled = false;
-            saveButton.textContent = 'Save Schedule';
+        console.error('❌ SAVE ERROR:', error);
+        console.error('Error stack:', error.stack);
+        
+        // Re-enable button
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalBtnText;
+        
+        // Show error
+        if (typeof showNotification === 'function') {
+            showNotification('Failed to save schedule: ' + error.message, 'error');
+        } else {
+            alert('❌ Failed to save schedule:\n\n' + error.message);
         }
     });
 }
