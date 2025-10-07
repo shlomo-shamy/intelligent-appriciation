@@ -8,7 +8,7 @@ function navigateTo(path) {
     window.location.href = path;
 }
 
-// Authentication functions
+// Authentication functioloadSchedulesns
 async function logout() {
     try {
         await fetch('/dashboard/logout', { method: 'POST' });
@@ -460,40 +460,83 @@ function displaySchedules() {
         return;
     }
     
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     
     let html = '<div style="display: grid; gap: 15px;">';
     schedules.forEach(schedule => {
-        const typeLabel = schedule.type === 1 ? 'Automation' : 
-                         schedule.type === 2 ? 'Group Block' : 'User Block';
-        const typeBadge = schedule.type === 1 ? '#28a745' : '#ffc107';
+        let typeLabel, typeBadge, typeIcon;
         
-        let timeInfo = '';
+        switch(schedule.type) {
+            case 1:
+                typeLabel = 'Gate Automation';
+                typeBadge = '#28a745';
+                typeIcon = '🤖';
+                break;
+            case 2:
+                typeLabel = 'Group Authorization';
+                typeBadge = '#17a2b8';
+                typeIcon = '👥';
+                break;
+            case 3:
+                typeLabel = 'User Authorization';
+                typeBadge = '#ffc107';
+                typeIcon = '👤';
+                break;
+            default:
+                typeLabel = 'Unknown';
+                typeBadge = '#6c757d';
+                typeIcon = '❓';
+        }
+        
+        // Format active days
+        const activeDays = [];
+        for (let i = 0; i < 7; i++) {
+            if (schedule.days & (1 << i)) {
+                activeDays.push(dayNames[i]);
+            }
+        }
+        const daysDisplay = activeDays.length > 0 ? activeDays.join(', ') : 'No days';
+        
+        // Format time range
+        const startTime = `${String(schedule.startHour).padStart(2,'0')}:${String(schedule.startMinute).padStart(2,'0')}`;
+        const endTime = `${String(schedule.endHour).padStart(2,'0')}:${String(schedule.endMinute).padStart(2,'0')}`;
+        
+        // Format relay info
+        let relayInfo = '';
         if (schedule.type === 1) {
-            const action = schedule.action === 1 ? 'ON' : 'OFF';
-            const relay = ['OPEN', 'STOP', 'CLOSE', 'PARTIAL'][schedule.relayNumber - 1];
-            timeInfo = `${days[schedule.triggerDay]} ${String(schedule.triggerHour).padStart(2,'0')}:${String(schedule.triggerMinute).padStart(2,'0')} → ${relay} ${action}`;
+            const relayNames = ['OPEN', 'STOP', 'CLOSE', 'PARTIAL'];
+            relayInfo = `Relay: ${relayNames[schedule.relayNumber - 1] || schedule.relayNumber}`;
         } else {
-            timeInfo = `${days[schedule.triggerDay]} ${String(schedule.triggerHour).padStart(2,'0')}:${String(schedule.triggerMinute).padStart(2,'0')} → ${days[schedule.endDay]} ${String(schedule.endHour).padStart(2,'0')}:${String(schedule.endMinute).padStart(2,'0')}`;
+            const authorizedRelays = [];
+            if (schedule.relayMask & 1) authorizedRelays.push('OPEN');
+            if (schedule.relayMask & 2) authorizedRelays.push('STOP');
+            if (schedule.relayMask & 4) authorizedRelays.push('CLOSE');
+            if (schedule.relayMask & 8) authorizedRelays.push('PARTIAL');
+            relayInfo = `Authorized: ${authorizedRelays.join(', ')}`;
         }
         
         html += `
             <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid ${typeBadge};">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
                     <div style="flex: 1;">
-                        <h4 style="margin: 0 0 5px 0;">${schedule.name}</h4>
-                        <div style="display: flex; gap: 10px; margin-bottom: 5px;">
-                            <span style="background: ${typeBadge}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${typeLabel}</span>
-                            <span style="background: ${schedule.enabled ? '#28a745' : '#6c757d'}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${schedule.enabled ? 'ENABLED' : 'DISABLED'}</span>
+                        <h4 style="margin: 0 0 8px 0; font-size: 16px;">${typeIcon} ${schedule.name}</h4>
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap;">
+                            <span style="background: ${typeBadge}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">${typeLabel}</span>
+                            <span style="background: ${schedule.enabled ? '#28a745' : '#6c757d'}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold;">${schedule.enabled ? 'ENABLED' : 'DISABLED'}</span>
                         </div>
-                        <small style="color: #666;">${timeInfo}</small>
+                        <div style="font-size: 13px; color: #555; line-height: 1.6;">
+                            <div><strong>📅 Days:</strong> ${daysDisplay}</div>
+                            <div><strong>⏰ Time:</strong> ${startTime} → ${endTime}</div>
+                            <div><strong>🎛️ ${relayInfo}</strong></div>
+                            ${schedule.type === 3 && schedule.userId ? `<div><strong>👤 User ID:</strong> ${schedule.userId}</div>` : ''}
+                        </div>
                     </div>
                     <div style="display: flex; gap: 5px;">
-                        <button onclick="editSchedule(${schedule.id})" class="btn btn-primary" style="padding: 8px 12px; font-size: 12px;">
-                            Edit
+                        <button onclick="editSchedule(${schedule.id})" style="background: #007bff; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">
+                            ✏️ Edit
                         </button>
-                        <button onclick="deleteSchedule(${schedule.id})" class="btn btn-danger" style="padding: 8px 12px; font-size: 12px;">
-                            Delete
+                        <button onclick="deleteSchedule(${schedule.id})" style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold;">
+                            🗑️ Delete
                         </button>
                     </div>
                 </div>
@@ -510,6 +553,11 @@ function showAddScheduleModal() {
     document.getElementById('scheduleId').value = '';
     document.getElementById('scheduleModalTitle').textContent = '➕ Add Schedule';
     document.getElementById('scheduleEnabled').checked = true;
+    
+    // Check first relay by default
+    document.getElementById('authRelay1').checked = true;
+    document.getElementById('userRelay1').checked = true;
+    
     updateScheduleFormFields();
     document.getElementById('scheduleModal').style.display = 'block';
 }
@@ -521,17 +569,19 @@ function closeScheduleModal() {
 function updateScheduleFormFields() {
     const type = parseInt(document.getElementById('scheduleType').value);
     
+    // Hide all type-specific fields
+    document.getElementById('automationFields').style.display = 'none';
+    document.getElementById('groupAuthFields').style.display = 'none';
+    document.getElementById('userAuthFields').style.display = 'none';
+    
+    // Show relevant fields based on type
     if (type === 1) {
         document.getElementById('automationFields').style.display = 'block';
-        document.getElementById('blockingFields').style.display = 'none';
-    } else {
-        document.getElementById('automationFields').style.display = 'none';
-        document.getElementById('blockingFields').style.display = 'block';
-        document.getElementById('userSelectField').style.display = type === 3 ? 'block' : 'none';
-        
-        if (type === 3) {
-            loadUsersForSchedule();
-        }
+    } else if (type === 2) {
+        document.getElementById('groupAuthFields').style.display = 'block';
+    } else if (type === 3) {
+        document.getElementById('userAuthFields').style.display = 'block';
+        loadUsersForSchedule();
     }
 }
 
@@ -544,7 +594,7 @@ function loadUsersForSchedule() {
             
             const usersArray = Array.isArray(users) ? users : Object.values(users);
             usersArray.forEach(user => {
-                select.innerHTML += `<option value="${user.phone}">${user.name}</option>`;
+                select.innerHTML += `<option value="${user.phone}">${user.name} (${user.phone})</option>`;
             });
         });
 }
@@ -555,211 +605,189 @@ function saveSchedule(event) {
     const type = parseInt(document.getElementById('scheduleType').value);
     const scheduleId = document.getElementById('scheduleId').value;
     
-    console.log('=== SAVE SCHEDULE START ===');
-    console.log('Type:', type, 'Schedule ID:', scheduleId);
-    console.log('Current Device ID:', currentDeviceId);
+    console.log('=== SAVE SCHEDULE (New Logic) ===');
+    console.log('Type:', type);
     
-    // Validate currentDeviceId exists
+    // Validate currentDeviceId
     if (!currentDeviceId) {
         alert('❌ Error: No device selected');
-        console.error('No currentDeviceId set!');
         return;
     }
     
-    let scheduleData = {
-        name: document.getElementById('scheduleName').value.trim(),
-        type: type,
-        enabled: document.getElementById('scheduleEnabled').checked
-    };
-    
-    // Validate name
-    if (!scheduleData.name) {
+    // Get schedule name
+    const name = document.getElementById('scheduleName').value.trim();
+    if (!name) {
         alert('Please enter a schedule name');
         return;
     }
     
-    if (type === 1) {
-        // Gate Automation
-        const time = document.getElementById('triggerTime').value;
-        if (!time) {
-            alert('Please select a time');
-            return;
+    // Get selected days (bitmask)
+    let daysMask = 0;
+    const dayCheckboxes = ['daySun', 'dayMon', 'dayTue', 'dayWed', 'dayThu', 'dayFri', 'daySat'];
+    dayCheckboxes.forEach((id, index) => {
+        if (document.getElementById(id).checked) {
+            daysMask |= (1 << index);
         }
-        
-        const timeParts = time.split(':');
-        scheduleData.action = parseInt(document.getElementById('scheduleAction').value);
-        scheduleData.triggerDay = parseInt(document.getElementById('triggerDay').value);
-        scheduleData.triggerHour = parseInt(timeParts[0]);
-        scheduleData.triggerMinute = parseInt(timeParts[1]);
-        scheduleData.relayNumber = parseInt(document.getElementById('relayNumber').value);
-        scheduleData.userId = 0;
-        scheduleData.endDay = 0;
-        scheduleData.endHour = 0;
-        scheduleData.endMinute = 0;
-    } else {
-        // Group Block or User Block
-        const startTime = document.getElementById('startTime').value;
-        const endTime = document.getElementById('endTime').value;
-        
-        if (!startTime || !endTime) {
-            alert('Please fill in both start and end times');
-            return;
-        }
-        
-        const startParts = startTime.split(':');
-        const endParts = endTime.split(':');
-        
-        scheduleData.action = 3;
-        scheduleData.triggerDay = parseInt(document.getElementById('startDay').value);
-        scheduleData.triggerHour = parseInt(startParts[0]);
-        scheduleData.triggerMinute = parseInt(startParts[1]);
-        scheduleData.endDay = parseInt(document.getElementById('endDay').value);
-        scheduleData.endHour = parseInt(endParts[0]);
-        scheduleData.endMinute = parseInt(endParts[1]);
-        
-        let relayMask = 0;
-        if (document.getElementById('blockRelay1').checked) relayMask |= 1;
-        if (document.getElementById('blockRelay2').checked) relayMask |= 2;
-        if (document.getElementById('blockRelay3').checked) relayMask |= 4;
-        if (document.getElementById('blockRelay4').checked) relayMask |= 8;
-        
-        if (relayMask === 0) {
-            alert('Please select at least one relay to block');
-            return;
-        }
-        
-        scheduleData.relayNumber = relayMask;
-        
-        if (type === 3) {
-            scheduleData.userId = parseInt(document.getElementById('scheduleUserId').value) || 0;
-            if (scheduleData.userId === 0) {
-                alert('Please select a user');
-                return;
-            }
-        } else {
-            scheduleData.userId = 0;
-        }
+    });
+    
+    if (daysMask === 0) {
+        alert('Please select at least one day');
+        return;
     }
     
-    console.log('Schedule data prepared:', JSON.stringify(scheduleData, null, 2));
+    // Get time range
+    const startTime = document.getElementById('startTime').value;
+    const endTime = document.getElementById('endTime').value;
+    
+    if (!startTime || !endTime) {
+        alert('Please fill in both start and end times');
+        return;
+    }
+    
+    const startParts = startTime.split(':');
+    const endParts = endTime.split(':');
+    
+    const scheduleData = {
+        name: name,
+        type: type,
+        enabled: document.getElementById('scheduleEnabled').checked,
+        days: daysMask,
+        startHour: parseInt(startParts[0]),
+        startMinute: parseInt(startParts[1]),
+        endHour: parseInt(endParts[0]),
+        endMinute: parseInt(endParts[1])
+    };
+    
+    // Type-specific fields
+    if (type === 1) {
+        // Gate Automation
+        scheduleData.relayNumber = parseInt(document.getElementById('relayNumber').value);
+        scheduleData.relayMask = 0;
+        scheduleData.userId = 0;
+    } else if (type === 2) {
+        // Group Authorization
+        let relayMask = 0;
+        if (document.getElementById('authRelay1').checked) relayMask |= 1;
+        if (document.getElementById('authRelay2').checked) relayMask |= 2;
+        if (document.getElementById('authRelay3').checked) relayMask |= 4;
+        if (document.getElementById('authRelay4').checked) relayMask |= 8;
+        
+        if (relayMask === 0) {
+            alert('Please select at least one relay for authorization');
+            return;
+        }
+        
+        scheduleData.relayMask = relayMask;
+        scheduleData.relayNumber = 0;
+        scheduleData.userId = 0;
+    } else if (type === 3) {
+        // User Authorization
+        const userId = document.getElementById('scheduleUserId').value;
+        if (!userId || userId === '0') {
+            alert('Please select a user');
+            return;
+        }
+        
+        let relayMask = 0;
+        if (document.getElementById('userRelay1').checked) relayMask |= 1;
+        if (document.getElementById('userRelay2').checked) relayMask |= 2;
+        if (document.getElementById('userRelay3').checked) relayMask |= 4;
+        if (document.getElementById('userRelay4').checked) relayMask |= 8;
+        
+        if (relayMask === 0) {
+            alert('Please select at least one relay for user authorization');
+            return;
+        }
+        
+        scheduleData.relayMask = relayMask;
+        scheduleData.relayNumber = 0;
+        scheduleData.userId = userId;
+    }
+    
+    console.log('Schedule data:', JSON.stringify(scheduleData, null, 2));
+    
+    // Disable submit button
+    const submitBtn = event.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = '⏳ Saving...';
     
     const method = scheduleId ? 'PUT' : 'POST';
     const url = scheduleId 
         ? '/api/device/' + currentDeviceId + '/schedules/' + scheduleId
         : '/api/device/' + currentDeviceId + '/schedules';
     
-    console.log('Request URL:', url);
-    console.log('Request Method:', method);
-    
-    // Show loading state
-    const form = document.getElementById('scheduleForm');
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalBtnText = submitBtn.textContent;
-    submitBtn.disabled = true;
-    submitBtn.textContent = '⏳ Saving...';
-    
     fetch(url, {
         method: method,
-        headers: { 
-            'Content-Type': 'application/json; charset=utf-8'
-        },
+        headers: { 'Content-Type': 'application/json; charset=utf-8' },
         body: JSON.stringify(scheduleData)
     })
     .then(response => {
-        console.log('HTTP Status:', response.status);
-        console.log('Response OK:', response.ok);
-        
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            throw new Error(`HTTP ${response.status}`);
         }
-        
-        return response.text().then(text => {
-            console.log('Raw response text:', text);
-            try {
-                return JSON.parse(text);
-            } catch (e) {
-                console.error('JSON parse error:', e);
-                throw new Error('Server returned invalid JSON: ' + text);
-            }
-        });
+        return response.json();
     })
     .then(result => {
-        console.log('Parsed server response:', result);
+        console.log('Server response:', result);
         
         if (result.success) {
-            console.log('✅ Save confirmed by server');
-            
-            // Close modal
             closeScheduleModal();
-            
-            // Reload schedules with a small delay
-            console.log('Reloading schedules...');
-            setTimeout(() => {
-                loadSchedules();
-            }, 500);
-            
-            // Show success message
-            setTimeout(() => {
-                if (typeof showNotification === 'function') {
-                    showNotification('Schedule saved successfully!', 'success');
-                } else {
-                    alert('✅ Schedule saved successfully!');
-                }
-            }, 600);
-            
+            setTimeout(() => loadSchedules(), 300);
+            setTimeout(() => alert('✅ Schedule saved successfully!'), 400);
         } else {
-            console.error('❌ Server returned success=false:', result);
-            throw new Error(result.error || result.message || 'Server rejected the schedule');
+            throw new Error(result.error || 'Save failed');
         }
     })
     .catch(error => {
-        console.error('❌ SAVE ERROR:', error);
-        console.error('Error stack:', error.stack);
-        
-        // Re-enable button
+        console.error('Save error:', error);
+        alert('❌ Failed to save: ' + error.message);
         submitBtn.disabled = false;
-        submitBtn.textContent = originalBtnText;
-        
-        // Show error
-        if (typeof showNotification === 'function') {
-            showNotification('Failed to save schedule: ' + error.message, 'error');
-        } else {
-            alert('❌ Failed to save schedule:\n\n' + error.message);
-        }
+        submitBtn.textContent = originalText;
     });
 }
 
 function editSchedule(scheduleId) {
     const schedule = (window.schedules || []).find(s => s.id === scheduleId);
-    if (!schedule) return;
+    if (!schedule) {
+        alert('Schedule not found');
+        return;
+    }
     
+    console.log('Editing schedule:', schedule);
+    
+    // Set basic fields
     document.getElementById('scheduleId').value = schedule.id;
     document.getElementById('scheduleName').value = schedule.name;
     document.getElementById('scheduleType').value = schedule.type;
     document.getElementById('scheduleEnabled').checked = schedule.enabled;
     
+    // Set days checkboxes
+    const dayCheckboxes = ['daySun', 'dayMon', 'dayTue', 'dayWed', 'dayThu', 'dayFri', 'daySat'];
+    dayCheckboxes.forEach((id, index) => {
+        document.getElementById(id).checked = !!(schedule.days & (1 << index));
+    });
+    
+    // Set time range
+    document.getElementById('startTime').value = 
+        `${String(schedule.startHour).padStart(2,'0')}:${String(schedule.startMinute).padStart(2,'0')}`;
+    document.getElementById('endTime').value = 
+        `${String(schedule.endHour).padStart(2,'0')}:${String(schedule.endMinute).padStart(2,'0')}`;
+    
+    // Set type-specific fields
     if (schedule.type === 1) {
-        document.getElementById('triggerDay').value = schedule.triggerDay;
-        document.getElementById('triggerTime').value = 
-            `${String(schedule.triggerHour).padStart(2,'0')}:${String(schedule.triggerMinute).padStart(2,'0')}`;
-        document.getElementById('scheduleAction').value = schedule.action;
         document.getElementById('relayNumber').value = schedule.relayNumber;
-    } else {
-        document.getElementById('startDay').value = schedule.triggerDay;
-        document.getElementById('startTime').value = 
-            `${String(schedule.triggerHour).padStart(2,'0')}:${String(schedule.triggerMinute).padStart(2,'0')}`;
-        document.getElementById('endDay').value = schedule.endDay;
-        document.getElementById('endTime').value = 
-            `${String(schedule.endHour).padStart(2,'0')}:${String(schedule.endMinute).padStart(2,'0')}`;
-        
-        document.getElementById('blockRelay1').checked = !!(schedule.relayNumber & 1);
-        document.getElementById('blockRelay2').checked = !!(schedule.relayNumber & 2);
-        document.getElementById('blockRelay3').checked = !!(schedule.relayNumber & 4);
-        document.getElementById('blockRelay4').checked = !!(schedule.relayNumber & 8);
-        
-        if (schedule.type === 3) {
-            document.getElementById('scheduleUserId').value = schedule.userId;
-        }
+    } else if (schedule.type === 2) {
+        document.getElementById('authRelay1').checked = !!(schedule.relayMask & 1);
+        document.getElementById('authRelay2').checked = !!(schedule.relayMask & 2);
+        document.getElementById('authRelay3').checked = !!(schedule.relayMask & 4);
+        document.getElementById('authRelay4').checked = !!(schedule.relayMask & 8);
+    } else if (schedule.type === 3) {
+        document.getElementById('scheduleUserId').value = schedule.userId;
+        document.getElementById('userRelay1').checked = !!(schedule.relayMask & 1);
+        document.getElementById('userRelay2').checked = !!(schedule.relayMask & 2);
+        document.getElementById('userRelay3').checked = !!(schedule.relayMask & 4);
+        document.getElementById('userRelay4').checked = !!(schedule.relayMask & 8);
     }
     
     updateScheduleFormFields();
@@ -777,14 +805,14 @@ function deleteSchedule(scheduleId) {
     .then(result => {
         if (result.success) {
             loadSchedules();
-            showNotification('Schedule deleted successfully!', 'success');
+            alert('✅ Schedule deleted successfully!');
         } else {
-            showNotification('Failed to delete schedule', 'error');
+            alert('❌ Failed to delete schedule');
         }
     })
     .catch(error => {
         console.error('Error deleting schedule:', error);
-        showNotification('Error deleting schedule: ' + error.message, 'error');
+        alert('❌ Error deleting schedule: ' + error.message);
     });
 }
 
