@@ -439,7 +439,7 @@
                         </div>
                         <div>
                             <label style="display: block; font-weight: bold; margin-bottom: 5px;">Start Time</label>
-                            <input type="time" id="startTime" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                            <input type="time" id="startTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
                         </div>
                     </div>
                     
@@ -458,7 +458,7 @@
                         </div>
                         <div>
                             <label style="display: block; font-weight: bold; margin-bottom: 5px;">End Time</label>
-                            <input type="time" id="endTime" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                            <input type="time" id="endTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
                         </div>
                     </div>
                     
@@ -1108,25 +1108,7 @@ function closeModal() {
                 document.getElementById('deviceLogs').innerHTML = '<p style="color: #dc3545;">Error loading logs: ' + error.message + '</p>';
             }
         }
-        
-        async function loadSchedules() {
-            if (!currentDeviceId) return;
-            
-            document.getElementById('deviceSchedules').innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #666;">
-                    <h4>⏰ Schedules Feature</h4>
-                    <p>This feature will allow you to:</p>
-                    <ul style="text-align: left; max-width: 300px; margin: 0 auto;">
-                        <li>📅 Schedule automatic gate operations</li>
-                        <li>🕐 Set recurring time-based commands</li>
-                        <li>👥 Assign user-specific schedules</li>
-                        <li>🎯 Configure conditional triggers</li>
-                    </ul>
-                    <p><strong>Coming in the next update!</strong></p>
-                </div>
-            `;
-        }
-        
+              
         async function registerUserModal() {
             if (!currentDeviceId) return;
             
@@ -1349,5 +1331,8 @@ container.innerHTML = devices.map(([deviceId, info]) => {
         // Also call immediately in case DOM is already loaded
         renderDevices();
     </script>
+<script src="/public/common.js"></script>
+</body>
+</html>
 </body>
 </html>
