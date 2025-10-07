@@ -377,130 +377,154 @@
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; font-weight: bold; margin-bottom: 5px;">Schedule Type</label>
                     <select id="scheduleType" onchange="updateScheduleFormFields()" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                        <option value="1">Gate Automation</option>
-                        <option value="2">Group Block</option>
-                        <option value="3">User Block</option>
+                        <option value="1">Gate Automation - Automatic relay activation</option>
+                        <option value="2">Group Authorization - Multiple users can activate</option>
+                        <option value="3">User Authorization - Specific user can activate</option>
                     </select>
                 </div>
                 
-                <!-- Automation Fields -->
-                <div id="automationFields">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+                <!-- Days Selection (All Types) -->
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">📅 Active Days:</label>
+                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;">
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="daySun" value="0" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Sun</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="dayMon" value="1" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Mon</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="dayTue" value="2" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Tue</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="dayWed" value="3" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Wed</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="dayThu" value="4" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Thu</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="dayFri" value="5" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Fri</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="daySat" value="6" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Sat</span>
+                        </label>
+                    </div>
+                    <small style="color: #666; margin-top: 5px; display: block;">Select one or more days when this schedule is active</small>
+                </div>
+                
+                <!-- Time Range (All Types) -->
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">⏰ Time Range:</label>
+                    <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center;">
                         <div>
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Day</label>
-                            <select id="triggerDay" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                                <option value="0">Sunday</option>
-                                <option value="1">Monday</option>
-                                <option value="2">Tuesday</option>
-                                <option value="3">Wednesday</option>
-                                <option value="4">Thursday</option>
-                                <option value="5">Friday</option>
-                                <option value="6">Saturday</option>
-                            </select>
+                            <label style="display: block; font-size: 12px; color: #666; margin-bottom: 3px;">From</label>
+                            <input type="time" id="startTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
                         </div>
+                        <div style="padding-top: 20px; font-weight: bold; color: #667eea;">→</div>
                         <div>
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Time</label>
-                            <input type="time" id="triggerTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                        </div>
-                        <div>
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Relay</label>
-                            <select id="relayNumber" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                                <option value="1">Relay 1 (OPEN)</option>
-                                <option value="2">Relay 2 (STOP)</option>
-                                <option value="3">Relay 3 (CLOSE)</option>
-                                <option value="4">Relay 4 (PARTIAL)</option>
-                            </select>
+                            <label style="display: block; font-size: 12px; color: #666; margin-bottom: 3px;">To</label>
+                            <input type="time" id="endTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
                         </div>
                     </div>
-                    
+                </div>
+                
+                <!-- Gate Automation Specific Fields -->
+                <div id="automationFields">
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Action</label>
-                        <select id="scheduleAction" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                            <option value="1">Turn ON</option>
-                            <option value="2">Turn OFF</option>
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Relay to Activate:</label>
+                        <select id="relayNumber" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                            <option value="1">🔓 Relay 1 (OPEN)</option>
+                            <option value="2">⏸️ Relay 2 (STOP)</option>
+                            <option value="3">🔒 Relay 3 (CLOSE)</option>
+                            <option value="4">↗️ Relay 4 (PARTIAL)</option>
                         </select>
                     </div>
                 </div>
                 
-                <!-- Blocking Fields -->
-                <div id="blockingFields" style="display: none;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                        <div>
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Start Day</label>
-                            <select id="startDay" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                                <option value="0">Sunday</option>
-                                <option value="1">Monday</option>
-                                <option value="2">Tuesday</option>
-                                <option value="3">Wednesday</option>
-                                <option value="4">Thursday</option>
-                                <option value="5">Friday</option>
-                                <option value="6">Saturday</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Start Time</label>
-                            <input type="time" id="startTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                        </div>
-                    </div>
-                    
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
-                        <div>
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">End Day</label>
-                            <select id="endDay" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                                <option value="0">Sunday</option>
-                                <option value="1">Monday</option>
-                                <option value="2">Tuesday</option>
-                                <option value="3">Wednesday</option>
-                                <option value="4">Thursday</option>
-                                <option value="5">Friday</option>
-                                <option value="6">Saturday</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">End Time</label>
-                            <input type="time" id="endTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                        </div>
-                    </div>
-                    
+                <!-- Group Authorization Fields -->
+                <div id="groupAuthFields" style="display: none;">
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Blocked Relays</label>
-                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="blockRelay1" value="1"> OPEN
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Authorized Relays (Users can activate these):</label>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="authRelay1" value="1" checked> 🔓 OPEN
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="blockRelay2" value="2"> STOP
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="authRelay2" value="2"> ⏸️ STOP
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="blockRelay3" value="4"> CLOSE
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="authRelay3" value="4"> 🔒 CLOSE
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="blockRelay4" value="8"> PARTIAL
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="authRelay4" value="8"> ↗️ PARTIAL
                             </label>
                         </div>
                     </div>
-                    
-                    <div id="userSelectField" style="display: none; margin-bottom: 15px;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Select User</label>
+                </div>
+                
+                <!-- User Authorization Fields -->
+                <div id="userAuthFields" style="display: none;">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Select User:</label>
                         <select id="scheduleUserId" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
                             <option value="0">Select user...</option>
                         </select>
                     </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Authorized Relays (User can activate these):</label>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="userRelay1" value="1" checked> 🔓 OPEN
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="userRelay2" value="2"> ⏸️ STOP
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="userRelay3" value="4"> 🔒 CLOSE
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="userRelay4" value="8"> ↗️ PARTIAL
+                            </label>
+                        </div>
+                    </div>
                 </div>
                 
                 <div style="margin-bottom: 15px;">
-                    <label style="display: flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="scheduleEnabled" checked> Enabled
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="scheduleEnabled" checked>
+                        <span style="font-weight: bold;">✅ Schedule Enabled</span>
                     </label>
                 </div>
                 
-                <button type="submit" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                    Save Schedule
+                <button type="submit" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                    💾 Save Schedule
                 </button>
             </form>
         </div>
     </div>
 </div>
+
+<style>
+/* Checkbox styling */
+input[type="checkbox"]:checked + span,
+input[type="checkbox"]:checked {
+    color: #667eea;
+    font-weight: bold;
+}
+
+label:has(input[type="checkbox"]:checked) {
+    border-color: #667eea !important;
+    background: #f0f4ff !important;
+}
+</style>
 
 <script src="/public/common.js"></script>
 </body>
