@@ -308,6 +308,119 @@ const server = http.createServer((req, res) => {
     }
   }
 
+// ==================== FIREBASE SCHEDULE HELPERS ====================
+
+async function saveScheduleToFirebase(deviceId, schedule) {
+  if (!firebaseInitialized) {
+    console.log('⚠️ Firebase not initialized, skipping schedule save');
+    return { success: false, error: 'Firebase not available' };
+  }
+  
+  try {
+    const gateRef = db.collection('gates').doc(deviceId);
+    const gateDoc = await gateRef.get();
+    
+    if (!gateDoc.exists) {
+      console.log(`⚠️ Gate ${deviceId} not found in Firebase`);
+      return { success: false, error: 'Gate not found' };
+    }
+    
+    // Get current schedules array
+    const currentSchedules = gateDoc.data().schedules || [];
+    
+    // Check if updating existing or adding new
+    const existingIndex = currentSchedules.findIndex(s => s.id === schedule.id);
+    
+    if (existingIndex >= 0) {
+      // Update existing
+      currentSchedules[existingIndex] = {
+        ...schedule,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      };
+    } else {
+      // Add new
+      currentSchedules.push({
+        ...schedule,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+    }
+    
+    // Save back to Firebase
+    await gateRef.update({
+      schedules: currentSchedules
+    });
+    
+    console.log(`✅ Schedule saved to Firebase: ${schedule.name}`);
+    return { success: true };
+    
+  } catch (error) {
+    console.error('❌ Firebase save error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function deleteScheduleFromFirebase(deviceId, scheduleId) {
+  if (!firebaseInitialized) {
+    console.log('⚠️ Firebase not initialized, skipping schedule delete');
+    return { success: false, error: 'Firebase not available' };
+  }
+  
+  try {
+    const gateRef = db.collection('gates').doc(deviceId);
+    const gateDoc = await gateRef.get();
+    
+    if (!gateDoc.exists) {
+      return { success: false, error: 'Gate not found' };
+    }
+    
+    // Get current schedules and filter out deleted one
+    const currentSchedules = gateDoc.data().schedules || [];
+    const filteredSchedules = currentSchedules.filter(s => s.id != scheduleId);
+    
+    // Save back to Firebase
+    await gateRef.update({
+      schedules: filteredSchedules
+    });
+    
+    console.log(`✅ Schedule deleted from Firebase: ${scheduleId}`);
+    return { success: true };
+    
+  } catch (error) {
+    console.error('❌ Firebase delete error:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function loadSchedulesFromFirebase(deviceId) {
+  if (!firebaseInitialized) {
+    console.log('⚠️ Firebase not initialized, returning local schedules');
+    return deviceSchedules.get(deviceId) || [];
+  }
+  
+  try {
+    const gateDoc = await db.collection('gates').doc(deviceId).get();
+    
+    if (!gateDoc.exists) {
+      console.log(`⚠️ Gate ${deviceId} not found in Firebase`);
+      return [];
+    }
+    
+    const schedules = gateDoc.data().schedules || [];
+    console.log(`✅ Loaded ${schedules.length} schedules from Firebase for ${deviceId}`);
+    
+    // Also update local cache
+    deviceSchedules.set(deviceId, schedules);
+    
+    return schedules;
+    
+  } catch (error) {
+    console.error('❌ Firebase load error:', error);
+    // Fallback to local storage
+    return deviceSchedules.get(deviceId) || [];
+  }
+}
+  
 // DEVICE ACTIVATION ENDPOINT - Updated for proper flow
 if (req.url === '/api/device/activate' && req.method === 'POST') {
   readBody(async (data) => {
@@ -1906,9 +2019,13 @@ function initializeSchedules(deviceId) {
 
 // Get all schedules for a device
 if (req.url.match(/^\/api\/device\/[^\/]+\/schedules$/) && req.method === 'GET') {
-  requireAuth((session) => {
+  requireAuth(async (session) => {  // ← Make this async
     const deviceId = req.url.split('/')[3];
-    const schedules = deviceSchedules.get(deviceId) || [];
+    
+    console.log(`📅 Loading schedules for device: ${deviceId}`);
+    
+    // Try to load from Firebase first
+    const schedules = await loadSchedulesFromFirebase(deviceId);
     
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify(schedules));
@@ -1919,22 +2036,40 @@ if (req.url.match(/^\/api\/device\/[^\/]+\/schedules$/) && req.method === 'GET')
 // Create new schedule
 if (req.url.match(/^\/api\/device\/[^\/]+\/schedules$/) && req.method === 'POST') {
   requireAuth((session) => {
-    readBody((data) => {
+    readBody(async (data) => {  // ← Make this async
       const deviceId = req.url.split('/')[3];
+      
+      console.log('📅 Creating schedule for device:', deviceId);
+      console.log('📅 Schedule data:', data);
       
       if (!data.id) {
         data.id = Date.now();
       }
       
+      // Add metadata
+      data.createdBy = session.email;
+      
+      // Save to local memory first
       initializeSchedules(deviceId);
       const schedules = deviceSchedules.get(deviceId);
       schedules.push(data);
       deviceSchedules.set(deviceId, schedules);
       
+      // Save to Firebase
+      const firebaseResult = await saveScheduleToFirebase(deviceId, data);
+      
+      console.log('📅 Schedule saved locally, total schedules:', schedules.length);
+      console.log('🔥 Firebase save result:', firebaseResult);
+      
       addDeviceLog(deviceId, 'schedule_created', session.email, `Schedule: ${data.name}`);
       
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: true, schedule: data }));
+      res.end(JSON.stringify({ 
+        success: true, 
+        schedule: data,
+        firebase_status: firebaseResult.success ? 'synced' : 'local_only',
+        firebase_error: firebaseResult.error || null
+      }));
     });
   });
   return;
@@ -1943,10 +2078,12 @@ if (req.url.match(/^\/api\/device\/[^\/]+\/schedules$/) && req.method === 'POST'
 // Update schedule
 if (req.url.match(/^\/api\/device\/[^\/]+\/schedules\/\d+$/) && req.method === 'PUT') {
   requireAuth((session) => {
-    readBody((data) => {
+    readBody(async (data) => {  // ← Make this async
       const urlParts = req.url.split('/');
       const deviceId = urlParts[3];
       const scheduleId = parseInt(urlParts[5]);
+      
+      console.log(`📅 Updating schedule ${scheduleId} for device ${deviceId}`);
       
       initializeSchedules(deviceId);
       const schedules = deviceSchedules.get(deviceId);
@@ -1958,13 +2095,23 @@ if (req.url.match(/^\/api\/device\/[^\/]+\/schedules\/\d+$/) && req.method === '
         return;
       }
       
+      // Update local storage
       schedules[index] = { ...schedules[index], ...data };
       deviceSchedules.set(deviceId, schedules);
+      
+      // Update Firebase
+      const firebaseResult = await saveScheduleToFirebase(deviceId, schedules[index]);
+      
+      console.log('🔥 Firebase update result:', firebaseResult);
       
       addDeviceLog(deviceId, 'schedule_updated', session.email, `Schedule: ${schedules[index].name}`);
       
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-      res.end(JSON.stringify({ success: true, schedule: schedules[index] }));
+      res.end(JSON.stringify({ 
+        success: true, 
+        schedule: schedules[index],
+        firebase_status: firebaseResult.success ? 'synced' : 'local_only'
+      }));
     });
   });
   return;
@@ -1977,16 +2124,29 @@ if (req.url.match(/^\/api\/device\/[^\/]+\/schedules\/\d+$/) && req.method === '
     const deviceId = urlParts[3];
     const scheduleId = parseInt(urlParts[5]);
     
-    initializeSchedules(deviceId);
-    const schedules = deviceSchedules.get(deviceId);
-    
-    const filtered = schedules.filter(s => s.id != scheduleId);
-    deviceSchedules.set(deviceId, filtered);
-    
-    addDeviceLog(deviceId, 'schedule_deleted', session.email, `Schedule ID: ${scheduleId}`);
-    
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ success: true }));
+    (async () => {  // ← Wrap in async IIFE
+      console.log(`📅 Deleting schedule ${scheduleId} from device ${deviceId}`);
+      
+      initializeSchedules(deviceId);
+      const schedules = deviceSchedules.get(deviceId);
+      
+      // Delete from local storage
+      const filtered = schedules.filter(s => s.id != scheduleId);
+      deviceSchedules.set(deviceId, filtered);
+      
+      // Delete from Firebase
+      const firebaseResult = await deleteScheduleFromFirebase(deviceId, scheduleId);
+      
+      console.log('🔥 Firebase delete result:', firebaseResult);
+      
+      addDeviceLog(deviceId, 'schedule_deleted', session.email, `Schedule ID: ${scheduleId}`);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ 
+        success: true,
+        firebase_status: firebaseResult.success ? 'synced' : 'local_only'
+      }));
+    })();
   });
   return;
 }
@@ -2179,6 +2339,40 @@ setInterval(() => {
       deviceSchedules.delete(deviceId);
     }
   }
+
+// Load schedules from Firebase on server startup
+async function syncSchedulesOnStartup() {
+  if (!firebaseInitialized) {
+    console.log('⚠️ Firebase not available, using local schedule storage');
+    return;
+  }
+  
+  try {
+    console.log('🔄 Syncing schedules from Firebase...');
+    
+    const gatesSnapshot = await db.collection('gates').get();
+    let totalSchedules = 0;
+    
+    for (const doc of gatesSnapshot.docs) {
+      const deviceId = doc.id;
+      const schedules = doc.data().schedules || [];
+      
+      if (schedules.length > 0) {
+        deviceSchedules.set(deviceId, schedules);
+        totalSchedules += schedules.length;
+        console.log(`✅ Loaded ${schedules.length} schedules for device ${deviceId}`);
+      }
+    }
+    
+    console.log(`✅ Sync complete: Loaded ${totalSchedules} total schedules from Firebase`);
+    
+  } catch (error) {
+    console.error('❌ Firebase sync error:', error);
+  }
+}
+
+// Call sync after server starts
+setTimeout(syncSchedulesOnStartup, 2000);
   
   // Clean up old sessions (older than 24 hours)
   const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
@@ -2189,3 +2383,5 @@ setInterval(() => {
     }
   }
 }, 30000);
+
+
