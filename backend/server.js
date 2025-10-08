@@ -328,25 +328,30 @@ async function saveScheduleToFirebase(deviceId, schedule) {
     // Get current schedules array
     const currentSchedules = gateDoc.data().schedules || [];
     
+    // Prepare schedule data (convert timestamps to Date objects)
+    const now = new Date();
+    const scheduleToSave = {
+      ...schedule,
+      // Remove any FieldValue objects and use plain Date
+      createdAt: schedule.createdAt || now,
+      updatedAt: now
+    };
+    
     // Check if updating existing or adding new
     const existingIndex = currentSchedules.findIndex(s => s.id === schedule.id);
     
     if (existingIndex >= 0) {
-      // Update existing
-      currentSchedules[existingIndex] = {
-        ...schedule,
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      };
+      // Update existing - preserve original createdAt
+      scheduleToSave.createdAt = currentSchedules[existingIndex].createdAt || now;
+      currentSchedules[existingIndex] = scheduleToSave;
+      console.log(`📅 Updating existing schedule at index ${existingIndex}`);
     } else {
       // Add new
-      currentSchedules.push({
-        ...schedule,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
+      currentSchedules.push(scheduleToSave);
+      console.log(`📅 Adding new schedule, total: ${currentSchedules.length}`);
     }
     
-    // Save back to Firebase
+    // Save back to Firebase (entire array)
     await gateRef.update({
       schedules: currentSchedules
     });
