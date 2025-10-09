@@ -2012,7 +2012,30 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/safety-event') && r
     });
     return;
   }
-
+// ESP32 SCHEDULE SYNC - NO AUTH REQUIRED (like users endpoint)
+if (req.url.match(/^\/api\/device\/[^\/]+\/schedules\/sync$/) && req.method === 'GET') {
+  const deviceId = req.url.split('/')[3];
+  
+  console.log(`📅 ESP32 schedule sync request from: ${deviceId}`);
+  
+  (async () => {
+    try {
+      // Load from Firebase if available
+      const schedules = await loadSchedulesFromFirebase(deviceId);
+      
+      console.log(`✅ ESP32: Sending ${schedules.length} schedules to ${deviceId}`);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify(schedules));
+      
+    } catch (error) {
+      console.error('❌ ESP32 schedule sync error:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
+  })();
+  return;
+}
 // ==================== SCHEDULE MANAGEMENT ====================
 
 // Initialize schedule storage
