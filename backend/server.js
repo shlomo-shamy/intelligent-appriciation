@@ -112,6 +112,101 @@ try {
 
 console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
 
+// Organization storage (will migrate to Firebase)
+const organizations = new Map();
+
+// Initialize default platform organization - ALL GATES AUTO-ASSIGNED HERE
+organizations.set('platform_org', {
+  id: 'platform_org',
+  name: 'Gate Controller Platform',
+  type: 'platform',
+  createdAt: new Date().toISOString(),
+  createdBy: 'system',
+  devices: [],  // Will be populated as gates activate
+  members: {
+    'admin@gatecontroller.com': {
+      role: 'superadmin',
+      phone: '0000000000',
+      name: 'Administrator',
+      addedAt: new Date().toISOString(),
+      addedBy: 'system'
+    }
+  }
+});
+
+// Helper function to get user's organizations
+function getUserOrganizations(userEmail) {
+  const userOrgs = [];
+  for (const [orgId, org] of organizations.entries()) {
+    if (org.members[userEmail]) {
+      userOrgs.push({
+        id: orgId,
+        name: org.name,
+        role: org.members[userEmail].role,
+        type: org.type
+      });
+    }
+  }
+  return userOrgs;
+}
+
+// Helper function to get user's highest role
+function getUserHighestRole(userEmail) {
+  const userOrgs = getUserOrganizations(userEmail);
+  
+  // Check for superadmin first
+  if (userOrgs.some(org => org.role === 'superadmin')) {
+    return 'superadmin';
+  }
+  
+  // Then admin
+  if (userOrgs.some(org => org.role === 'admin')) {
+    return 'admin';
+  }
+  
+  // Then manager
+  if (userOrgs.some(org => org.role === 'manager')) {
+    return 'manager';
+  }
+  
+  return 'user';
+}
+
+// Helper function to get gates for user's organizations
+function getUserGates(userEmail, userRole) {
+  // SuperAdmin sees ALL connected gates (bypass organization filter)
+  if (userRole === 'superadmin') {
+    console.log(`SuperAdmin ${userEmail} accessing ALL gates`);
+    return Array.from(connectedDevices.keys());
+  }
+  
+  // Other users see only gates from their organizations
+  const userOrgs = getUserOrganizations(userEmail);
+  const gateSet = new Set();
+  
+  for (const org of userOrgs) {
+    const orgData = organizations.get(org.id);
+    if (orgData && orgData.devices) {
+      orgData.devices.forEach(deviceId => gateSet.add(deviceId));
+    }
+  }
+  
+  console.log(`User ${userEmail} (${userRole}) accessing ${gateSet.size} gates from ${userOrgs.length} organizations`);
+  return Array.from(gateSet);
+}
+
+// Helper function to check if user can access a specific gate
+function userCanAccessGate(userEmail, userRole, gateSerial) {
+  // SuperAdmin can access all gates
+  if (userRole === 'superadmin') {
+    return true;
+  }
+  
+  // Check if gate is in any of user's organizations
+  const userGates = getUserGates(userEmail, userRole);
+  return userGates.includes(gateSerial);
+}
+
 // Let Railway assign the port - don't force 3000
 const PORT = process.env.PORT || 3001;
 
@@ -426,7 +521,7 @@ async function loadSchedulesFromFirebase(deviceId) {
   }
 }
   
-// DEVICE ACTIVATION ENDPOINT - Updated for proper flow
+// DEVICE ACTIVATION ENDPOINT - AUTO-ASSIGN TO PLATFORM_ORG
 if (req.url === '/api/device/activate' && req.method === 'POST') {
   readBody(async (data) => {
     const { serial, activationCode, deviceName, location, installerPhone } = data;
@@ -453,7 +548,7 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
       return;
     }
     
-    // 2. Verify activation code (renamed from 'pin')
+    // 2. Verify activation code
     if (device.pin !== activationCode && device.activationCode !== activationCode) {
       res.writeHead(400);
       res.end(JSON.stringify({ 
@@ -473,18 +568,17 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
       return;
     }
     
-// 4. Get user info (or create basic profile if user doesn't exist)
-let installer = authorizedUsers.get(cleanPhone);
-if (!installer) {
-  // User doesn't exist yet - create basic profile from activation
-  installer = {
-    name: deviceName.split(' ')[0] + ' User', // Extract first word as name
-    email: cleanPhone + '@gatecontroller.local', // Generate email
-    canActivateDevices: true
-  };
-  authorizedUsers.set(cleanPhone, installer);
-  console.log(`New user created during activation: ${cleanPhone}`);
-}
+    // 4. Get user info (or create basic profile if user doesn't exist)
+    let installer = authorizedUsers.get(cleanPhone);
+    if (!installer) {
+      installer = {
+        name: deviceName.split(' ')[0] + ' User',
+        email: cleanPhone + '@gatecontroller.local',
+        canActivateDevices: true
+      };
+      authorizedUsers.set(cleanPhone, installer);
+      console.log(`New user created during activation: ${cleanPhone}`);
+    }
     
     // 5. Update manufacturing database
     device.activated = true;
@@ -493,7 +587,17 @@ if (!installer) {
     device.name = deviceName || `Gate ${serial}`;
     device.location = location || 'Location not specified';
     
-    // 6. Create Firebase gate document using serial as key
+    // 6. AUTO-ASSIGN TO PLATFORM ORGANIZATION
+    const platformOrg = organizations.get('platform_org');
+    if (platformOrg) {
+      if (!platformOrg.devices.includes(serial)) {
+        platformOrg.devices.push(serial);
+        organizations.set('platform_org', platformOrg);
+        console.log(`✅ Gate ${serial} auto-assigned to platform_org`);
+      }
+    }
+    
+    // 7. Create Firebase gate document
     if (firebaseInitialized) {
       try {
         await db.collection('gates').doc(serial).set({
@@ -506,6 +610,8 @@ if (!installer) {
           manufactureDate: device.manufactureDate || new Date().toISOString(),
           activatedBy: cleanPhone,
           activationDate: admin.firestore.FieldValue.serverTimestamp(),
+          owner: 'platform_org',  // Platform is primary owner
+          organizations: ['platform_org'],  // Start with platform only
           admins: [cleanPhone],
           users: {
             [cleanPhone]: {
@@ -531,6 +637,14 @@ if (!installer) {
               addedDate: admin.firestore.FieldValue.serverTimestamp()
             }
           }
+        }, { merge: true });
+        
+        // Update platform organization in Firebase
+        await db.collection('organizations').doc('platform_org').set({
+          id: 'platform_org',
+          name: 'Gate Controller Platform',
+          type: 'platform',
+          devices: admin.firestore.FieldValue.arrayUnion(serial)
         }, { merge: true });
         
         console.log(`Device activated: ${serial} by ${installer.name}`);
@@ -559,7 +673,7 @@ if (!installer) {
     });
     
     addDeviceLog(serial, 'activation', installer.name, 
-      `Device: ${device.name}, Location: ${device.location}`);
+      `Device: ${device.name}, Location: ${device.location}, Auto-assigned to platform_org`);
     
     res.writeHead(200);
     res.end(JSON.stringify({
@@ -569,7 +683,8 @@ if (!installer) {
       deviceName: device.name,
       location: device.location,
       installerName: installer.name,
-      firebase_status: firebaseInitialized ? 'synced' : 'local_only'
+      firebase_status: firebaseInitialized ? 'synced' : 'local_only',
+      platform_assigned: true
     }));
   });
   return;
