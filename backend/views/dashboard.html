@@ -271,43 +271,39 @@
 <body>
     <div class="container">
         <!-- Navigation Header -->
-        <div class="nav-header">
-            <div class="nav-brand">
-                <h1>🚪 Gate Controller</h1>
-                <div class="user-info">
-                    {{userName}} ({{userEmail}})<br>
-                    <span class="org-badge">{{organizationName}}</span>
-                    <span class="role-badge {{#if isSuperAdmin}}superadmin-badge{{/if}}">{{userRole}}</span>
-                    {{#if isSuperAdmin}}
-                    <span style="color: #dc3545; font-weight: bold; margin-left: 5px;">
-                        • Viewing {{deviceCount}} of {{totalDeviceCount}} gates
-                    </span>
-                    {{/if}}
-                </div>
-            </div>
-            
-            <nav class="nav-buttons">
-                <button class="nav-btn active" onclick="navigateTo('/dashboard')" data-page="dashboard">
-                    🏠 Home
-                </button>
-                <button class="nav-btn" onclick="navigateTo('/system')" data-page="system">
-                    ⚙️ System
-                </button>
-                <button class="nav-btn" onclick="navigateTo('/devices')" data-page="devices">
-                    📱 Devices
-                </button>
-                <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing" 
-                        style="display: {{showSuperAdminFeatures}}">
-                    🏭 Manufacturing DB
-                </button>
-                <button class="nav-btn" onclick="showOrganizationsModal()" 
-                        style="display: {{showSuperAdminFeatures}}">
-                    🏢 Organizations
-                </button>
-            </nav>
-            
-            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+<!-- Navigation Header -->
+<div class="nav-header">
+    <div class="nav-brand">
+        <h1>🚪 Gate Controller</h1>
+        <div class="user-info">
+            {{userName}} ({{userEmail}})<br>
+            <span class="org-badge">{{organizationName}}</span>
+            <span class="role-badge">{{userRole}}</span>
         </div>
+    </div>
+    
+    <nav class="nav-buttons">
+        <button class="nav-btn active" onclick="navigateTo('/dashboard')" data-page="dashboard">
+            🏠 Home
+        </button>
+        <button class="nav-btn" onclick="navigateTo('/system')" data-page="system">
+            ⚙️ System
+        </button>
+        <button class="nav-btn" onclick="navigateTo('/devices')" data-page="devices">
+            📱 Devices
+        </button>
+        <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing" 
+                style="display: {{showSuperAdminFeatures}};">
+            🏭 Manufacturing DB
+        </button>
+        <button class="nav-btn" onclick="showOrganizationsModal()" 
+                style="display: {{showSuperAdminFeatures}};">
+            🏢 Organizations
+        </button>
+    </nav>
+    
+    <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+</div>
         
         <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
         
