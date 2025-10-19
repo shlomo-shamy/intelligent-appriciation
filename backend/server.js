@@ -994,62 +994,390 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.m
     callback(session);
   }
 
-  // Protected dashboard - require auth (UPDATED with template rendering)
-  if (req.url === '/dashboard') {
-    requireAuth((session) => {
-      const dashboardData = {
-        userName: session.name,
-        userEmail: session.email,
-        userPhone: session.phone,  // ADD THIS LINE
-        userLevel: session.userLevel,
-        serverPort: PORT,
-        currentTime: new Date().toISOString(),
-        deviceCount: connectedDevices.size,
-        activeSessionsCount: activeSessions.size,
-        firebase: firebaseInitialized ? 'Connected' : 'Not Connected',
-        firebaseProjectId: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING',
-        firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING',
-        firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY ? `SET (${process.env.FIREBASE_PRIVATE_KEY.length} chars)` : 'MISSING',
-        devicesData: JSON.stringify(Array.from(connectedDevices.entries())),
-        registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
-        showActivationPanel: session.userLevel >= 2 ? 'block' : 'none'
-      };
+// Protected dashboard - require auth (UPDATED with organization context)
+if (req.url === '/dashboard') {
+  requireAuth((session) => {
+    // Get user's organizations and role
+    const userOrgs = getUserOrganizations(session.email);
+    const userRole = getUserHighestRole(session.email);
+    const isSuperAdmin = (userRole === 'superadmin');
+    
+    // Get gates based on role
+    const userGates = getUserGates(session.email, userRole);
+    
+    // Filter connected devices to only show user's gates
+    const userDevices = Array.from(connectedDevices.entries())
+      .filter(([deviceId]) => userGates.includes(deviceId));
+    
+    // Get user's primary organization (first one or platform)
+    const primaryOrg = userOrgs.length > 0 ? userOrgs[0] : null;
+    
+    const dashboardData = {
+      userName: session.name,
+      userEmail: session.email,
+      userPhone: session.phone,
+      userLevel: session.userLevel,
+      userRole: userRole,
+      isSuperAdmin: isSuperAdmin ? 'true' : 'false',
+      organizationName: primaryOrg ? primaryOrg.name : 'No Organization',
+      organizationId: primaryOrg ? primaryOrg.id : null,
+      organizationsData: JSON.stringify(userOrgs),
+      serverPort: PORT,
+      currentTime: new Date().toISOString(),
+      deviceCount: userDevices.length,
+      totalDeviceCount: connectedDevices.size,
+      activeSessionsCount: activeSessions.size,
+      firebase: firebaseInitialized ? 'Connected' : 'Not Connected',
+      devicesData: JSON.stringify(userDevices),
+      registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
+      showActivationPanel: session.userLevel >= 2 ? 'block' : 'none',
+      showSuperAdminFeatures: isSuperAdmin ? 'block' : 'none'
+    };
 
-console.log("Dashboard route hit");
-console.log("Connected devices:", connectedDevices.size);
-console.log("Devices data:", JSON.stringify(Array.from(connectedDevices.entries())));
-console.log("Template data keys:", Object.keys(dashboardData));
-      
-      const dashboardHtml = renderTemplate('dashboard', dashboardData);
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(dashboardHtml);
+    console.log("Dashboard access:", {
+      user: session.email,
+      role: userRole,
+      isSuperAdmin: isSuperAdmin,
+      gatesVisible: userDevices.length,
+      totalGates: connectedDevices.size
     });
-    return;
-  }
+    
+    const dashboardHtml = renderTemplate('dashboard', dashboardData);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(dashboardHtml);
+  });
+  return;
+}
 
-  // System page
-  if (req.url === '/system') {
-    requireAuth((session) => {
-      const systemData = {
-        userName: session.name,
-        userEmail: session.email,
-        serverPort: PORT,
-        currentTime: new Date().toISOString(),
-        deviceCount: connectedDevices.size,
-        activeSessionsCount: activeSessions.size,
-        firebase: firebaseInitialized ? 'Connected' : 'Not Connected',
-        firebaseProjectId: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING',
-        firebaseClientEmail: process.env.FIREBASE_CLIENT_EMAIL ? 'SET' : 'MISSING',
-        firebasePrivateKey: process.env.FIREBASE_PRIVATE_KEY ? `SET (${process.env.FIREBASE_PRIVATE_KEY.length} chars)` : 'MISSING',
-        showAdminFeatures: session.userLevel >= 2 ? 'block' : 'none'
+// ==================== ORGANIZATION MANAGEMENT ENDPOINTS ====================
+
+// Get all organizations (SuperAdmin only)
+if (req.url === '/api/organizations' && req.method === 'GET') {
+  requireAuth((session) => {
+    const userRole = getUserHighestRole(session.email);
+    
+    if (userRole !== 'superadmin') {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'SuperAdmin access required' }));
+      return;
+    }
+    
+    const orgsList = Array.from(organizations.values());
+    res.writeHead(200);
+    res.end(JSON.stringify(orgsList));
+  });
+  return;
+}
+
+// Get user's organizations
+if (req.url === '/api/user/organizations' && req.method === 'GET') {
+  requireAuth((session) => {
+    const userOrgs = getUserOrganizations(session.email);
+    res.writeHead(200);
+    res.end(JSON.stringify(userOrgs));
+  });
+  return;
+}
+
+// Create new organization (SuperAdmin only)
+if (req.url === '/api/organizations' && req.method === 'POST') {
+  requireAuth((session) => {
+    const userRole = getUserHighestRole(session.email);
+    
+    if (userRole !== 'superadmin') {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'SuperAdmin access required' }));
+      return;
+    }
+    
+    readBody(async (data) => {
+      const { name, type } = data;
+      
+      if (!name || !type) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Name and type required' }));
+        return;
+      }
+      
+      const orgId = 'org_' + Date.now();
+      
+      const newOrg = {
+        id: orgId,
+        name: name,
+        type: type,  // platform | service_provider | customer
+        createdAt: new Date().toISOString(),
+        createdBy: session.email,
+        devices: [],
+        members: {}
       };
       
-      const systemHtml = renderTemplate('system', systemData);
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(systemHtml);
+      // Store locally
+      organizations.set(orgId, newOrg);
+      
+      // Store in Firebase if available
+      if (firebaseInitialized) {
+        try {
+          await db.collection('organizations').doc(orgId).set({
+            ...newOrg,
+            createdAt: admin.firestore.FieldValue.serverTimestamp()
+          });
+          console.log(`✅ Organization created in Firebase: ${orgId}`);
+        } catch (error) {
+          console.error('❌ Firebase organization creation error:', error);
+        }
+      }
+      
+      console.log(`✅ Organization created: ${name} (${orgId})`);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        organization: newOrg
+      }));
     });
-    return;
-  }
+  });
+  return;
+}
+
+// Assign gate to organization (SuperAdmin only)
+if (req.url === '/api/organizations/assign-gate' && req.method === 'POST') {
+  requireAuth((session) => {
+    const userRole = getUserHighestRole(session.email);
+    
+    if (userRole !== 'superadmin') {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'SuperAdmin access required' }));
+      return;
+    }
+    
+    readBody(async (data) => {
+      const { organizationId, gateSerial } = data;
+      
+      if (!organizationId || !gateSerial) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Organization ID and gate serial required' }));
+        return;
+      }
+      
+      const org = organizations.get(organizationId);
+      if (!org) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'Organization not found' }));
+        return;
+      }
+      
+      // Add gate to organization's devices array
+      if (!org.devices.includes(gateSerial)) {
+        org.devices.push(gateSerial);
+        organizations.set(organizationId, org);
+      }
+      
+      // Update Firebase gate document
+      if (firebaseInitialized) {
+        try {
+          const gateRef = db.collection('gates').doc(gateSerial);
+          const gateDoc = await gateRef.get();
+          
+          if (gateDoc.exists) {
+            const currentOrgs = gateDoc.data().organizations || [];
+            if (!currentOrgs.includes(organizationId)) {
+              await gateRef.update({
+                organizations: admin.firestore.FieldValue.arrayUnion(organizationId)
+              });
+            }
+          }
+          
+          // Update organization document
+          await db.collection('organizations').doc(organizationId).update({
+            devices: admin.firestore.FieldValue.arrayUnion(gateSerial)
+          });
+          
+          console.log(`✅ Gate ${gateSerial} assigned to org ${organizationId} in Firebase`);
+        } catch (error) {
+          console.error('❌ Firebase gate assignment error:', error);
+        }
+      }
+      
+      console.log(`✅ Gate ${gateSerial} assigned to organization ${organizationId}`);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Gate assigned to organization'
+      }));
+    });
+  });
+  return;
+}
+
+// Remove gate from organization (SuperAdmin only) - PREVENT REMOVING FROM PLATFORM
+if (req.url === '/api/organizations/remove-gate' && req.method === 'POST') {
+  requireAuth((session) => {
+    const userRole = getUserHighestRole(session.email);
+    
+    if (userRole !== 'superadmin') {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'SuperAdmin access required' }));
+      return;
+    }
+    
+    readBody(async (data) => {
+      const { organizationId, gateSerial } = data;
+      
+      // PREVENT REMOVING FROM PLATFORM ORGANIZATION
+      if (organizationId === 'platform_org') {
+        res.writeHead(403);
+        res.end(JSON.stringify({ 
+          error: 'Cannot remove gates from platform organization. Platform owns all devices.' 
+        }));
+        return;
+      }
+      
+      const org = organizations.get(organizationId);
+      if (!org) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'Organization not found' }));
+        return;
+      }
+      
+      // Remove gate from organization
+      org.devices = org.devices.filter(d => d !== gateSerial);
+      organizations.set(organizationId, org);
+      
+      // Update Firebase
+      if (firebaseInitialized) {
+        try {
+          await db.collection('organizations').doc(organizationId).update({
+            devices: admin.firestore.FieldValue.arrayRemove(gateSerial)
+          });
+          
+          const gateRef = db.collection('gates').doc(gateSerial);
+          await gateRef.update({
+            organizations: admin.firestore.FieldValue.arrayRemove(organizationId)
+          });
+          
+          console.log(`✅ Gate ${gateSerial} removed from org ${organizationId} in Firebase`);
+        } catch (error) {
+          console.error('❌ Firebase gate removal error:', error);
+        }
+      }
+      
+      console.log(`✅ Gate ${gateSerial} removed from organization ${organizationId}`);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Gate removed from organization'
+      }));
+    });
+  });
+  return;
+}
+
+// Add member to organization (Admin or SuperAdmin)
+if (req.url === '/api/organizations/add-member' && req.method === 'POST') {
+  requireAuth((session) => {
+    readBody(async (data) => {
+      const { organizationId, userEmail, userName, userPhone, role } = data;
+      
+      if (!organizationId || !userEmail || !role) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Organization ID, email, and role required' }));
+        return;
+      }
+      
+      const org = organizations.get(organizationId);
+      if (!org) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'Organization not found' }));
+        return;
+      }
+      
+      // Check if session user has permission to add members
+      const sessionMember = org.members[session.email];
+      const sessionRole = getUserHighestRole(session.email);
+      
+      if (!sessionMember && sessionRole !== 'superadmin') {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'You are not a member of this organization' }));
+        return;
+      }
+      
+      if (sessionMember && sessionMember.role !== 'superadmin' && sessionMember.role !== 'admin') {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'Admin or SuperAdmin access required' }));
+        return;
+      }
+      
+      // Add member to organization
+      org.members[userEmail] = {
+        role: role,  // superadmin | admin | manager
+        phone: userPhone,
+        name: userName,
+        addedAt: new Date().toISOString(),
+        addedBy: session.email
+      };
+      
+      organizations.set(organizationId, org);
+      
+      // Update Firebase
+      if (firebaseInitialized) {
+        try {
+          await db.collection('organizations').doc(organizationId).update({
+            [`members.${userEmail}`]: {
+              role: role,
+              phone: userPhone,
+              name: userName,
+              addedAt: admin.firestore.FieldValue.serverTimestamp(),
+              addedBy: session.email
+            }
+          });
+          
+          console.log(`✅ Member ${userEmail} added to org ${organizationId} in Firebase`);
+        } catch (error) {
+          console.error('❌ Firebase member addition error:', error);
+        }
+      }
+      
+      console.log(`✅ Member ${userEmail} added to organization ${organizationId}`);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Member added to organization'
+      }));
+    });
+  });
+  return;
+}
+
+// Get organization details (Members can view their own org)
+if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
+  requireAuth((session) => {
+    const orgId = req.url.split('/').pop();
+    const org = organizations.get(orgId);
+    
+    if (!org) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'Organization not found' }));
+      return;
+    }
+    
+    // Check if user is member or superadmin
+    const userRole = getUserHighestRole(session.email);
+    const isMember = org.members[session.email];
+    
+    if (!isMember && userRole !== 'superadmin') {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'Access denied' }));
+      return;
+    }
+    
+    res.writeHead(200);
+    res.end(JSON.stringify(org));
+  });
+  return;
+}  
 
   // Devices page
   if (req.url === '/devices') {
