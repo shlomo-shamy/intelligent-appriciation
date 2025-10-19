@@ -576,19 +576,19 @@ if (!installer) {
 }
   
   // Dashboard login endpoint
-  if (req.url === '/dashboard/login' && req.method === 'POST') {
+if (req.url === '/dashboard/login' && req.method === 'POST') {
     readBody((data) => {
-      const { email, password } = data;
-      const user = DASHBOARD_USERS.get(email);
-      
-      if (user && user.password === password) {
-        const sessionToken = generateSessionToken();
-        activeSessions.set(sessionToken, {
-          email: email,
-          name: user.name,
-          userLevel: user.userLevel,
-          phone: user.phone,
-          loginTime: new Date().toISOString()
+        const { email, password } = data;
+        const user = DASHBOARD_USERS.get(email);
+        
+        if (user && user.password === password) {
+            const sessionToken = generateSessionToken();
+            activeSessions.set(sessionToken, {
+                email: email,
+                name: user.name,
+                userLevel: user.userLevel,
+                phone: user.phone,  // ADD THIS - already in DASHBOARD_USERS
+                loginTime: new Date().toISOString()
         });
         
         console.log(`🔐 Dashboard login successful: ${email}`);
@@ -885,6 +885,7 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.m
       const dashboardData = {
         userName: session.name,
         userEmail: session.email,
+        userPhone: session.phone,  // ADD THIS LINE
         userLevel: session.userLevel,
         serverPort: PORT,
         currentTime: new Date().toISOString(),
@@ -2195,47 +2196,53 @@ if (req.url.match(/^\/api\/device\/[^\/]+\/schedule-execution$/) && req.method =
 }
   
   // Command injection endpoint - require auth
-  if (req.url.includes('/send-command') && req.method === 'POST') {
+if (req.url.includes('/send-command') && req.method === 'POST') {
     requireAuth((session) => {
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
+        const urlParts = req.url.split('/');
+        const deviceId = urlParts[3];
       
       console.log(`🎮 Command sent to ESP32 device: ${deviceId} by ${session.email}`);
       
-      readBody((data) => {
-        const command = {
-          id: data.id || 'cmd_' + Date.now(),
-          action: data.action || 'relay_activate',
-          relay: data.relay || 1,
-          duration: data.duration || 2000,
-          user: data.user || session.email,
-          user_id: data.user_id || null,
-          timestamp: Date.now(),
-          sentBy: session.email
-        };
-        
-        if (!deviceCommands.has(deviceId)) {
-          deviceCommands.set(deviceId, []);
-        }
-        deviceCommands.get(deviceId).push(command);
-        
-        // Add log entry
-        addDeviceLog(deviceId, 'command_sent', session.email, `Action: ${command.action}, Relay: ${command.relay}, User ID: ${command.user_id}`);
-        
-        console.log(`📝 Command queued for device ${deviceId}:`, command);
-        
-        res.writeHead(200);
-        res.end(JSON.stringify({
-          success: true,
-          message: "Command queued for device",
-          commandId: command.id,
-          deviceId: deviceId,
-          timestamp: new Date().toISOString()
-        }));
-      });
+        readBody((data) => {
+            const isDashboardCommand = req.headers['x-command-source'] === 'dashboard';
+            
+            const command = {
+                id: data.id || 'cmd_' + Date.now(),
+                action: data.action || 'relay_activate',
+                relay: data.relay || 1,
+                duration: data.duration || 2000,
+                user: data.user || session.email,
+                user_id: data.user_id || null,  // System user (999999999)
+                timestamp: Date.now(),
+                sentBy: session.email
+            };
+            
+            if (!deviceCommands.has(deviceId)) {
+                deviceCommands.set(deviceId, []);
+            }
+            deviceCommands.get(deviceId).push(command);
+            
+            // Enhanced logging with actual user info
+            const logDetails = isDashboardCommand && data.dashboard_user ?
+                `Action: ${command.action}, Relay: ${command.relay}, Dashboard User: ${data.dashboard_user.name} (${data.dashboard_user.email}), System User ID: ${command.user_id}` :
+                `Action: ${command.action}, Relay: ${command.relay}, User ID: ${command.user_id}`;
+            
+            addDeviceLog(deviceId, 'command_sent', session.email, logDetails);
+            
+            console.log(`📝 Command queued for device ${deviceId}:`, command);
+            
+            res.writeHead(200);
+            res.end(JSON.stringify({
+                success: true,
+                message: "Command queued for device",
+                commandId: command.id,
+                deviceId: deviceId,
+                timestamp: new Date().toISOString()
+            }));
+        });
     });
     return;
-  }
+}
 
   // Health check endpoint (public)
   if (req.url === '/health') {
