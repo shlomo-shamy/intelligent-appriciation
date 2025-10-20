@@ -1467,15 +1467,22 @@ async function saveSettings(event) {
             }
         }
         
-        function renderDevices() {
-            const container = document.getElementById('devices');
-            const noDevicesMsg = document.getElementById('noDevicesMessage');
-            
-            if (devices.length === 0) {
-                container.style.display = 'none';
-                noDevicesMsg.style.display = 'block';
-                return;
-            }
+function renderDevices() {
+    const container = document.getElementById('devices');
+    const noDevicesMsg = document.getElementById('noDevicesMessage');
+    
+    // Handle both array and object formats
+    let deviceArray = devices;
+    if (!Array.isArray(devices)) {
+        console.error('Devices is not an array, attempting to convert...');
+        deviceArray = Object.entries(devices || {});
+    }
+    
+    if (deviceArray.length === 0) {
+        container.style.display = 'none';
+        noDevicesMsg.style.display = 'block';
+        return;
+    }
             
             container.style.display = 'block';
             noDevicesMsg.style.display = 'none';
