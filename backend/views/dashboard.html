@@ -28,34 +28,7 @@
             gap: 20px;
         }
         .nav-brand h1 { margin: 0; color: #333; }
-        .user-info { 
-            color: #666; 
-            font-size: 12px; 
-            margin-top: 5px;
-        }
-        .org-badge {
-            display: inline-block;
-            background: #667eea;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 11px;
-            margin-right: 5px;
-        }
-        .role-badge {
-            display: inline-block;
-            background: #f59e0b;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 11px;
-            text-transform: uppercase;
-        }
-        .role-badge.superadmin-badge {
-            background: #dc3545;
-        }
+        .user-info { color: #666; font-size: 12px; }
         
         .nav-buttons {
             display: flex;
@@ -127,17 +100,6 @@
             font-size: 18px;
         }
         .settings-btn:hover { background: #5a6268; }
-        
-        .platform-badge {
-            background: #667eea;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 10px;
-            margin-left: 10px;
-            font-weight: bold;
-        }
-        
         h1 { color: #333; margin: 0; }
         .refresh { background: #007bff; color: white; margin-bottom: 20px; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; }
         
@@ -158,7 +120,7 @@
             padding: 0;
             border-radius: 8px;
             width: 90%;
-            max-width: 900px;
+            max-width: 600px;
             max-height: 80vh;
             overflow: hidden;
             display: flex;
@@ -191,151 +153,20 @@
             overflow-y: auto;
             padding: 20px;
         }
-        
-        /* Tab Styles */
-        .modal-tabs {
-            display: flex;
-            background: #f8f9fa;
-            border-bottom: 2px solid #ddd;
-            overflow-x: auto;
-        }
-        .tab-btn {
-            background: transparent;
-            border: none;
-            padding: 15px 20px;
-            cursor: pointer;
-            font-weight: bold;
-            color: #666;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-        .tab-btn:hover { background: #e9ecef; }
-        .tab-btn.active {
-            background: white;
-            color: #667eea;
-            border-bottom: 3px solid #667eea;
-            margin-bottom: -2px;
-        }
-        .tab-content {
-            display: none;
-            padding: 20px;
-        }
-        .tab-content.active { display: block; }
-        
-        /* Form Styles */
-        .form-grid {
+        .info-grid {
             display: grid;
-            gap: 10px;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
             margin-bottom: 20px;
         }
-        .form-grid input, .form-grid select {
-            padding: 8px;
-            border: 2px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .checkbox-group {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-        }
-        .checkbox-group label {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .register-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-        }
-        .register-btn:hover { background: #218838; }
-        
-        /* User List Styles */
-        .user-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .info-item {
+            background: #f8f9fa;
             padding: 15px;
-            background: #f8f9fa;
-            margin-bottom: 10px;
-            border-radius: 6px;
-        }
-        .user-info { flex: 1; }
-        .user-name { font-weight: bold; margin-bottom: 5px; }
-        .user-details { font-size: 12px; color: #666; }
-        
-        /* Organization Card Styles */
-        .org-card {
-            background: white;
-            border: 2px solid #ddd;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 15px;
-        }
-        .org-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid #f0f0f0;
-        }
-        .org-type-badge {
-            display: inline-block;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
-        .org-type-platform { background: #667eea; color: white; }
-        .org-type-service_provider { background: #f59e0b; color: white; }
-        .org-type-customer { background: #10b981; color: white; }
-        .org-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        .org-stat {
-            background: #f8f9fa;
-            padding: 10px;
-            border-radius: 6px;
-            text-align: center;
-        }
-        .org-stat-value {
-            font-size: 24px;
-            font-weight: bold;
-            color: #667eea;
-        }
-        .org-stat-label {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        .org-actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-        .org-btn {
-            padding: 8px 16px;
-            border: none;
             border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 12px;
+            border-left: 4px solid #28a745;
         }
-        .org-btn-primary { background: #667eea; color: white; }
-        .org-btn-secondary { background: #6c757d; color: white; }
-        .org-btn-success { background: #28a745; color: white; }
-        .org-btn-danger { background: #dc3545; color: white; }
+        .info-label { font-weight: bold; color: #333; margin-bottom: 5px; }
+        .info-value { color: #666; }
         
         /* Responsive */
         @media (max-width: 768px) {
@@ -344,6 +175,48 @@
             .device { flex-direction: column; align-items: flex-start; gap: 10px; }
             .device-actions { width: 100%; justify-content: space-between; }
         }
+/* Modal Tab Styles */
+.modal-tabs {
+    display: flex;
+    background: #f8f9fa;
+    border-bottom: 2px solid #ddd;
+    padding: 0;
+    margin: 0;
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: bold;
+    color: #666;
+    transition: all 0.3s;
+}
+
+.tab-btn:hover {
+    background: #e9ecef;
+    color: #333;
+}
+
+.tab-btn.active {
+    background: white;
+    border-bottom-color: #667eea;
+    color: #667eea;
+}
+
+.tab-content {
+    display: none;
+    padding: 20px;
+}
+
+.tab-content.active {
+    display: block;
+}
+        
     </style>
 </head>
 <body>
@@ -352,11 +225,7 @@
         <div class="nav-header">
             <div class="nav-brand">
                 <h1>🚪 Gate Controller</h1>
-                <div class="user-info">
-                    <span id="userNameDisplay">{{userName}}</span> (<span id="userEmailDisplay">{{userEmail}}</span>)<br>
-                    <span class="org-badge">{{organizationName}}</span>
-                    <span class="role-badge" id="roleBadge">{{userRole}}</span>
-                </div>
+                <div class="user-info">{{userName}} ({{userEmail}})</div>
             </div>
             
             <nav class="nav-buttons">
@@ -369,13 +238,8 @@
                 <button class="nav-btn" onclick="navigateTo('/devices')" data-page="devices">
                     📱 Devices
                 </button>
-                <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing" 
-                        id="manufacturingBtn" style="display: {{showSuperAdminFeatures}};">
+                <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing">
                     🏭 Manufacturing DB
-                </button>
-                <button class="nav-btn" onclick="showOrganizationsModal()" 
-                        id="organizationsBtn" style="display: {{showSuperAdminFeatures}};">
-                    🏢 Organizations
                 </button>
             </nav>
             
@@ -391,57 +255,6 @@
             <h3>📭 No Devices Connected</h3>
             <p>No devices are currently connected to your account.</p>
             <p>Devices will appear here once they send their first heartbeat to the server.</p>
-        </div>
-    </div>
-
-    <!-- Organizations Modal -->
-    <div id="organizationsModal" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>🏢 Organizations Management</h2>
-                <button class="close-btn" onclick="closeOrganizationsModal()">&times;</button>
-            </div>
-            
-            <div class="modal-body">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3>All Organizations</h3>
-                    <button onclick="showCreateOrgForm()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                        ➕ Create Organization
-                    </button>
-                </div>
-                
-                <!-- Create Organization Form (hidden by default) -->
-                <div id="createOrgForm" style="display: none; background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-                    <h4>Create New Organization</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
-                        <div>
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Organization Name</label>
-                            <input type="text" id="newOrgName" placeholder="Acme Security Inc." style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                        </div>
-                        <div>
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Organization Type</label>
-                            <select id="newOrgType" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                                <option value="platform">Platform</option>
-                                <option value="service_provider" selected>Service Provider</option>
-                                <option value="customer">Customer</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="createOrganization()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                            💾 Create
-                        </button>
-                        <button onclick="hideCreateOrgForm()" style="background: #6c757d; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
-                            Cancel
-                        </button>
-                    </div>
-                </div>
-                
-                <!-- Organizations List -->
-                <div id="organizationsList">
-                    <p>Loading organizations...</p>
-                </div>
-            </div>
         </div>
     </div>
 
@@ -512,13 +325,13 @@
                     </div>
                 </div>
 
-                <!-- Settings Tab -->
-                <div id="settings-tab" class="tab-content">
-                    <h3>⚙️ Device Settings</h3>
-                    <div id="deviceSettings">
-                        <p>Loading settings...</p>
-                    </div>
-                </div>
+<!-- Settings Tab -->
+<div id="settings-tab" class="tab-content">
+    <h3>⚙️ Device Settings</h3>
+    <div id="deviceSettings">
+        <p>Loading settings...</p>
+    </div>
+</div>
                 
                 <!-- Logs Tab -->
                 <div id="logs-tab" class="tab-content">
@@ -528,210 +341,201 @@
                     </div>
                 </div>
                 
-                <!-- Schedules Tab -->
-                <div id="schedules-tab" class="tab-content">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h3>⏰ Device Schedules</h3>
-                        <button onclick="showAddScheduleModal()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-                            ➕ Add Schedule
-                        </button>
-                    </div>
-                    
-                    <div id="schedulesContainer">
-                        <p style="color: #666;">Loading schedules...</p>
-                    </div>
-                </div>
+<!-- Schedules Tab -->
+<div id="schedules-tab" class="tab-content">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3>⏰ Device Schedules</h3>
+        <button onclick="showAddScheduleModal()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+            ➕ Add Schedule
+        </button>
+    </div>
+    
+    <div id="schedulesContainer">
+        <p style="color: #666;">Loading schedules...</p>
+    </div>
+</div>
             </div>
         </div>
     </div>
-
-    <!-- Schedule Modal -->
-    <div id="scheduleModal" class="modal" style="display: none;">
-        <div class="modal-content" style="max-width: 700px;">
-            <div class="modal-header">
-                <h2 id="scheduleModalTitle">➕ Add Schedule</h2>
-                <button class="close-btn" onclick="closeScheduleModal()">&times;</button>
-            </div>
-            
-            <div class="modal-body">
-                <form id="scheduleForm" onsubmit="saveSchedule(event)">
-                    <input type="hidden" id="scheduleId">
-                    
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Schedule Name</label>
-                        <input type="text" id="scheduleName" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+<!-- Schedule Modal -->
+<div id="scheduleModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 700px;">
+        <div class="modal-header">
+            <h2 id="scheduleModalTitle">➕ Add Schedule</h2>
+            <button class="close-btn" onclick="closeScheduleModal()">&times;</button>
+        </div>
+        
+        <div class="modal-body">
+            <form id="scheduleForm" onsubmit="saveSchedule(event)">
+                <input type="hidden" id="scheduleId">
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Schedule Name</label>
+                    <input type="text" id="scheduleName" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Schedule Type</label>
+                    <select id="scheduleType" onchange="updateScheduleFormFields()" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                        <option value="1">Gate Automation - Automatic relay activation</option>
+                        <option value="2">Group Authorization - Multiple users can activate</option>
+                        <option value="3">User Authorization - Specific user can activate</option>
+                    </select>
+                </div>
+                
+                <!-- Days Selection (All Types) -->
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">📅 Active Days:</label>
+                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;">
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="daySun" value="0" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Sun</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="dayMon" value="1" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Mon</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="dayTue" value="2" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Tue</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="dayWed" value="3" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Wed</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="dayThu" value="4" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Thu</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="dayFri" value="5" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Fri</span>
+                        </label>
+                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                            <input type="checkbox" id="daySat" value="6" style="margin-bottom: 4px;">
+                            <span style="font-size: 12px; font-weight: bold;">Sat</span>
+                        </label>
                     </div>
-                    
+                    <small style="color: #666; margin-top: 5px; display: block;">Select one or more days when this schedule is active</small>
+                </div>
+                
+                <!-- Time Range (All Types) -->
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">⏰ Time Range:</label>
+                    <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center;">
+                        <div>
+                            <label style="display: block; font-size: 12px; color: #666; margin-bottom: 3px;">From</label>
+                            <input type="time" id="startTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                        </div>
+                        <div style="padding-top: 20px; font-weight: bold; color: #667eea;">→</div>
+                        <div>
+                            <label style="display: block; font-size: 12px; color: #666; margin-bottom: 3px;">To</label>
+                            <input type="time" id="endTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Gate Automation Specific Fields -->
+                <div id="automationFields">
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Schedule Type</label>
-                        <select id="scheduleType" onchange="updateScheduleFormFields()" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                            <option value="1">Gate Automation - Automatic relay activation</option>
-                            <option value="2">Group Authorization - Multiple users can activate</option>
-                            <option value="3">User Authorization - Specific user can activate</option>
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Relay to Activate:</label>
+                        <select id="relayNumber" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                            <option value="1">🔓 Relay 1 (OPEN)</option>
+                            <option value="2">⏸️ Relay 2 (STOP)</option>
+                            <option value="3">🔒 Relay 3 (CLOSE)</option>
+                            <option value="4">↗️ Relay 4 (PARTIAL)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Group Authorization Fields -->
+                <div id="groupAuthFields" style="display: none;">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Authorized Relays (Users can activate these):</label>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="authRelay1" value="1" checked> 🔓 OPEN
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="authRelay2" value="2"> ⏸️ STOP
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="authRelay3" value="4"> 🔒 CLOSE
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="authRelay4" value="8"> ↗️ PARTIAL
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- User Authorization Fields -->
+                <div id="userAuthFields" style="display: none;">
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Select User:</label>
+                        <select id="scheduleUserId" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                            <option value="0">Select user...</option>
                         </select>
                     </div>
                     
-                    <!-- Days Selection (All Types) -->
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 8px;">📅 Active Days:</label>
-                        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;">
-                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                                <input type="checkbox" id="daySun" value="0" style="margin-bottom: 4px;">
-                                <span style="font-size: 12px; font-weight: bold;">Sun</span>
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Authorized Relays (User can activate these):</label>
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="userRelay1" value="1" checked> 🔓 OPEN
                             </label>
-                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                                <input type="checkbox" id="dayMon" value="1" style="margin-bottom: 4px;">
-                                <span style="font-size: 12px; font-weight: bold;">Mon</span>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="userRelay2" value="2"> ⏸️ STOP
                             </label>
-                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                                <input type="checkbox" id="dayTue" value="2" style="margin-bottom: 4px;">
-                                <span style="font-size: 12px; font-weight: bold;">Tue</span>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="userRelay3" value="4"> 🔒 CLOSE
                             </label>
-                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                                <input type="checkbox" id="dayWed" value="3" style="margin-bottom: 4px;">
-                                <span style="font-size: 12px; font-weight: bold;">Wed</span>
-                            </label>
-                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                                <input type="checkbox" id="dayThu" value="4" style="margin-bottom: 4px;">
-                                <span style="font-size: 12px; font-weight: bold;">Thu</span>
-                            </label>
-                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                                <input type="checkbox" id="dayFri" value="5" style="margin-bottom: 4px;">
-                                <span style="font-size: 12px; font-weight: bold;">Fri</span>
-                            </label>
-                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                                <input type="checkbox" id="daySat" value="6" style="margin-bottom: 4px;">
-                                <span style="font-size: 12px; font-weight: bold;">Sat</span>
+                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                <input type="checkbox" id="userRelay4" value="8"> ↗️ PARTIAL
                             </label>
                         </div>
-                        <small style="color: #666; margin-top: 5px; display: block;">Select one or more days when this schedule is active</small>
                     </div>
-                    
-                    <!-- Time Range (All Types) -->
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">⏰ Time Range:</label>
-                        <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center;">
-                            <div>
-                                <label style="display: block; font-size: 12px; color: #666; margin-bottom: 3px;">From</label>
-                                <input type="time" id="startTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                            </div>
-                            <div style="padding-top: 20px; font-weight: bold; color: #667eea;">→</div>
-                            <div>
-                                <label style="display: block; font-size: 12px; color: #666; margin-bottom: 3px;">To</label>
-                                <input type="time" id="endTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Gate Automation Specific Fields -->
-                    <div id="automationFields">
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Relay to Activate:</label>
-                            <select id="relayNumber" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                                <option value="1">🔓 Relay 1 (OPEN)</option>
-                                <option value="2">⏸️ Relay 2 (STOP)</option>
-                                <option value="3">🔒 Relay 3 (CLOSE)</option>
-                                <option value="4">↗️ Relay 4 (PARTIAL)</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <!-- Group Authorization Fields -->
-                    <div id="groupAuthFields" style="display: none;">
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Authorized Relays (Users can activate these):</label>
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                    <input type="checkbox" id="authRelay1" value="1" checked> 🔓 OPEN
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                    <input type="checkbox" id="authRelay2" value="2"> ⏸️ STOP
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                    <input type="checkbox" id="authRelay3" value="4"> 🔒 CLOSE
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                    <input type="checkbox" id="authRelay4" value="8"> ↗️ PARTIAL
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    
-<!-- User Authorization Fields -->
-                    <div id="userAuthFields" style="display: none;">
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Select User:</label>
-                            <select id="scheduleUserId" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                                <option value="0">Select user...</option>
-                            </select>
-                        </div>
-                        
-                        <div style="margin-bottom: 15px;">
-                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Authorized Relays (User can activate these):</label>
-                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                    <input type="checkbox" id="userRelay1" value="1" checked> 🔓 OPEN
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                    <input type="checkbox" id="userRelay2" value="2"> ⏸️ STOP
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                    <input type="checkbox" id="userRelay3" value="4"> 🔒 CLOSE
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                    <input type="checkbox" id="userRelay4" value="8"> ↗️ PARTIAL
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="scheduleEnabled" checked>
-                            <span style="font-weight: bold;">✅ Schedule Enabled</span>
-                        </label>
-                    </div>
-                    
-                    <button type="submit" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
-                        💾 Save Schedule
-                    </button>
-                </form>
-            </div>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: flex; align-items: center; gap: 8px;">
+                        <input type="checkbox" id="scheduleEnabled" checked>
+                        <span style="font-weight: bold;">✅ Schedule Enabled</span>
+                    </label>
+                </div>
+                
+                <button type="submit" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                    💾 Save Schedule
+                </button>
+            </form>
         </div>
     </div>
+</div>
 
-    <script src="/public/common.js"></script>
+<style>
+/* Checkbox styling */
+input[type="checkbox"]:checked + span,
+input[type="checkbox"]:checked {
+    color: #667eea;
+    font-weight: bold;
+}
+
+label:has(input[type="checkbox"]:checked) {
+    border-color: #667eea !important;
+    background: #f0f4ff !important;
+}
+</style>
+
+<script src="/public/common.js"></script>
+</body>
+</html>
+    
     <script>
-        console.log('Script starting - Dashboard initialization');
+        // Initialize data from server
+        const devices = {{devicesData}};
+        const registeredUsers = {{registeredUsersData}};
         
-        // Initialize data from server - parse JSON strings
-        let devices = [];
-        let registeredUsers = [];
-        let isSuperAdmin = false;
-        
-        try {
-            devices = JSON.parse('{{devicesData}}');
-            registeredUsers = JSON.parse('{{registeredUsersData}}');
-            isSuperAdmin = '{{isSuperAdmin}}' === 'true';
-            
-            console.log("Dashboard loaded - Devices:", devices.length, "Users:", registeredUsers.length);
-            console.log("User is SuperAdmin:", isSuperAdmin);
-            console.log("User role:", '{{userRole}}');
-            
-            // Update role badge style for superadmin
-            if (isSuperAdmin) {
-                const roleBadge = document.getElementById('roleBadge');
-                if (roleBadge) {
-                    roleBadge.classList.add('superadmin-badge');
-                }
-            }
-        } catch (error) {
-            console.error('Error parsing data:', error);
-            console.log('devicesData:', '{{devicesData}}');
-            console.log('registeredUsersData:', '{{registeredUsersData}}');
-        }
-        
-        // ==================== NAVIGATION ====================
+        console.log("Dashboard loaded - Devices:", devices.length, "Users:", registeredUsers.length);
         
         function navigateTo(path) {
             window.location.href = path;
@@ -746,33 +550,31 @@
             }
         }
         
-        // ==================== COMMAND SENDING (NO POPUP) ====================
-        
         function sendCommand(deviceId, relay, action) {
-            const systemUserId = "999999999";  // Dashboard system user
+            const userId = prompt("Enter your registered phone number (10-14 digits, numbers only):");
+            if (!userId) return;
             
-            if (!confirm('Send ' + action + ' command?')) {
+            const cleanUserId = userId.replace(/\D/g, '');
+            
+            if (!/^\d{10,14}$/.test(cleanUserId)) {
+                alert('Please enter a valid phone number (10-14 digits, numbers only)\n\nExamples:\n• US: 1234567890\n• International: 972501234567');
+                return;
+            }
+            
+            if (!confirm('Send ' + action + ' command with user ID: ' + cleanUserId + '?')) {
                 return;
             }
             
             fetch('/api/device/' + deviceId + '/send-command', {
                 method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json; charset=utf-8',
-                    'X-Command-Source': 'dashboard'
-                },
+                headers: { 'Content-Type': 'application/json; charset=utf-8' },
                 body: JSON.stringify({
                     id: 'web_' + Date.now(),
                     action: 'relay_activate',
                     relay: relay,
                     duration: 2000,
                     user: 'dashboard',
-                    user_id: systemUserId,
-                    dashboard_user: {
-                        email: '{{userEmail}}',
-                        name: '{{userName}}',
-                        phone: '{{userPhone}}'
-                    }
+                    user_id: cleanUserId
                 })
             })
             .then(r => r.json())
@@ -786,375 +588,551 @@
             .catch(e => alert('❌ Error: ' + e.message));
         }
         
-        // ==================== DEVICE RENDERING ====================
-        
-        function renderDevices() {
-            const container = document.getElementById('devices');
-            const noDevicesMsg = document.getElementById('noDevicesMessage');
-            
-            console.log('renderDevices called, devices:', devices);
-            
-            if (!devices || devices.length === 0) {
-                container.style.display = 'none';
-                noDevicesMsg.style.display = 'block';
-                return;
-            }
-            
-            container.style.display = 'block';
-            noDevicesMsg.style.display = 'none';
-            
-            container.innerHTML = devices.map(([deviceId, info]) => {
-                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-                const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
-                const userCount = deviceUsers ? deviceUsers[1].length : 0;
-                
-                const deviceName = info.name || deviceId;
-                const deviceLocation = info.location || 'No location';
-                const macAddress = info.macAddress || 'Unknown';
-                
-                // Show "Platform Device" badge for SuperAdmins
-                const platformBadge = isSuperAdmin ? 
-                    '<span class="platform-badge">PLATFORM DEVICE</span>' : 
-                    '';
-                
-                return `
-                    <div class="card device ${isOnline ? '' : 'offline'}">
-                        <div class="device-info">
-                            <h3>🎛️ ${deviceName} ${isOnline ? '🟢' : '🔴'} ${platformBadge}</h3>
-                            <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
-                                📍 ${deviceLocation} | 🆔 ${deviceId} | 🔗 MAC: ${macAddress}
-                            </div>
-                            <div class="device-status">
-                                📶 Signal: ${info.signalStrength}dBm | 
-                                🔋 Battery: ${info.batteryLevel}% | 
-                                ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
-                                👥 Users: ${userCount}<br>
-                                🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
-                            </div>
-                        </div>
-                        
-                        <div class="device-actions">
-                            <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                            <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                            <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                            <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                            <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-            
-            console.log("Rendered", devices.length, "devices");
-        }
-        
-        // ==================== ORGANIZATIONS MANAGEMENT ====================
-        
-        let currentOrganizations = [];
-        let currentDeviceId = null;
-
-        function showOrganizationsModal() {
-            document.getElementById('organizationsModal').style.display = 'block';
-            loadOrganizations();
-        }
-
-        function closeOrganizationsModal() {
-            document.getElementById('organizationsModal').style.display = 'none';
-            hideCreateOrgForm();
-        }
-
-        function showCreateOrgForm() {
-            document.getElementById('createOrgForm').style.display = 'block';
-        }
-
-        function hideCreateOrgForm() {
-            document.getElementById('createOrgForm').style.display = 'none';
-            document.getElementById('newOrgName').value = '';
-            document.getElementById('newOrgType').value = 'service_provider';
-        }
-
-        async function loadOrganizations() {
-            try {
-                const response = await fetch('/api/organizations');
-                const orgs = await response.json();
-                
-                if (orgs.error) {
-                    document.getElementById('organizationsList').innerHTML = 
-                        '<p style="color: #dc3545;">Error: ' + orgs.error + '</p>';
-                    return;
-                }
-                
-                currentOrganizations = orgs;
-                
-                const container = document.getElementById('organizationsList');
-                
-                if (orgs.length === 0) {
-                    container.innerHTML = '<p style="text-align: center; color: #666;">No organizations yet.</p>';
-                    return;
-                }
-                
-                container.innerHTML = orgs.map(org => `
-                    <div class="org-card">
-                        <div class="org-header">
-                            <div>
-                                <h3 style="margin: 0 0 5px 0;">${org.name}</h3>
-                                <span class="org-type-badge org-type-${org.type}">${org.type.replace('_', ' ')}</span>
-                                ${org.id === 'platform_org' ? '<span style="color: #dc3545; font-size: 12px; margin-left: 10px;">🔒 PROTECTED</span>' : ''}
-                            </div>
-                            <div style="font-size: 12px; color: #666;">
-                                Created: ${new Date(org.createdAt).toLocaleDateString()}<br>
-                                By: ${org.createdBy}
-                            </div>
-                        </div>
-                        
-                        <div class="org-stats">
-                            <div class="org-stat">
-                                <div class="org-stat-value">${org.devices ? org.devices.length : 0}</div>
-                                <div class="org-stat-label">Gates</div>
-                            </div>
-                            <div class="org-stat">
-                                <div class="org-stat-value">${Object.keys(org.members || {}).length}</div>
-                                <div class="org-stat-label">Members</div>
-                            </div>
-                            <div class="org-stat">
-                                <div class="org-stat-value" style="font-size: 14px; word-break: break-all;">${org.id}</div>
-                                <div class="org-stat-label">ID</div>
-                            </div>
-                        </div>
-                        
-                        <div class="org-actions">
-                            <button class="org-btn org-btn-primary" onclick="viewOrgDetails('${org.id}')">
-                                👁️ View Details
-                            </button>
-                            <button class="org-btn org-btn-success" onclick="assignGateToOrg('${org.id}')">
-                                ➕ Assign Gate
-                            </button>
-                            ${org.id !== 'platform_org' ? `
-                            <button class="org-btn org-btn-danger" onclick="removeGateFromOrg('${org.id}')">
-                                ➖ Remove Gate
-                            </button>
-                            ` : ''}
-                            <button class="org-btn org-btn-secondary" onclick="addMemberToOrg('${org.id}')">
-                                👤 Add Member
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-                
-            } catch (error) {
-                document.getElementById('organizationsList').innerHTML = 
-                    '<p style="color: #dc3545;">Error loading organizations: ' + error.message + '</p>';
-            }
-        }
-
-        async function createOrganization() {
-            const name = document.getElementById('newOrgName').value.trim();
-            const type = document.getElementById('newOrgType').value;
-            
-            if (!name) {
-                alert('Please enter organization name');
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/organizations', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name, type })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('✅ Organization created: ' + name);
-                    hideCreateOrgForm();
-                    loadOrganizations();
-                } else {
-                    alert('❌ Failed to create organization: ' + (result.error || 'Unknown error'));
-                }
-            } catch (error) {
-                alert('❌ Error: ' + error.message);
-            }
-        }
-
-        async function assignGateToOrg(orgId) {
-            const org = currentOrganizations.find(o => o.id === orgId);
-            
-            let promptText = 'Enter gate serial number to assign:';
-            if (org && org.devices && org.devices.length > 0) {
-                promptText += '\n\nCurrently assigned gates:\n' + org.devices.join(', ');
-            }
-            
-            const gateSerial = prompt(promptText);
-            if (!gateSerial) return;
-            
-            try {
-                const response = await fetch('/api/organizations/assign-gate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ organizationId: orgId, gateSerial: gateSerial.trim() })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('✅ Gate assigned to organization');
-                    loadOrganizations();
-                } else {
-                    alert('❌ Failed: ' + (result.error || 'Unknown error'));
-                }
-            } catch (error) {
-                alert('❌ Error: ' + error.message);
-            }
-        }
-
-        async function removeGateFromOrg(orgId) {
-            const org = currentOrganizations.find(o => o.id === orgId);
-            
-            if (!org || !org.devices || org.devices.length === 0) {
-                alert('No gates assigned to this organization');
-                return;
-            }
-            
-            const gateSerial = prompt('Enter gate serial number to remove:\n\nCurrently assigned gates:\n' + org.devices.join(', '));
-            if (!gateSerial) return;
-            
-            if (!confirm('Remove gate ' + gateSerial + ' from organization ' + org.name + '?')) {
-                return;
-            }
-            
-            try {
-                const response = await fetch('/api/organizations/remove-gate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ organizationId: orgId, gateSerial: gateSerial.trim() })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    alert('✅ Gate removed from organization');
-                    loadOrganizations();
-                } else {
-                    alert('❌ Failed: ' + (result.error || 'Unknown error'));
-                }
-            } catch (error) {
-                alert('❌ Error: ' + error.message);
-            }
-        }
-
-        function addMemberToOrg(orgId) {
-            // TODO: Implement member addition UI (Phase 3)
-            alert('Member addition UI coming in Phase 3');
-        }
-
-        function viewOrgDetails(orgId) {
-            const org = currentOrganizations.find(o => o.id === orgId);
-            if (org) {
-                let details = 'Organization Details:\n\n';
-                details += 'Name: ' + org.name + '\n';
-                details += 'Type: ' + org.type + '\n';
-                details += 'ID: ' + org.id + '\n';
-                details += 'Created: ' + new Date(org.createdAt).toLocaleString() + '\n';
-                details += 'Created By: ' + org.createdBy + '\n';
-                details += '\nGates (' + (org.devices ? org.devices.length : 0) + '):\n';
-                if (org.devices && org.devices.length > 0) {
-                    details += org.devices.join('\n');
-                } else {
-                    details += '(No gates assigned)';
-                }
-                details += '\n\nMembers (' + Object.keys(org.members || {}).length + '):\n';
-                for (const [email, member] of Object.entries(org.members || {})) {
-                    details += '• ' + member.name + ' (' + email + ') - ' + member.role + '\n';
-                }
-                alert(details);
-            }
-        }
-        
-        // ==================== DEVICE SETTINGS MODAL ====================
-        
         function openSettings(deviceId) {
             currentDeviceId = deviceId;
             document.getElementById('modalTitle').textContent = '⚙️ Settings - ' + deviceId;
             document.getElementById('settingsModal').style.display = 'block';
             
             // Switch to users tab and load data
-            switchTab('users', document.querySelector('.tab-btn.active'));
+            switchTab('users');
+            loadUsers();
+        }
+
+async function loadSettings() {
+    if (!currentDeviceId) return;
+    
+    try {
+        const response = await fetch('/api/device/' + currentDeviceId + '/settings');
+        const settings = await response.json();
+        
+        document.getElementById('deviceSettings').innerHTML = `
+            <style>
+                .settings-form {
+                    max-width: 600px;
+                }
+                .form-group {
+                    background: #f8f9fa;
+                    padding: 15px;
+                    margin-bottom: 15px;
+                    border-radius: 8px;
+                    border-left: 4px solid #667eea;
+                }
+                .form-group h4 {
+                    margin: 0 0 15px 0;
+                    color: #333;
+                    font-size: 14px;
+                }
+                .form-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                }
+                .form-row:last-child {
+                    margin-bottom: 0;
+                }
+                .form-label {
+                    font-weight: 600;
+                    color: #555;
+                }
+                .form-input {
+                    padding: 8px 12px;
+                    border: 2px solid #ddd;
+                    border-radius: 4px;
+                    width: 200px;
+                }
+                .form-select {
+                    padding: 8px 12px;
+                    border: 2px solid #ddd;
+                    border-radius: 4px;
+                    width: 200px;
+                }
+                .save-btn {
+                    background: #28a745;
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    margin-top: 20px;
+                    width: 100%;
+                }
+                .save-btn:hover {
+                    background: #218838;
+                }
+                .readonly-value {
+                    color: #666;
+                    font-family: 'Courier New', monospace;
+                }
+            </style>
+            
+            <form class="settings-form" onsubmit="saveSettings(event)">
+                <div class="form-group">
+                    <h4>Gate Operation</h4>
+                    <div class="form-row">
+                        <label class="form-label">Command Duration</label>
+                        <input type="number" id="commandDuration" class="form-input" 
+                               value="${settings.commandDuration}" min="100" max="10000" step="100">
+                        <span style="color: #666; font-size: 12px;">ms</span>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Motor Reverse Delay</label>
+                        <input type="number" id="motorReverseDelay" class="form-input" 
+                               value="${settings.motorReverseDelay}" min="0" max="2000" step="100">
+                        <span style="color: #666; font-size: 12px;">ms</span>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Partial Open Time</label>
+                        <input type="number" id="partialTime" class="form-input" 
+                               value="${settings.partialTime}" min="1000" max="30000" step="1000">
+                        <span style="color: #666; font-size: 12px;">ms</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <h4>Operating Modes</h4>
+                    <div class="form-row">
+                        <label class="form-label">Gate Mode</label>
+                        <select id="gateMode" class="form-select">
+                            <option value="0" ${settings.gateMode === 0 ? 'selected' : ''}>Normal</option>
+                            <option value="1" ${settings.gateMode === 1 ? 'selected' : ''}>Step-by-Step</option>
+                            <option value="2" ${settings.gateMode === 2 ? 'selected' : ''}>Deadman</option>
+                            <option value="3" ${settings.gateMode === 3 ? 'selected' : ''}>Relay Module</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Magnetic Loop Mode</label>
+                        <select id="magneticLoopMode" class="form-select">
+                            <option value="0" ${settings.magneticLoopMode === 0 ? 'selected' : ''}>Normal</option>
+                            <option value="1" ${settings.magneticLoopMode === 1 ? 'selected' : ''}>Safety</option>
+                            <option value="2" ${settings.magneticLoopMode === 2 ? 'selected' : ''}>Free</option>
+                            <option value="3" ${settings.magneticLoopMode === 3 ? 'selected' : ''}>Conditional</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Emergency Lock</label>
+                        <select id="emergencyLock" class="form-select">
+                            <option value="0" ${settings.emergencyLock === 0 ? 'selected' : ''}>Normal</option>
+                            <option value="1" ${settings.emergencyLock === 1 ? 'selected' : ''}>Lock Open</option>
+                            <option value="2" ${settings.emergencyLock === 2 ? 'selected' : ''}>Lock Closed</option>
+                        </select>
+                    </div>
+<!-- COMMENTED OUT: Manual Mode Software Override
+<div class="form-row">
+    <label class="form-label">Manual Mode (Software Override)</label>
+    <select id="manualModeEnabled" class="form-select">
+        <option value="false" ${settings.manualModeEnabled === false ? 'selected' : ''}>Disabled - Remote Commands Allowed</option>
+        <option value="true" ${settings.manualModeEnabled === true ? 'selected' : ''}>Enabled - Only Physical Buttons Work</option>
+    </select>
+</div>
+-->      
+                </div>
+                
+                <div class="form-group">
+                    <h4>Auto-Close</h4>
+                    <div class="form-row">
+                        <label class="form-label">Auto-Close Enabled</label>
+                        <input type="checkbox" id="autoCloseEnabled" 
+                               ${settings.autoCloseEnabled ? 'checked' : ''}>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Auto-Close Delay</label>
+                        <input type="number" id="autoCloseDelay" class="form-input" 
+                               value="${settings.autoCloseDelay / 1000}" min="1" max="300" step="1">
+                        <span style="color: #666; font-size: 12px;">seconds</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <h4>Learned Timings (Read-Only)</h4>
+                    <div class="form-row">
+                        <label class="form-label">Open Time</label>
+                        <span class="readonly-value">${(settings.openTimeLearned / 1000).toFixed(1)}s</span>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Close Time</label>
+                        <span class="readonly-value">${(settings.closeTimeLearned / 1000).toFixed(1)}s</span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="save-btn">Save Settings</button>
+            </form>
+        `;
+        
+    } catch (error) {
+        document.getElementById('deviceSettings').innerHTML = 
+            '<p style="color: #dc3545;">Error loading settings: ' + error.message + '</p>';
+    }
+}
+
+async function loadUsers() {
+    if (!currentDeviceId) return;
+    
+    try {
+        const response = await fetch('/api/gates/' + currentDeviceId + '/users');
+        const data = await response.json();
+        
+        console.log('Raw response:', data); // DEBUG LINE
+        console.log('Is array?', Array.isArray(data)); // DEBUG LINE
+        
+        const usersList = document.getElementById('usersList');
+        
+        // Handle both object and array responses
+        let users;
+        if (Array.isArray(data)) {
+            users = data;
+        } else if (data && typeof data === 'object') {
+            // Convert object to array
+            users = Object.keys(data).map(phone => ({
+                phone: phone,
+                ...data[phone]
+            }));
+        } else {
+            users = [];
         }
         
-        function closeModal() {
-            if (window.statusRefreshInterval) {
-                clearInterval(window.statusRefreshInterval);
-                window.statusRefreshInterval = null;
-            }
-            document.getElementById('settingsModal').style.display = 'none';
-            currentDeviceId = null;
+        if (users.length === 0) {
+            usersList.innerHTML = '<p style="color: #666;">No users registered yet.</p>';
+            return;
         }
         
-        function switchTab(tabName, clickedButton) {
-            // Use common.js function
-            window.GateController.switchTab(tabName, clickedButton);
-        }
+        usersList.innerHTML = users.map(user => {
+            const permissions = [];
+            if (user.relayMask & 1) permissions.push('🔓 OPEN');
+            if (user.relayMask & 2) permissions.push('⏸️ STOP');
+            if (user.relayMask & 4) permissions.push('🔒 CLOSE');
+            if (user.relayMask & 8) permissions.push('↗️ PARTIAL');
+            
+            const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
+            const addedDate = user.registeredAt || user.addedDate || new Date().toISOString();
+            
+            return `
+                <div class="user-item">
+                    <div class="user-info">
+                        <div class="user-name">${user.name}</div>
+                        <div class="user-details">
+                            📧 ${user.email} | 📱 ${user.phone} | ${userLevelText}<br>
+                            Permissions: ${permissions.join(', ')}<br>
+                            Added by: ${user.addedBy || 'Unknown'} | Date: ${new Date(addedDate).toLocaleDateString()}
+                        </div>
+                    </div>
+                    <button onclick="deleteUser('${user.phone}', '${user.email}', '${user.name}')" 
+                            style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
+                        🗑️ Delete
+                    </button>
+                </div>
+            `;
+        }).join('');
         
-        async function loadUsers() {
+        console.log('Loaded', users.length, 'users');
+        
+    } catch (error) {
+        console.error('Error loading users:', error);
+        document.getElementById('usersList').innerHTML = 
+            '<p style="color: #dc3545;">Error loading users: ' + error.message + '</p>';
+    }
+}
+        
+async function loadStatus() {
+    if (!currentDeviceId) return;
+    
+    try {
+        const [statusResponse, devicesResponse] = await Promise.all([
+            fetch('/api/gates/' + currentDeviceId + '/status'),
+            fetch('/api/device/' + currentDeviceId + '/info')
+        ]);
+        
+        const statusData = await statusResponse.json();
+        const deviceInfo = await devicesResponse.json();
+        
+        const lastHeartbeatTime = new Date(deviceInfo.lastHeartbeat).getTime();
+        const now = Date.now();
+        const timeSinceHeartbeat = now - lastHeartbeatTime;
+        const isOnline = timeSinceHeartbeat < 60000;
+        
+        document.getElementById('deviceStatus').innerHTML = `
+            <style>
+                .status-section {
+                    background: #f8f9fa;
+                    padding: 15px;
+                    margin-bottom: 15px;
+                    border-radius: 8px;
+                    border-left: 4px solid #667eea;
+                }
+                .status-section h4 {
+                    margin: 0 0 10px 0;
+                    color: #333;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                .status-row {
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 8px 0;
+                    border-bottom: 1px solid #e0e0e0;
+                }
+                .status-row:last-child {
+                    border-bottom: none;
+                }
+                .status-label {
+                    font-weight: 600;
+                    color: #555;
+                }
+                .status-value {
+                    color: #333;
+                    font-family: 'Courier New', monospace;
+                }
+                .status-alert {
+                    background: #ffe6e6;
+                    border-left-color: #dc3545;
+                }
+                .status-ok {
+                    color: #28a745;
+                    font-weight: bold;
+                }
+                .status-warn {
+                    color: #ffc107;
+                    font-weight: bold;
+                }
+                .status-error {
+                    color: #dc3545;
+                    font-weight: bold;
+                }
+            </style>
+            
+            <div class="status-section ${isOnline ? '' : 'status-alert'}">
+                <h4>Gate Status</h4>
+                <div class="status-row">
+                    <span class="status-label">Logic State</span>
+                    <span class="status-value">${statusData.gateState}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Last Command</span>
+                    <span class="status-value">${statusData.lastCommand}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Connection</span>
+                    <span class="status-value ${isOnline ? 'status-ok' : 'status-error'}">
+                        ${isOnline ? 'Online' : 'Offline'} (${Math.floor(timeSinceHeartbeat / 1000)}s ago)
+                    </span>
+                </div>
+            </div>
+            
+            <div class="status-section">
+                <h4>Active Relays</h4>
+                <div class="status-row">
+                    <span class="status-label">OPEN</span>
+                    <span class="status-value">${statusData.relay1 ? 'ON' : 'OFF'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">STOP</span>
+                    <span class="status-value">${statusData.relay2 ? 'ON' : 'OFF'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">CLOSE</span>
+                    <span class="status-value">${statusData.relay3 ? 'ON' : 'OFF'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">PARTIAL</span>
+                    <span class="status-value">${statusData.relay4 ? 'ON' : 'OFF'}</span>
+                </div>
+            </div>
+            
+            <div class="status-section ${statusData.photoBlocked || statusData.edgeContact ? 'status-alert' : ''}">
+                <h4>Safety Systems</h4>
+                <div class="status-row">
+                    <span class="status-label">Photo Beams</span>
+                    <span class="status-value">
+                        INT: ${statusData.photoIntBlocked ? 'BLOCKED' : 'CLEAR'} | 
+                        EXT: ${statusData.photoExtBlocked ? 'BLOCKED' : 'CLEAR'}
+                        ${statusData.photoBlocked ? '<span class="status-warn"> ⚠️</span>' : '<span class="status-ok"> ✓</span>'}
+                    </span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Safety Edges</span>
+                    <span class="status-value">
+                        INT: ${statusData.edgeIntContact ? 'CONTACT' : 'CLEAR'} | 
+                        EXT: ${statusData.edgeExtContact ? 'CONTACT' : 'CLEAR'}
+                        ${statusData.edgeContact ? '<span class="status-warn"> ⚠️</span>' : '<span class="status-ok"> ✓</span>'}
+                    </span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Limit Switches</span>
+                    <span class="status-value">
+                        FCC: ${statusData.fccPosition ? 'CLOSED' : 'OPEN'} | 
+                        FCA: ${statusData.fcaPosition ? 'CLOSED' : 'OPEN'}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="status-section">
+                <h4>Mode & Configuration</h4>
+                <div class="status-row">
+                    <span class="status-label">Mode Switch</span>
+                    <span class="status-value">${statusData.modeSwitch}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Learning Mode</span>
+                    <span class="status-value">${statusData.learningMode ? 'ACTIVE' : 'INACTIVE'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Auto-Close</span>
+                    <span class="status-value">
+                        ${statusData.autoCloseEnabled ? 'ENABLED' : 'DISABLED'}
+                        ${statusData.autoCloseTimer ? ` (${statusData.autoCloseRemaining}s)` : ''}
+                    </span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Partial Sequence</span>
+                    <span class="status-value">${statusData.partialActive ? 'ACTIVE' : 'INACTIVE'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Emergency Lock</span>
+                    <span class="status-value">${statusData.emergencyLock}</span>
+                </div>
+            </div>
+            
+            <div class="status-section">
+                <h4>Remote Controls</h4>
+                <div class="status-row">
+                    <span class="status-label">OPEN Button</span>
+                    <span class="status-value">${statusData.remoteOpen ? 'PRESSED' : 'UP'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">STOP Button</span>
+                    <span class="status-value">${statusData.remoteStop ? 'PRESSED' : 'UP'}</span>
+                </div>
+            </div>
+            
+            <div class="status-section">
+                <h4>System Information</h4>
+                <div class="status-row">
+                    <span class="status-label">Users</span>
+                    <span class="status-value">${statusData.userCount}/100</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Free Memory</span>
+                    <span class="status-value">${deviceInfo.freeHeap} bytes</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Signal Strength</span>
+                    <span class="status-value">${deviceInfo.signalStrength} dBm</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Uptime</span>
+                    <span class="status-value">${Math.floor(deviceInfo.uptime / 1000)} seconds</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Firmware</span>
+                    <span class="status-value">${deviceInfo.firmwareVersion}</span>
+                </div>
+            </div>
+        `;
+        
+    } catch (error) {
+        document.getElementById('deviceStatus').innerHTML = 
+            '<p style="color: #dc3545;">Error loading status: ' + error.message + '</p>';
+    }
+}
+        
+// ADD THIS: Auto-refresh every 3 seconds when status tab is open
+let statusRefreshInterval = null;
+
+function switchTab(tabName, clickedButton) {
+    // Remove active class from all tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+        content.style.display = 'none';  // Force hide
+    });
+    
+    // Add active class to clicked tab
+    if (clickedButton) {
+        clickedButton.classList.add('active');
+    } else {
+        // If called without button (like from openSettings), find and activate the first tab
+        const firstTabBtn = document.querySelector('.tab-btn');
+        if (firstTabBtn) firstTabBtn.classList.add('active');
+    }
+    
+    // Show selected tab content
+    const tabContent = document.getElementById(tabName + '-tab');
+    if (tabContent) {
+        tabContent.classList.add('active');
+        tabContent.style.display = 'block';  // Force show
+    }
+    
+    // Clear any previous status refresh interval
+    if (window.statusRefreshInterval) {
+        clearInterval(window.statusRefreshInterval);
+        window.statusRefreshInterval = null;
+    }
+    
+// Load data based on tab
+switch(tabName) {
+    case 'users':
+        loadUsers();
+        break;
+    case 'status':
+        loadStatus();
+        // Start auto-refresh for status tab only
+        window.statusRefreshInterval = setInterval(loadStatus, 3000);
+        break;
+    case 'settings': 
+        loadSettings();
+        break;
+    case 'logs':
+        loadLogs();
+        break;
+    case 'schedules':
+        loadSchedules();
+        break;
+}
+}
+
+// ALSO ADD: Stop refresh when modal closes
+function closeModal() {
+    if (statusRefreshInterval) {
+        clearInterval(statusRefreshInterval);
+        statusRefreshInterval = null;
+    }
+    document.getElementById('settingsModal').style.display = 'none';
+    currentDeviceId = null;
+}
+
+        
+        async function loadLogs() {
             if (!currentDeviceId) return;
             
             try {
-                const response = await fetch('/api/gates/' + currentDeviceId + '/users');
-                const data = await response.json();
+                const response = await fetch('/api/device/' + currentDeviceId + '/logs');
+                const logs = await response.json();
                 
-                const usersList = document.getElementById('usersList');
+                const logsContainer = document.getElementById('deviceLogs');
                 
-                let users;
-                if (Array.isArray(data)) {
-                    users = data;
-                } else if (data && typeof data === 'object') {
-                    users = Object.keys(data).map(phone => ({
-                        phone: phone,
-                        ...data[phone]
-                    }));
-                } else {
-                    users = [];
-                }
-                
-                if (users.length === 0) {
-                    usersList.innerHTML = '<p style="color: #666;">No users registered yet.</p>';
+                if (logs.length === 0) {
+                    logsContainer.innerHTML = '<p style="color: #666;">No logs available.</p>';
                     return;
                 }
                 
-                usersList.innerHTML = users.map(user => {
-                    const permissions = [];
-                    if (user.relayMask & 1) permissions.push('🔓 OPEN');
-                    if (user.relayMask & 2) permissions.push('⏸️ STOP');
-                    if (user.relayMask & 4) permissions.push('🔒 CLOSE');
-                    if (user.relayMask & 8) permissions.push('↗️ PARTIAL');
-                    
-                    const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
-                    const addedDate = user.registeredAt || user.addedDate || new Date().toISOString();
-                    
-                    return `
-                        <div class="user-item">
-                            <div class="user-info">
-                                <div class="user-name">${user.name}</div>
-                                <div class="user-details">
-                                    📧 ${user.email} | 📱 ${user.phone} | ${userLevelText}<br>
-                                    Permissions: ${permissions.join(', ')}<br>
-                                    Added by: ${user.addedBy || 'Unknown'} | Date: ${new Date(addedDate).toLocaleDateString()}
-                                </div>
-                            </div>
-                            <button onclick="deleteUser('${user.phone}', '${user.email}', '${user.name}')" 
-                                    style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
-                                🗑️ Delete
-                            </button>
+                logsContainer.innerHTML = logs.map(log => `
+                    <div class="log-item">
+                        <div class="log-header">
+                            <span class="log-action">📝 ${log.action.replace('_', ' ').toUpperCase()}</span>
+                            <span class="log-time">${new Date(log.timestamp).toLocaleString()}</span>
                         </div>
-                    `;
-                }).join('');
+                        <div class="log-details">
+                            👤 User: ${log.user} | ${log.details}
+                        </div>
+                    </div>
+                `).join('');
                 
             } catch (error) {
-                document.getElementById('usersList').innerHTML = 
-                    '<p style="color: #dc3545;">Error loading users: ' + error.message + '</p>';
+                document.getElementById('deviceLogs').innerHTML = '<p style="color: #dc3545;">Error loading logs: ' + error.message + '</p>';
             }
         }
-        
+              
         async function registerUserModal() {
             if (!currentDeviceId) return;
             
@@ -1228,6 +1206,7 @@
                     document.querySelectorAll('#settingsModal input[type="checkbox"]').forEach(cb => cb.checked = false);
                     document.getElementById('modalRelay1').checked = true;
                     
+                    // Reload users list
                     loadUsers();
                 } else {
                     alert('❌ Registration failed: ' + (result.error || 'Unknown error'));
@@ -1236,6 +1215,43 @@
                 alert('❌ Error: ' + error.message);
             }
         }
+
+async function saveSettings(event) {
+    event.preventDefault();
+    
+    if (!currentDeviceId) return;
+    
+    const settings = {
+        commandDuration: parseInt(document.getElementById('commandDuration').value),
+        motorReverseDelay: parseInt(document.getElementById('motorReverseDelay').value),
+        partialTime: parseInt(document.getElementById('partialTime').value),
+        gateMode: parseInt(document.getElementById('gateMode').value),
+        magneticLoopMode: parseInt(document.getElementById('magneticLoopMode').value),
+        emergencyLock: parseInt(document.getElementById('emergencyLock').value),
+        autoCloseEnabled: document.getElementById('autoCloseEnabled').checked,
+        autoCloseDelay: parseInt(document.getElementById('autoCloseDelay').value) * 1000
+//        manualModeEnabled: document.getElementById('manualModeEnabled').value === 'true'  // ADD THIS
+
+    };
+    
+    try {
+        const response = await fetch('/api/device/' + currentDeviceId + '/settings/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Settings saved! ESP32 will apply changes within 5 seconds.');
+        } else {
+            alert('Failed to save settings');
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
         
         async function deleteUser(phone, email, name) {
             if (!currentDeviceId) return;
@@ -1258,6 +1274,8 @@
                 
                 if (result.success) {
                     alert('✅ User Deleted Successfully!\n\nUser: ' + result.deletedUser.name + '\nPhone: ' + result.deletedUser.phone + '\nFirebase: ' + result.firebase_status);
+                    
+                    // Reload users list
                     loadUsers();
                 } else {
                     alert('❌ Delete Failed: ' + (result.error || 'Unknown error'));
@@ -1267,77 +1285,78 @@
             }
         }
         
-        async function loadStatus() {
-            // Implementation in common.js
-            console.log('Loading status for device:', currentDeviceId);
-        }
-        
-        async function loadSettings() {
-            // Implementation in common.js
-            console.log('Loading settings for device:', currentDeviceId);
-        }
-        
-        async function loadLogs() {
-            // Implementation in common.js
-            console.log('Loading logs for device:', currentDeviceId);
-        }
-        
-        async function loadSchedules() {
-            // Use common.js function
-            window.GateController.loadSchedules();
-        }
-        
-        function showAddScheduleModal() {
-            window.GateController.showAddScheduleModal();
-        }
-        
-        function closeScheduleModal() {
-            window.GateController.closeScheduleModal();
-        }
-        
-        function saveSchedule(event) {
-            window.GateController.saveSchedule(event);
-        }
-        
-        function updateScheduleFormFields() {
-            window.GateController.updateScheduleFormFields();
-        }
-        
-        // ==================== MODAL CLOSE HANDLERS ====================
-        
-        window.onclick = function(event) {
-            const orgModal = document.getElementById('organizationsModal');
-            if (event.target === orgModal) {
-                closeOrganizationsModal();
+        function renderDevices() {
+            const container = document.getElementById('devices');
+            const noDevicesMsg = document.getElementById('noDevicesMessage');
+            
+            if (devices.length === 0) {
+                container.style.display = 'none';
+                noDevicesMsg.style.display = 'block';
+                return;
             }
             
-            const settingsModal = document.getElementById('settingsModal');
-            if (event.target === settingsModal) {
-                closeModal();
-            }
-        };
+            container.style.display = 'block';
+            noDevicesMsg.style.display = 'none';
+            
+container.innerHTML = devices.map(([deviceId, info]) => {
+    const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+    const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
+    const userCount = deviceUsers ? deviceUsers[1].length : 0;
+    
+    // Get device name and location from manufacturing data if available
+    const deviceName = info.name || deviceId;
+    const deviceLocation = info.location || 'No location';
+    const macAddress = info.macAddress || 'Unknown';
+    
+    return `
+        <div class="card device ${isOnline ? '' : 'offline'}">
+            <div class="device-info">
+                <h3>🎛️ ${deviceName} ${isOnline ? '🟢' : '🔴'}</h3>
+                <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
+                    📍 ${deviceLocation} | 🆔 ${deviceId} | 🔗 MAC: ${macAddress}
+                </div>
+                            <div class="device-status">
+                                📶 Signal: ${info.signalStrength}dBm | 
+                                🔋 Battery: ${info.batteryLevel}% | 
+                                ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
+                                👥 Users: ${userCount}<br>
+                                🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
+                            </div>
+                        </div>
+                        
+                        <div class="device-actions">
+                            <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                            <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                            <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                            <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                            <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            console.log("Rendered", devices.length, "devices");
+        }
         
-        // ==================== PAGE INITIALIZATION ====================
-        
+        // Initialize the page
         document.addEventListener('DOMContentLoaded', function() {
             console.log("DOM loaded, rendering devices...");
             renderDevices();
         });
         
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('deviceModal');
+            if (event.target === modal) {
+                closeModal();
+            }
+        };
+        
         // Also call immediately in case DOM is already loaded
         renderDevices();
-
-        // Make functions globally accessible
-window.showOrganizationsModal = showOrganizationsModal;
-window.closeOrganizationsModal = closeOrganizationsModal;
-window.createOrganization = createOrganization;
-window.assignGateToOrg = assignGateToOrg;
-window.removeGateFromOrg = removeGateFromOrg;
-window.viewOrgDetails = viewOrgDetails;
-window.addMemberToOrg = addMemberToOrg;
-window.showCreateOrgForm = showCreateOrgForm;
-window.hideCreateOrgForm = hideCreateOrgForm;
-        
     </script>
+<script src="/public/common.js"></script>
+</body>
+</html>
 </body>
 </html>
