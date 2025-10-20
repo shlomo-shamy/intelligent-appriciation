@@ -1326,6 +1326,18 @@
         
         // Also call immediately in case DOM is already loaded
         renderDevices();
+
+        // Make functions globally accessible
+window.showOrganizationsModal = showOrganizationsModal;
+window.closeOrganizationsModal = closeOrganizationsModal;
+window.createOrganization = createOrganization;
+window.assignGateToOrg = assignGateToOrg;
+window.removeGateFromOrg = removeGateFromOrg;
+window.viewOrgDetails = viewOrgDetails;
+window.addMemberToOrg = addMemberToOrg;
+window.showCreateOrgForm = showCreateOrgForm;
+window.hideCreateOrgForm = hideCreateOrgForm;
+        
     </script>
 </body>
 </html>
