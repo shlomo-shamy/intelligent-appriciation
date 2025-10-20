@@ -53,7 +53,7 @@
             font-size: 11px;
             text-transform: uppercase;
         }
-        .superadmin-badge {
+        .role-badge.superadmin-badge {
             background: #dc3545;
         }
         
@@ -192,6 +192,84 @@
             padding: 20px;
         }
         
+        /* Tab Styles */
+        .modal-tabs {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #ddd;
+            overflow-x: auto;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            padding: 15px 20px;
+            cursor: pointer;
+            font-weight: bold;
+            color: #666;
+            transition: all 0.3s;
+            white-space: nowrap;
+        }
+        .tab-btn:hover { background: #e9ecef; }
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            border-bottom: 3px solid #667eea;
+            margin-bottom: -2px;
+        }
+        .tab-content {
+            display: none;
+            padding: 20px;
+        }
+        .tab-content.active { display: block; }
+        
+        /* Form Styles */
+        .form-grid {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .form-grid input, .form-grid select {
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .checkbox-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .checkbox-group label {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .register-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+        .register-btn:hover { background: #218838; }
+        
+        /* User List Styles */
+        .user-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            margin-bottom: 10px;
+            border-radius: 6px;
+        }
+        .user-info { flex: 1; }
+        .user-name { font-weight: bold; margin-bottom: 5px; }
+        .user-details { font-size: 12px; color: #666; }
+        
         /* Organization Card Styles */
         .org-card {
             background: white;
@@ -217,8 +295,7 @@
             text-transform: uppercase;
         }
         .org-type-platform { background: #667eea; color: white; }
-        .org-type-service_provider { background: #f59e0b
-; color: white; }
+        .org-type-service_provider { background: #f59e0b; color: white; }
         .org-type-customer { background: #10b981; color: white; }
         .org-stats {
             display: grid;
@@ -245,6 +322,7 @@
         .org-actions {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
         .org-btn {
             padding: 8px 16px;
@@ -271,39 +349,38 @@
 <body>
     <div class="container">
         <!-- Navigation Header -->
-<!-- Navigation Header -->
-<div class="nav-header">
-    <div class="nav-brand">
-        <h1>🚪 Gate Controller</h1>
-        <div class="user-info">
-            {{userName}} ({{userEmail}})<br>
-            <span class="org-badge">{{organizationName}}</span>
-            <span class="role-badge">{{userRole}}</span>
+        <div class="nav-header">
+            <div class="nav-brand">
+                <h1>🚪 Gate Controller</h1>
+                <div class="user-info">
+                    <span id="userNameDisplay">{{userName}}</span> (<span id="userEmailDisplay">{{userEmail}}</span>)<br>
+                    <span class="org-badge">{{organizationName}}</span>
+                    <span class="role-badge" id="roleBadge">{{userRole}}</span>
+                </div>
+            </div>
+            
+            <nav class="nav-buttons">
+                <button class="nav-btn active" onclick="navigateTo('/dashboard')" data-page="dashboard">
+                    🏠 Home
+                </button>
+                <button class="nav-btn" onclick="navigateTo('/system')" data-page="system">
+                    ⚙️ System
+                </button>
+                <button class="nav-btn" onclick="navigateTo('/devices')" data-page="devices">
+                    📱 Devices
+                </button>
+                <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing" 
+                        id="manufacturingBtn" style="display: {{showSuperAdminFeatures}};">
+                    🏭 Manufacturing DB
+                </button>
+                <button class="nav-btn" onclick="showOrganizationsModal()" 
+                        id="organizationsBtn" style="display: {{showSuperAdminFeatures}};">
+                    🏢 Organizations
+                </button>
+            </nav>
+            
+            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
         </div>
-    </div>
-    
-    <nav class="nav-buttons">
-        <button class="nav-btn active" onclick="navigateTo('/dashboard')" data-page="dashboard">
-            🏠 Home
-        </button>
-        <button class="nav-btn" onclick="navigateTo('/system')" data-page="system">
-            ⚙️ System
-        </button>
-        <button class="nav-btn" onclick="navigateTo('/devices')" data-page="devices">
-            📱 Devices
-        </button>
-        <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing" 
-                style="display: {{showSuperAdminFeatures}};">
-            🏭 Manufacturing DB
-        </button>
-        <button class="nav-btn" onclick="showOrganizationsModal()" 
-                style="display: {{showSuperAdminFeatures}};">
-            🏢 Organizations
-        </button>
-    </nav>
-    
-    <button class="logout-btn" onclick="logout()">🚪 Logout</button>
-</div>
         
         <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
         
@@ -435,13 +512,13 @@
                     </div>
                 </div>
 
-<!-- Settings Tab -->
-<div id="settings-tab" class="tab-content">
-    <h3>⚙️ Device Settings</h3>
-    <div id="deviceSettings">
-        <p>Loading settings...</p>
-    </div>
-</div>
+                <!-- Settings Tab -->
+                <div id="settings-tab" class="tab-content">
+                    <h3>⚙️ Device Settings</h3>
+                    <div id="deviceSettings">
+                        <p>Loading settings...</p>
+                    </div>
+                </div>
                 
                 <!-- Logs Tab -->
                 <div id="logs-tab" class="tab-content">
@@ -451,831 +528,804 @@
                     </div>
                 </div>
                 
-<!-- Schedules Tab -->
-<div id="schedules-tab" class="tab-content">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h3>⏰ Device Schedules</h3>
-        <button onclick="showAddScheduleModal()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
-            ➕ Add Schedule
-        </button>
-    </div>
-    
-    <div id="schedulesContainer">
-        <p style="color: #666;">Loading schedules...</p>
-    </div>
-</div>
+                <!-- Schedules Tab -->
+                <div id="schedules-tab" class="tab-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>⏰ Device Schedules</h3>
+                        <button onclick="showAddScheduleModal()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                            ➕ Add Schedule
+                        </button>
+                    </div>
+                    
+                    <div id="schedulesContainer">
+                        <p style="color: #666;">Loading schedules...</p>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-<!-- Schedule Modal -->
-<div id="scheduleModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 700px;">
-        <div class="modal-header">
-            <h2 id="scheduleModalTitle">➕ Add Schedule</h2>
-            <button class="close-btn" onclick="closeScheduleModal()">&times;</button>
-        </div>
-        
-        <div class="modal-body">
-            <form id="scheduleForm" onsubmit="saveSchedule(event)">
-                <input type="hidden" id="scheduleId">
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Schedule Name</label>
-                    <input type="text" id="scheduleName" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Schedule Type</label>
-                    <select id="scheduleType" onchange="updateScheduleFormFields()" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                        <option value="1">Gate Automation - Automatic relay activation</option>
-                        <option value="2">Group Authorization - Multiple users can activate</option>
-                        <option value="3">User Authorization - Specific user can activate</option>
-                    </select>
-                </div>
-                
-                <!-- Days Selection (All Types) -->
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; font-weight: bold; margin-bottom: 8px;">📅 Active Days:</label>
-                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;">
-                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                            <input type="checkbox" id="daySun" value="0" style="margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: bold;">Sun</span>
-                        </label>
-                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                            <input type="checkbox" id="dayMon" value="1" style="margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: bold;">Mon</span>
-                        </label>
-                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                            <input type="checkbox" id="dayTue" value="2" style="margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: bold;">Tue</span>
-                        </label>
-                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                            <input type="checkbox" id="dayWed" value="3" style="margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: bold;">Wed</span>
-                        </label>
-                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                            <input type="checkbox" id="dayThu" value="4" style="margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: bold;">Thu</span>
-                        </label>
-                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                            <input type="checkbox" id="dayFri" value="5" style="margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: bold;">Fri</span>
-                        </label>
-                        <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
-                            <input type="checkbox" id="daySat" value="6" style="margin-bottom: 4px;">
-                            <span style="font-size: 12px; font-weight: bold;">Sat</span>
-                        </label>
-                    </div>
-                    <small style="color: #666; margin-top: 5px; display: block;">Select one or more days when this schedule is active</small>
-                </div>
-                
-                <!-- Time Range (All Types) -->
-                <div style="margin-bottom: 15px;">
-                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">⏰ Time Range:</label>
-                    <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center;">
-                        <div>
-                            <label style="display: block; font-size: 12px; color: #666; margin-bottom: 3px;">From</label>
-                            <input type="time" id="startTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                        </div>
-                        <div style="padding-top: 20px; font-weight: bold; color: #667eea;">→</div>
-                        <div>
-                            <label style="display: block; font-size: 12px; color: #666; margin-bottom: 3px;">To</label>
-                            <input type="time" id="endTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Gate Automation Specific Fields -->
-                <div id="automationFields">
+
+    <!-- Schedule Modal -->
+    <div id="scheduleModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h2 id="scheduleModalTitle">➕ Add Schedule</h2>
+                <button class="close-btn" onclick="closeScheduleModal()">&times;</button>
+            </div>
+            
+            <div class="modal-body">
+                <form id="scheduleForm" onsubmit="saveSchedule(event)">
+                    <input type="hidden" id="scheduleId">
+                    
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Relay to Activate:</label>
-                        <select id="relayNumber" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                            <option value="1">🔓 Relay 1 (OPEN)</option>
-                            <option value="2">⏸️ Relay 2 (STOP)</option>
-                            <option value="3">🔒 Relay 3 (CLOSE)</option>
-                            <option value="4">↗️ Relay 4 (PARTIAL)</option>
-                        </select>
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Schedule Name</label>
+                        <input type="text" id="scheduleName" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
                     </div>
-                </div>
-                
-                <!-- Group Authorization Fields -->
-                <div id="groupAuthFields" style="display: none;">
+                    
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Authorized Relays (Users can activate these):</label>
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                <input type="checkbox" id="authRelay1" value="1" checked> 🔓 OPEN
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                <input type="checkbox" id="authRelay2" value="2"> ⏸️ STOP
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                <input type="checkbox" id="authRelay3" value="4"> 🔒 CLOSE
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                <input type="checkbox" id="authRelay4" value="8"> ↗️ PARTIAL
-                            </label>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- User Authorization Fields -->
-                <div id="userAuthFields" style="display: none;">
-                    <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Select User:</label>
-                        <select id="scheduleUserId" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
-                            <option value="0">Select user...</option>
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Schedule Type</label>
+                        <select id="scheduleType" onchange="updateScheduleFormFields()" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                            <option value="1">Gate Automation - Automatic relay activation</option>
+                            <option value="2">Group Authorization - Multiple users can activate</option>
+                            <option value="3">User Authorization - Specific user can activate</option>
                         </select>
                     </div>
                     
+                    <!-- Days Selection (All Types) -->
                     <div style="margin-bottom: 15px;">
-                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">Authorized Relays (User can activate these):</label>
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                <input type="checkbox" id="userRelay1" value="1" checked> 🔓 OPEN
+                        <label style="display: block; font-weight: bold; margin-bottom: 8px;">📅 Active Days:</label>
+                        <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;">
+                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                                <input type="checkbox" id="daySun" value="0" style="margin-bottom: 4px;">
+                                <span style="font-size: 12px; font-weight: bold;">Sun</span>
                             </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                <input type="checkbox" id="userRelay2" value="2"> ⏸️ STOP
+                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                                <input type="checkbox" id="dayMon" value="1" style="margin-bottom: 4px;">
+                                <span style="font-size: 12px; font-weight: bold;">Mon</span>
                             </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                <input type="checkbox" id="userRelay3" value="4"> 🔒 CLOSE
+                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                                <input type="checkbox" id="dayTue" value="2" style="margin-bottom: 4px;">
+                                <span style="font-size: 12px; font-weight: bold;">Tue</span>
                             </label>
-                            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
-                                <input type="checkbox" id="userRelay4" value="8"> ↗️ PARTIAL
+                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                                <input type="checkbox" id="dayWed" value="3" style="margin-bottom: 4px;">
+                                <span style="font-size: 12px; font-weight: bold;">Wed</span>
+                            </label>
+                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                                <input type="checkbox" id="dayThu" value="4" style="margin-bottom: 4px;">
+                                <span style="font-size: 12px; font-weight: bold;">Thu</span>
+                            </label>
+                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                                <input type="checkbox" id="dayFri" value="5" style="margin-bottom: 4px;">
+                                <span style="font-size: 12px; font-weight: bold;">Fri</span>
+                            </label>
+                            <label style="display: flex; flex-direction: column; align-items: center; padding: 8px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s;">
+                                <input type="checkbox" id="daySat" value="6" style="margin-bottom: 4px;">
+                                <span style="font-size: 12px; font-weight: bold;">Sat</span>
                             </label>
                         </div>
-                    </div>
-                </div>
-                
-                <div style="margin-bottom: 15px;">
-                    <label style="display: flex; align-items: center; gap: 8px;">
-                        <input type="checkbox" id="scheduleEnabled" checked>
-                        <span style="font-weight: bold;">✅ Schedule Enabled</span>
-                    </label>
-                </div>
-                
-                <button type="submit" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
-                    💾 Save Schedule
-                </button>
-            </form>
-        </div>
-    </div>
-</div>
-
-<style>
-/* Checkbox styling */
-input[type="checkbox"]:checked + span,
-input[type="checkbox"]:checked {
-    color: #667eea;
-    font-weight: bold;
-}
-
-label:has(input[type="checkbox"]:checked) {
-    border-color: #667eea !important;
-    background: #f0f4ff !important;
-}
-</style>
-
-<script src="/public/common.js"></script>
-</body>
-</html>
-    
-<script>
-    // Initialize data from server
-    const devices = {{devicesData}};
-    const registeredUsers = {{registeredUsersData}};
-    const isSuperAdmin = {{isSuperAdmin}} === 'true';
-    
-    console.log("Dashboard loaded - Devices:", devices.length, "Users:", registeredUsers.length);
-    console.log("User is SuperAdmin:", isSuperAdmin);
-    
-    // ==================== NAVIGATION ====================
-    
-    function navigateTo(path) {
-        window.location.href = path;
-    }
-    
-    async function logout() {
-        try {
-            await fetch('/dashboard/logout', { method: 'POST' });
-            window.location.href = '/dashboard';
-        } catch (error) {
-            alert('Logout error: ' + error.message);
-        }
-    }
-    
-    // ==================== COMMAND SENDING (NO POPUP) ====================
-    
-    function sendCommand(deviceId, relay, action) {
-        const systemUserId = "999999999";  // Dashboard system user
-        
-        if (!confirm('Send ' + action + ' command?')) {
-            return;
-        }
-        
-        fetch('/api/device/' + deviceId + '/send-command', {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json; charset=utf-8',
-                'X-Command-Source': 'dashboard'
-            },
-            body: JSON.stringify({
-                id: 'web_' + Date.now(),
-                action: 'relay_activate',
-                relay: relay,
-                duration: 2000,
-                user: 'dashboard',
-                user_id: systemUserId,
-                dashboard_user: {
-                    email: '{{userEmail}}',
-                    name: '{{userName}}',
-                    phone: '{{userPhone}}'
-                }
-            })
-        })
-        .then(r => r.json())
-        .then(d => {
-            if (d.success) {
-                alert('✅ Command sent: ' + action);
-            } else {
-                alert('❌ Command failed');
-            }
-        })
-        .catch(e => alert('❌ Error: ' + e.message));
-    }
-    
-    // ==================== DEVICE RENDERING ====================
-    
-    function renderDevices() {
-        const container = document.getElementById('devices');
-        const noDevicesMsg = document.getElementById('noDevicesMessage');
-        
-        if (devices.length === 0) {
-            container.style.display = 'none';
-            noDevicesMsg.style.display = 'block';
-            return;
-        }
-        
-        container.style.display = 'block';
-        noDevicesMsg.style.display = 'none';
-        
-        container.innerHTML = devices.map(([deviceId, info]) => {
-            const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-            const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
-            const userCount = deviceUsers ? deviceUsers[1].length : 0;
-            
-            const deviceName = info.name || deviceId;
-            const deviceLocation = info.location || 'No location';
-            const macAddress = info.macAddress || 'Unknown';
-            
-            // Show "Platform Device" badge for SuperAdmins
-            const platformBadge = isSuperAdmin ? 
-                '<span class="platform-badge">PLATFORM DEVICE</span>' : 
-                '';
-            
-            return `
-                <div class="card device ${isOnline ? '' : 'offline'}">
-                    <div class="device-info">
-                        <h3>🎛️ ${deviceName} ${isOnline ? '🟢' : '🔴'} ${platformBadge}</h3>
-                        <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
-                            📍 ${deviceLocation} | 🆔 ${deviceId} | 🔗 MAC: ${macAddress}
-                        </div>
-                        <div class="device-status">
-                            📶 Signal: ${info.signalStrength}dBm | 
-                            🔋 Battery: ${info.batteryLevel}% | 
-                            ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
-                            👥 Users: ${userCount}<br>
-                            🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
-                        </div>
+                        <small style="color: #666; margin-top: 5px; display: block;">Select one or more days when this schedule is active</small>
                     </div>
                     
-                    <div class="device-actions">
-                        <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                        <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                        <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                        <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                        <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        console.log("Rendered", devices.length, "devices");
-    }
-    
-    // ==================== ORGANIZATIONS MANAGEMENT ====================
-    
-    let currentOrganizations = [];
-    let currentDeviceId = null;
-
-    function showOrganizationsModal() {
-        document.getElementById('organizationsModal').style.display = 'block';
-        loadOrganizations();
-    }
-
-    function closeOrganizationsModal() {
-        document.getElementById('organizationsModal').style.display = 'none';
-        hideCreateOrgForm();
-    }
-
-    function showCreateOrgForm() {
-        document.getElementById('createOrgForm').style.display = 'block';
-    }
-
-    function hideCreateOrgForm() {
-        document.getElementById('createOrgForm').style.display = 'none';
-        document.getElementById('newOrgName').value = '';
-        document.getElementById('newOrgType').value = 'service_provider';
-    }
-
-    async function loadOrganizations() {
-        try {
-            const response = await fetch('/api/organizations');
-            const orgs = await response.json();
-            
-            if (orgs.error) {
-                document.getElementById('organizationsList').innerHTML = 
-                    '<p style="color: #dc3545;">Error: ' + orgs.error + '</p>';
-                return;
-            }
-            
-            currentOrganizations = orgs;
-            
-            const container = document.getElementById('organizationsList');
-            
-            if (orgs.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #666;">No organizations yet.</p>';
-                return;
-            }
-            
-            container.innerHTML = orgs.map(org => `
-                <div class="org-card">
-                    <div class="org-header">
-                        <div>
-                            <h3 style="margin: 0 0 5px 0;">${org.name}</h3>
-                            <span class="org-type-badge org-type-${org.type}">${org.type.replace('_', ' ')}</span>
-                            ${org.id === 'platform_org' ? '<span style="color: #dc3545; font-size: 12px; margin-left: 10px;">🔒 PROTECTED</span>' : ''}
-                        </div>
-                        <div style="font-size: 12px; color: #666;">
-                            Created: ${new Date(org.createdAt).toLocaleDateString()}<br>
-                            By: ${org.createdBy}
-                        </div>
-                    </div>
-                    
-                    <div class="org-stats">
-                        <div class="org-stat">
-                            <div class="org-stat-value">${org.devices ? org.devices.length : 0}</div>
-                            <div class="org-stat-label">Gates</div>
-                        </div>
-                        <div class="org-stat">
-                            <div class="org-stat-value">${Object.keys(org.members || {}).length}</div>
-                            <div class="org-stat-label">Members</div>
-                        </div>
-                        <div class="org-stat">
-                            <div class="org-stat-value" style="font-size: 14px; word-break: break-all;">${org.id}</div>
-                            <div class="org-stat-label">ID</div>
-                        </div>
-                    </div>
-                    
-                    <div class="org-actions">
-                        <button class="org-btn org-btn-primary" onclick="viewOrgDetails('${org.id}')">
-                            👁️ View Details
-                        </button>
-                        <button class="org-btn org-btn-success" onclick="assignGateToOrg('${org.id}')">
-                            ➕ Assign Gate
-                        </button>
-                        ${org.id !== 'platform_org' ? `
-                        <button class="org-btn org-btn-danger" onclick="removeGateFromOrg('${org.id}')">
-                            ➖ Remove Gate
-                        </button>
-                        ` : ''}
-                        <button class="org-btn org-btn-secondary" onclick="addMemberToOrg('${org.id}')">
-                            👤 Add Member
-                        </button>
-                    </div>
-                </div>
-            `).join('');
-            
-        } catch (error) {
-            document.getElementById('organizationsList').innerHTML = 
-                '<p style="color: #dc3545;">Error loading organizations: ' + error.message + '</p>';
-        }
-    }
-
-    async function createOrganization() {
-        const name = document.getElementById('newOrgName').value.trim();
-        const type = document.getElementById('newOrgType').value;
-        
-        if (!name) {
-            alert('Please enter organization name');
-            return;
-        }
-        
-        try {
-            const response = await fetch('/api/organizations', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, type })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                alert('✅ Organization created: ' + name);
-                hideCreateOrgForm();
-                loadOrganizations();
-            } else {
-                alert('❌ Failed to create organization: ' + (result.error || 'Unknown error'));
-            }
-        } catch (error) {
-            alert('❌ Error: ' + error.message);
-        }
-    }
-
-    async function assignGateToOrg(orgId) {
-        const org = currentOrganizations.find(o => o.id === orgId);
-        
-        let promptText = 'Enter gate serial number to assign:';
-        if (org && org.devices && org.devices.length > 0) {
-            promptText += '\n\nCurrently assigned gates:\n' + org.devices.join(', ');
-        }
-        
-        const gateSerial = prompt(promptText);
-        if (!gateSerial) return;
-        
-        try {
-            const response = await fetch('/api/organizations/assign-gate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ organizationId: orgId, gateSerial: gateSerial.trim() })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                alert('✅ Gate assigned to organization');
-                loadOrganizations();
-            } else {
-                alert('❌ Failed: ' + (result.error || 'Unknown error'));
-            }
-        } catch (error) {
-            alert('❌ Error: ' + error.message);
-        }
-    }
-
-    async function removeGateFromOrg(orgId) {
-        const org = currentOrganizations.find(o => o.id === orgId);
-        
-        if (!org || !org.devices || org.devices.length === 0) {
-            alert('No gates assigned to this organization');
-            return;
-        }
-        
-        const gateSerial = prompt('Enter gate serial number to remove:\n\nCurrently assigned gates:\n' + org.devices.join(', '));
-        if (!gateSerial) return;
-        
-        if (!confirm('Remove gate ' + gateSerial + ' from organization ' + org.name + '?')) {
-            return;
-        }
-        
-        try {
-            const response = await fetch('/api/organizations/remove-gate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ organizationId: orgId, gateSerial: gateSerial.trim() })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                alert('✅ Gate removed from organization');
-                loadOrganizations();
-            } else {
-                alert('❌ Failed: ' + (result.error || 'Unknown error'));
-            }
-        } catch (error) {
-            alert('❌ Error: ' + error.message);
-        }
-    }
-
-    function addMemberToOrg(orgId) {
-        // TODO: Implement member addition UI (Phase 3)
-        alert('Member addition UI coming in Phase 3');
-    }
-
-    function viewOrgDetails(orgId) {
-        const org = currentOrganizations.find(o => o.id === orgId);
-        if (org) {
-            let details = 'Organization Details:\n\n';
-            details += 'Name: ' + org.name + '\n';
-            details += 'Type: ' + org.type + '\n';
-            details += 'ID: ' + org.id + '\n';
-            details += 'Created: ' + new Date(org.createdAt).toLocaleString() + '\n';
-            details += 'Created By: ' + org.createdBy + '\n';
-            details += '\nGates (' + (org.devices ? org.devices.length : 0) + '):\n';
-            if (org.devices && org.devices.length > 0) {
-                details += org.devices.join('\n');
-            } else {
-                details += '(No gates assigned)';
-            }
-            details += '\n\nMembers (' + Object.keys(org.members || {}).length + '):\n';
-            for (const [email, member] of Object.entries(org.members || {})) {
-                details += '• ' + member.name + ' (' + email + ') - ' + member.role + '\n';
-            }
-            alert(details);
-        }
-    }
-    
-    // ==================== DEVICE SETTINGS MODAL ====================
-    
-    function openSettings(deviceId) {
-        currentDeviceId = deviceId;
-        document.getElementById('modalTitle').textContent = '⚙️ Settings - ' + deviceId;
-        document.getElementById('settingsModal').style.display = 'block';
-        
-        // Switch to users tab and load data
-        switchTab('users');
-        loadUsers();
-    }
-    
-    function closeModal() {
-        if (window.statusRefreshInterval) {
-            clearInterval(window.statusRefreshInterval);
-            window.statusRefreshInterval = null;
-        }
-        document.getElementById('settingsModal').style.display = 'none';
-        currentDeviceId = null;
-    }
-    
-    function switchTab(tabName, clickedButton) {
-        // Remove active class from all tabs
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-            content.style.display = 'none';
-        });
-        
-        // Add active class to clicked tab
-        if (clickedButton) {
-            clickedButton.classList.add('active');
-        } else {
-            const firstTabBtn = document.querySelector('.tab-btn');
-            if (firstTabBtn) firstTabBtn.classList.add('active');
-        }
-        
-        // Show selected tab content
-        const tabContent = document.getElementById(tabName + '-tab');
-        if (tabContent) {
-            tabContent.classList.add('active');
-            tabContent.style.display = 'block';
-        }
-        
-        // Clear any previous status refresh interval
-        if (window.statusRefreshInterval) {
-            clearInterval(window.statusRefreshInterval);
-            window.statusRefreshInterval = null;
-        }
-        
-        // Load data based on tab
-        switch(tabName) {
-            case 'users':
-                loadUsers();
-                break;
-            case 'status':
-                loadStatus();
-                window.statusRefreshInterval = setInterval(loadStatus, 3000);
-                break;
-            case 'settings': 
-                loadSettings();
-                break;
-            case 'logs':
-                loadLogs();
-                break;
-            case 'schedules':
-                loadSchedules();
-                break;
-        }
-    }
-    
-    async function loadUsers() {
-        if (!currentDeviceId) return;
-        
-        try {
-            const response = await fetch('/api/gates/' + currentDeviceId + '/users');
-            const data = await response.json();
-            
-            const usersList = document.getElementById('usersList');
-            
-            let users;
-            if (Array.isArray(data)) {
-                users = data;
-            } else if (data && typeof data === 'object') {
-                users = Object.keys(data).map(phone => ({
-                    phone: phone,
-                    ...data[phone]
-                }));
-            } else {
-                users = [];
-            }
-            
-            if (users.length === 0) {
-                usersList.innerHTML = '<p style="color: #666;">No users registered yet.</p>';
-                return;
-            }
-            
-            usersList.innerHTML = users.map(user => {
-                const permissions = [];
-                if (user.relayMask & 1) permissions.push('🔓 OPEN');
-                if (user.relayMask & 2) permissions.push('⏸️ STOP');
-                if (user.relayMask & 4) permissions.push('🔒 CLOSE');
-                if (user.relayMask & 8) permissions.push('↗️ PARTIAL');
-                
-                const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
-                const addedDate = user.registeredAt || user.addedDate || new Date().toISOString();
-                
-                return `
-                    <div class="user-item">
-                        <div class="user-info">
-                            <div class="user-name">${user.name}</div>
-                            <div class="user-details">
-                                📧 ${user.email} | 📱 ${user.phone} | ${userLevelText}<br>
-                                Permissions: ${permissions.join(', ')}<br>
-                                Added by: ${user.addedBy || 'Unknown'} | Date: ${new Date(addedDate).toLocaleDateString()}
+                    <!-- Time Range (All Types) -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; font-weight: bold; margin-bottom: 5px;">⏰ Time Range:</label>
+                        <div style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center;">
+                            <div>
+                                <label style="display: block; font-size: 12px; color: #666; margin-bottom: 3px;">From</label>
+                                <input type="time" id="startTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                            </div>
+                            <div style="padding-top: 20px; font-weight: bold; color: #667eea;">→</div>
+                            <div>
+                                <label style="display: block; font-size: 12px; color: #666; margin-bottom: 3px;">To</label>
+                                <input type="time" id="endTime" required style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
                             </div>
                         </div>
-                        <button onclick="deleteUser('${user.phone}', '${user.email}', '${user.name}')" 
-                                style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
-                            🗑️ Delete
-                        </button>
+                    </div>
+                    
+                    <!-- Gate Automation Specific Fields -->
+                    <div id="automationFields">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Relay to Activate:</label>
+                            <select id="relayNumber" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                                <option value="1">🔓 Relay 1 (OPEN)</option>
+                                <option value="2">⏸️ Relay 2 (STOP)</option>
+                                <option value="3">🔒 Relay 3 (CLOSE)</option>
+                                <option value="4">↗️ Relay 4 (PARTIAL)</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Group Authorization Fields -->
+                    <div id="groupAuthFields" style="display: none;">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Authorized Relays (Users can activate these):</label>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                    <input type="checkbox" id="authRelay1" value="1" checked> 🔓 OPEN
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                    <input type="checkbox" id="authRelay2" value="2"> ⏸️ STOP
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                    <input type="checkbox" id="authRelay3" value="4"> 🔒 CLOSE
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                    <input type="checkbox" id="authRelay4" value="8"> ↗️ PARTIAL
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+<!-- User Authorization Fields -->
+                    <div id="userAuthFields" style="display: none;">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Select User:</label>
+                            <select id="scheduleUserId" style="width: 100%; padding: 8px; border: 2px solid #ddd; border-radius: 4px;">
+                                <option value="0">Select user...</option>
+                            </select>
+                        </div>
+                        
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; font-weight: bold; margin-bottom: 5px;">Authorized Relays (User can activate these):</label>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                    <input type="checkbox" id="userRelay1" value="1" checked> 🔓 OPEN
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                    <input type="checkbox" id="userRelay2" value="2"> ⏸️ STOP
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                    <input type="checkbox" id="userRelay3" value="4"> 🔒 CLOSE
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #ddd; border-radius: 4px; cursor: pointer;">
+                                    <input type="checkbox" id="userRelay4" value="8"> ↗️ PARTIAL
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: flex; align-items: center; gap: 8px;">
+                            <input type="checkbox" id="scheduleEnabled" checked>
+                            <span style="font-weight: bold;">✅ Schedule Enabled</span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                        💾 Save Schedule
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/public/common.js"></script>
+    <script>
+        console.log('Script starting - Dashboard initialization');
+        
+        // Initialize data from server - parse JSON strings
+        let devices = [];
+        let registeredUsers = [];
+        let isSuperAdmin = false;
+        
+        try {
+            devices = JSON.parse('{{devicesData}}');
+            registeredUsers = JSON.parse('{{registeredUsersData}}');
+            isSuperAdmin = '{{isSuperAdmin}}' === 'true';
+            
+            console.log("Dashboard loaded - Devices:", devices.length, "Users:", registeredUsers.length);
+            console.log("User is SuperAdmin:", isSuperAdmin);
+            console.log("User role:", '{{userRole}}');
+            
+            // Update role badge style for superadmin
+            if (isSuperAdmin) {
+                const roleBadge = document.getElementById('roleBadge');
+                if (roleBadge) {
+                    roleBadge.classList.add('superadmin-badge');
+                }
+            }
+        } catch (error) {
+            console.error('Error parsing data:', error);
+            console.log('devicesData:', '{{devicesData}}');
+            console.log('registeredUsersData:', '{{registeredUsersData}}');
+        }
+        
+        // ==================== NAVIGATION ====================
+        
+        function navigateTo(path) {
+            window.location.href = path;
+        }
+        
+        async function logout() {
+            try {
+                await fetch('/dashboard/logout', { method: 'POST' });
+                window.location.href = '/dashboard';
+            } catch (error) {
+                alert('Logout error: ' + error.message);
+            }
+        }
+        
+        // ==================== COMMAND SENDING (NO POPUP) ====================
+        
+        function sendCommand(deviceId, relay, action) {
+            const systemUserId = "999999999";  // Dashboard system user
+            
+            if (!confirm('Send ' + action + ' command?')) {
+                return;
+            }
+            
+            fetch('/api/device/' + deviceId + '/send-command', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json; charset=utf-8',
+                    'X-Command-Source': 'dashboard'
+                },
+                body: JSON.stringify({
+                    id: 'web_' + Date.now(),
+                    action: 'relay_activate',
+                    relay: relay,
+                    duration: 2000,
+                    user: 'dashboard',
+                    user_id: systemUserId,
+                    dashboard_user: {
+                        email: '{{userEmail}}',
+                        name: '{{userName}}',
+                        phone: '{{userPhone}}'
+                    }
+                })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    alert('✅ Command sent: ' + action);
+                } else {
+                    alert('❌ Command failed');
+                }
+            })
+            .catch(e => alert('❌ Error: ' + e.message));
+        }
+        
+        // ==================== DEVICE RENDERING ====================
+        
+        function renderDevices() {
+            const container = document.getElementById('devices');
+            const noDevicesMsg = document.getElementById('noDevicesMessage');
+            
+            console.log('renderDevices called, devices:', devices);
+            
+            if (!devices || devices.length === 0) {
+                container.style.display = 'none';
+                noDevicesMsg.style.display = 'block';
+                return;
+            }
+            
+            container.style.display = 'block';
+            noDevicesMsg.style.display = 'none';
+            
+            container.innerHTML = devices.map(([deviceId, info]) => {
+                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+                const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
+                const userCount = deviceUsers ? deviceUsers[1].length : 0;
+                
+                const deviceName = info.name || deviceId;
+                const deviceLocation = info.location || 'No location';
+                const macAddress = info.macAddress || 'Unknown';
+                
+                // Show "Platform Device" badge for SuperAdmins
+                const platformBadge = isSuperAdmin ? 
+                    '<span class="platform-badge">PLATFORM DEVICE</span>' : 
+                    '';
+                
+                return `
+                    <div class="card device ${isOnline ? '' : 'offline'}">
+                        <div class="device-info">
+                            <h3>🎛️ ${deviceName} ${isOnline ? '🟢' : '🔴'} ${platformBadge}</h3>
+                            <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
+                                📍 ${deviceLocation} | 🆔 ${deviceId} | 🔗 MAC: ${macAddress}
+                            </div>
+                            <div class="device-status">
+                                📶 Signal: ${info.signalStrength}dBm | 
+                                🔋 Battery: ${info.batteryLevel}% | 
+                                ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
+                                👥 Users: ${userCount}<br>
+                                🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
+                            </div>
+                        </div>
+                        
+                        <div class="device-actions">
+                            <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                            <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                            <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                            <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                            <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
+                        </div>
                     </div>
                 `;
             }).join('');
             
-        } catch (error) {
-            document.getElementById('usersList').innerHTML = 
-                '<p style="color: #dc3545;">Error loading users: ' + error.message + '</p>';
-        }
-    }
-    
-    async function registerUserModal() {
-        if (!currentDeviceId) return;
-        
-        const email = document.getElementById('modalEmail').value;
-        const phoneRaw = document.getElementById('modalPhone').value;
-        const name = document.getElementById('modalName').value;
-        const password = document.getElementById('modalPassword').value;
-        const userLevel = parseInt(document.getElementById('modalUserLevel').value);
-        const canLogin = document.getElementById('modalCanLogin').checked;
-        
-        let relayMask = 0;
-        if (document.getElementById('modalRelay1').checked) relayMask |= 1;
-        if (document.getElementById('modalRelay2').checked) relayMask |= 2;
-        if (document.getElementById('modalRelay3').checked) relayMask |= 4;
-        if (document.getElementById('modalRelay4').checked) relayMask |= 8;
-        
-        if (!email || !phoneRaw || !name) {
-            alert('Please fill in email, phone, and name fields');
-            return;
+            console.log("Rendered", devices.length, "devices");
         }
         
-        const cleanPhone = phoneRaw.toString().replace(/\D/g, '');
+        // ==================== ORGANIZATIONS MANAGEMENT ====================
         
-        if (cleanPhone.length < 10 || cleanPhone.length > 14) {
-            alert(`Phone number must be 10-14 digits. Received: ${cleanPhone} (${cleanPhone.length} digits)`);
-            return;
-        }
-        
-        if (!/^\d{10,14}$/.test(cleanPhone)) {
-            alert('Phone number must contain only digits');
-            return;
-        }
-        
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            alert('Please enter a valid email address');
-            return;
-        }
-        
-        if (canLogin && (!password || password.length < 6)) {
-            alert('Password must be at least 6 characters if login is allowed');
-            return;
-        }
-        
-        try {
-            const response = await fetch('/api/device/' + currentDeviceId + '/register-user', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                body: JSON.stringify({
-                    email: email,
-                    phone: cleanPhone,
-                    name: name,
-                    password: password,
-                    relayMask: relayMask,
-                    userLevel: userLevel,
-                    canLogin: canLogin
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                alert('✅ User registered: ' + name + ' (' + email + ')\nPhone: ' + result.phone);
-                
-                // Clear form
-                document.getElementById('modalEmail').value = '';
-                document.getElementById('modalPhone').value = '';
-                document.getElementById('modalName').value = '';
-                document.getElementById('modalPassword').value = '';
-                document.getElementById('modalUserLevel').value = '0';
-                document.getElementById('modalCanLogin').checked = false;
-                document.querySelectorAll('#settingsModal input[type="checkbox"]').forEach(cb => cb.checked = false);
-                document.getElementById('modalRelay1').checked = true;
-                
-                loadUsers();
-            } else {
-                alert('❌ Registration failed: ' + (result.error || 'Unknown error'));
-            }
-        } catch (error) {
-            alert('❌ Error: ' + error.message);
-        }
-    }
-    
-    async function deleteUser(phone, email, name) {
-        if (!currentDeviceId) return;
-        
-        if (!confirm('🗑️ Delete User: ' + name + '?\n\nThis will:\n• Remove user from device\n• Delete Firebase records\n• Remove dashboard access (if enabled)\n\nThis action cannot be undone!')) {
-            return;
-        }
-        
-        try {
-            const response = await fetch('/api/device/' + currentDeviceId + '/delete-user', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                body: JSON.stringify({
-                    phone: phone,
-                    email: email
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                alert('✅ User Deleted Successfully!\n\nUser: ' + result.deletedUser.name + '\nPhone: ' + result.deletedUser.phone + '\nFirebase: ' + result.firebase_status);
-                loadUsers();
-            } else {
-                alert('❌ Delete Failed: ' + (result.error || 'Unknown error'));
-            }
-        } catch (error) {
-            alert('❌ Delete Error: ' + error.message);
-        }
-    }
-    
-    async function loadStatus() {
-        // Keep your existing loadStatus implementation
-        console.log('Loading status for device:', currentDeviceId);
-    }
-    
-    async function loadSettings() {
-        // Keep your existing loadSettings implementation
-        console.log('Loading settings for device:', currentDeviceId);
-    }
-    
-    async function loadLogs() {
-        // Keep your existing loadLogs implementation
-        console.log('Loading logs for device:', currentDeviceId);
-    }
-    
-    async function loadSchedules() {
-        // Keep your existing loadSchedules implementation
-        console.log('Loading schedules for device:', currentDeviceId);
-    }
-    
-    // ==================== MODAL CLOSE HANDLERS ====================
-    
-    window.onclick = function(event) {
-        const orgModal = document.getElementById('organizationsModal');
-        if (event.target === orgModal) {
-            closeOrganizationsModal();
-        }
-        
-        const settingsModal = document.getElementById('settingsModal');
-        if (event.target === settingsModal) {
-            closeModal();
-        }
-    };
-    
-    // ==================== PAGE INITIALIZATION ====================
-    
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log("DOM loaded, rendering devices...");
-        renderDevices();
-    });
-    
-    // Also call immediately in case DOM is already loaded
-    renderDevices();
-</script>
+        let currentOrganizations = [];
+        let currentDeviceId = null;
 
-<script src="/public/common.js"></script>
-</body>
-</html>
+        function showOrganizationsModal() {
+            document.getElementById('organizationsModal').style.display = 'block';
+            loadOrganizations();
+        }
+
+        function closeOrganizationsModal() {
+            document.getElementById('organizationsModal').style.display = 'none';
+            hideCreateOrgForm();
+        }
+
+        function showCreateOrgForm() {
+            document.getElementById('createOrgForm').style.display = 'block';
+        }
+
+        function hideCreateOrgForm() {
+            document.getElementById('createOrgForm').style.display = 'none';
+            document.getElementById('newOrgName').value = '';
+            document.getElementById('newOrgType').value = 'service_provider';
+        }
+
+        async function loadOrganizations() {
+            try {
+                const response = await fetch('/api/organizations');
+                const orgs = await response.json();
+                
+                if (orgs.error) {
+                    document.getElementById('organizationsList').innerHTML = 
+                        '<p style="color: #dc3545;">Error: ' + orgs.error + '</p>';
+                    return;
+                }
+                
+                currentOrganizations = orgs;
+                
+                const container = document.getElementById('organizationsList');
+                
+                if (orgs.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #666;">No organizations yet.</p>';
+                    return;
+                }
+                
+                container.innerHTML = orgs.map(org => `
+                    <div class="org-card">
+                        <div class="org-header">
+                            <div>
+                                <h3 style="margin: 0 0 5px 0;">${org.name}</h3>
+                                <span class="org-type-badge org-type-${org.type}">${org.type.replace('_', ' ')}</span>
+                                ${org.id === 'platform_org' ? '<span style="color: #dc3545; font-size: 12px; margin-left: 10px;">🔒 PROTECTED</span>' : ''}
+                            </div>
+                            <div style="font-size: 12px; color: #666;">
+                                Created: ${new Date(org.createdAt).toLocaleDateString()}<br>
+                                By: ${org.createdBy}
+                            </div>
+                        </div>
+                        
+                        <div class="org-stats">
+                            <div class="org-stat">
+                                <div class="org-stat-value">${org.devices ? org.devices.length : 0}</div>
+                                <div class="org-stat-label">Gates</div>
+                            </div>
+                            <div class="org-stat">
+                                <div class="org-stat-value">${Object.keys(org.members || {}).length}</div>
+                                <div class="org-stat-label">Members</div>
+                            </div>
+                            <div class="org-stat">
+                                <div class="org-stat-value" style="font-size: 14px; word-break: break-all;">${org.id}</div>
+                                <div class="org-stat-label">ID</div>
+                            </div>
+                        </div>
+                        
+                        <div class="org-actions">
+                            <button class="org-btn org-btn-primary" onclick="viewOrgDetails('${org.id}')">
+                                👁️ View Details
+                            </button>
+                            <button class="org-btn org-btn-success" onclick="assignGateToOrg('${org.id}')">
+                                ➕ Assign Gate
+                            </button>
+                            ${org.id !== 'platform_org' ? `
+                            <button class="org-btn org-btn-danger" onclick="removeGateFromOrg('${org.id}')">
+                                ➖ Remove Gate
+                            </button>
+                            ` : ''}
+                            <button class="org-btn org-btn-secondary" onclick="addMemberToOrg('${org.id}')">
+                                👤 Add Member
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                document.getElementById('organizationsList').innerHTML = 
+                    '<p style="color: #dc3545;">Error loading organizations: ' + error.message + '</p>';
+            }
+        }
+
+        async function createOrganization() {
+            const name = document.getElementById('newOrgName').value.trim();
+            const type = document.getElementById('newOrgType').value;
+            
+            if (!name) {
+                alert('Please enter organization name');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/organizations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, type })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Organization created: ' + name);
+                    hideCreateOrgForm();
+                    loadOrganizations();
+                } else {
+                    alert('❌ Failed to create organization: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function assignGateToOrg(orgId) {
+            const org = currentOrganizations.find(o => o.id === orgId);
+            
+            let promptText = 'Enter gate serial number to assign:';
+            if (org && org.devices && org.devices.length > 0) {
+                promptText += '\n\nCurrently assigned gates:\n' + org.devices.join(', ');
+            }
+            
+            const gateSerial = prompt(promptText);
+            if (!gateSerial) return;
+            
+            try {
+                const response = await fetch('/api/organizations/assign-gate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ organizationId: orgId, gateSerial: gateSerial.trim() })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Gate assigned to organization');
+                    loadOrganizations();
+                } else {
+                    alert('❌ Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function removeGateFromOrg(orgId) {
+            const org = currentOrganizations.find(o => o.id === orgId);
+            
+            if (!org || !org.devices || org.devices.length === 0) {
+                alert('No gates assigned to this organization');
+                return;
+            }
+            
+            const gateSerial = prompt('Enter gate serial number to remove:\n\nCurrently assigned gates:\n' + org.devices.join(', '));
+            if (!gateSerial) return;
+            
+            if (!confirm('Remove gate ' + gateSerial + ' from organization ' + org.name + '?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/organizations/remove-gate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ organizationId: orgId, gateSerial: gateSerial.trim() })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Gate removed from organization');
+                    loadOrganizations();
+                } else {
+                    alert('❌ Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        function addMemberToOrg(orgId) {
+            // TODO: Implement member addition UI (Phase 3)
+            alert('Member addition UI coming in Phase 3');
+        }
+
+        function viewOrgDetails(orgId) {
+            const org = currentOrganizations.find(o => o.id === orgId);
+            if (org) {
+                let details = 'Organization Details:\n\n';
+                details += 'Name: ' + org.name + '\n';
+                details += 'Type: ' + org.type + '\n';
+                details += 'ID: ' + org.id + '\n';
+                details += 'Created: ' + new Date(org.createdAt).toLocaleString() + '\n';
+                details += 'Created By: ' + org.createdBy + '\n';
+                details += '\nGates (' + (org.devices ? org.devices.length : 0) + '):\n';
+                if (org.devices && org.devices.length > 0) {
+                    details += org.devices.join('\n');
+                } else {
+                    details += '(No gates assigned)';
+                }
+                details += '\n\nMembers (' + Object.keys(org.members || {}).length + '):\n';
+                for (const [email, member] of Object.entries(org.members || {})) {
+                    details += '• ' + member.name + ' (' + email + ') - ' + member.role + '\n';
+                }
+                alert(details);
+            }
+        }
+        
+        // ==================== DEVICE SETTINGS MODAL ====================
+        
+        function openSettings(deviceId) {
+            currentDeviceId = deviceId;
+            document.getElementById('modalTitle').textContent = '⚙️ Settings - ' + deviceId;
+            document.getElementById('settingsModal').style.display = 'block';
+            
+            // Switch to users tab and load data
+            switchTab('users', document.querySelector('.tab-btn.active'));
+        }
+        
+        function closeModal() {
+            if (window.statusRefreshInterval) {
+                clearInterval(window.statusRefreshInterval);
+                window.statusRefreshInterval = null;
+            }
+            document.getElementById('settingsModal').style.display = 'none';
+            currentDeviceId = null;
+        }
+        
+        function switchTab(tabName, clickedButton) {
+            // Use common.js function
+            window.GateController.switchTab(tabName, clickedButton);
+        }
+        
+        async function loadUsers() {
+            if (!currentDeviceId) return;
+            
+            try {
+                const response = await fetch('/api/gates/' + currentDeviceId + '/users');
+                const data = await response.json();
+                
+                const usersList = document.getElementById('usersList');
+                
+                let users;
+                if (Array.isArray(data)) {
+                    users = data;
+                } else if (data && typeof data === 'object') {
+                    users = Object.keys(data).map(phone => ({
+                        phone: phone,
+                        ...data[phone]
+                    }));
+                } else {
+                    users = [];
+                }
+                
+                if (users.length === 0) {
+                    usersList.innerHTML = '<p style="color: #666;">No users registered yet.</p>';
+                    return;
+                }
+                
+                usersList.innerHTML = users.map(user => {
+                    const permissions = [];
+                    if (user.relayMask & 1) permissions.push('🔓 OPEN');
+                    if (user.relayMask & 2) permissions.push('⏸️ STOP');
+                    if (user.relayMask & 4) permissions.push('🔒 CLOSE');
+                    if (user.relayMask & 8) permissions.push('↗️ PARTIAL');
+                    
+                    const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
+                    const addedDate = user.registeredAt || user.addedDate || new Date().toISOString();
+                    
+                    return `
+                        <div class="user-item">
+                            <div class="user-info">
+                                <div class="user-name">${user.name}</div>
+                                <div class="user-details">
+                                    📧 ${user.email} | 📱 ${user.phone} | ${userLevelText}<br>
+                                    Permissions: ${permissions.join(', ')}<br>
+                                    Added by: ${user.addedBy || 'Unknown'} | Date: ${new Date(addedDate).toLocaleDateString()}
+                                </div>
+                            </div>
+                            <button onclick="deleteUser('${user.phone}', '${user.email}', '${user.name}')" 
+                                    style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    `;
+                }).join('');
+                
+            } catch (error) {
+                document.getElementById('usersList').innerHTML = 
+                    '<p style="color: #dc3545;">Error loading users: ' + error.message + '</p>';
+            }
+        }
+        
+        async function registerUserModal() {
+            if (!currentDeviceId) return;
+            
+            const email = document.getElementById('modalEmail').value;
+            const phoneRaw = document.getElementById('modalPhone').value;
+            const name = document.getElementById('modalName').value;
+            const password = document.getElementById('modalPassword').value;
+            const userLevel = parseInt(document.getElementById('modalUserLevel').value);
+            const canLogin = document.getElementById('modalCanLogin').checked;
+            
+            let relayMask = 0;
+            if (document.getElementById('modalRelay1').checked) relayMask |= 1;
+            if (document.getElementById('modalRelay2').checked) relayMask |= 2;
+            if (document.getElementById('modalRelay3').checked) relayMask |= 4;
+            if (document.getElementById('modalRelay4').checked) relayMask |= 8;
+            
+            if (!email || !phoneRaw || !name) {
+                alert('Please fill in email, phone, and name fields');
+                return;
+            }
+            
+            const cleanPhone = phoneRaw.toString().replace(/\D/g, '');
+            
+            if (cleanPhone.length < 10 || cleanPhone.length > 14) {
+                alert(`Phone number must be 10-14 digits. Received: ${cleanPhone} (${cleanPhone.length} digits)`);
+                return;
+            }
+            
+            if (!/^\d{10,14}$/.test(cleanPhone)) {
+                alert('Phone number must contain only digits');
+                return;
+            }
+            
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            if (canLogin && (!password || password.length < 6)) {
+                alert('Password must be at least 6 characters if login is allowed');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/register-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({
+                        email: email,
+                        phone: cleanPhone,
+                        name: name,
+                        password: password,
+                        relayMask: relayMask,
+                        userLevel: userLevel,
+                        canLogin: canLogin
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User registered: ' + name + ' (' + email + ')\nPhone: ' + result.phone);
+                    
+                    // Clear form
+                    document.getElementById('modalEmail').value = '';
+                    document.getElementById('modalPhone').value = '';
+                    document.getElementById('modalName').value = '';
+                    document.getElementById('modalPassword').value = '';
+                    document.getElementById('modalUserLevel').value = '0';
+                    document.getElementById('modalCanLogin').checked = false;
+                    document.querySelectorAll('#settingsModal input[type="checkbox"]').forEach(cb => cb.checked = false);
+                    document.getElementById('modalRelay1').checked = true;
+                    
+                    loadUsers();
+                } else {
+                    alert('❌ Registration failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        async function deleteUser(phone, email, name) {
+            if (!currentDeviceId) return;
+            
+            if (!confirm('🗑️ Delete User: ' + name + '?\n\nThis will:\n• Remove user from device\n• Delete Firebase records\n• Remove dashboard access (if enabled)\n\nThis action cannot be undone!')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/delete-user', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({
+                        phone: phone,
+                        email: email
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User Deleted Successfully!\n\nUser: ' + result.deletedUser.name + '\nPhone: ' + result.deletedUser.phone + '\nFirebase: ' + result.firebase_status);
+                    loadUsers();
+                } else {
+                    alert('❌ Delete Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Delete Error: ' + error.message);
+            }
+        }
+        
+        async function loadStatus() {
+            // Implementation in common.js
+            console.log('Loading status for device:', currentDeviceId);
+        }
+        
+        async function loadSettings() {
+            // Implementation in common.js
+            console.log('Loading settings for device:', currentDeviceId);
+        }
+        
+        async function loadLogs() {
+            // Implementation in common.js
+            console.log('Loading logs for device:', currentDeviceId);
+        }
+        
+        async function loadSchedules() {
+            // Use common.js function
+            window.GateController.loadSchedules();
+        }
+        
+        function showAddScheduleModal() {
+            window.GateController.showAddScheduleModal();
+        }
+        
+        function closeScheduleModal() {
+            window.GateController.closeScheduleModal();
+        }
+        
+        function saveSchedule(event) {
+            window.GateController.saveSchedule(event);
+        }
+        
+        function updateScheduleFormFields() {
+            window.GateController.updateScheduleFormFields();
+        }
+        
+        // ==================== MODAL CLOSE HANDLERS ====================
+        
+        window.onclick = function(event) {
+            const orgModal = document.getElementById('organizationsModal');
+            if (event.target === orgModal) {
+                closeOrganizationsModal();
+            }
+            
+            const settingsModal = document.getElementById('settingsModal');
+            if (event.target === settingsModal) {
+                closeModal();
+            }
+        };
+        
+        // ==================== PAGE INITIALIZATION ====================
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM loaded, rendering devices...");
+            renderDevices();
+        });
+        
+        // Also call immediately in case DOM is already loaded
+        renderDevices();
+    </script>
 </body>
 </html>
