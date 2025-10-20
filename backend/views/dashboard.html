@@ -711,7 +711,7 @@ label:has(input[type="checkbox"]:checked) {
     
     <script>
         // Initialize data from server
-        const devices = JSON.parse('{{{devicesData}}}');
+        const devices = JSON.parse(decodeURIComponent('{{devicesData}}').replace(/&#34;/g, '"'));
         const registeredUsers = {{registeredUsersData}};
         const isSuperAdmin = {{isSuperAdmin}};
         
