@@ -1419,6 +1419,28 @@ if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
     return;
   }
 
+  // System page
+if (req.url === '/system') {
+  requireAuth((session) => {
+    const systemData = {
+      userName: session.name,
+      userEmail: session.email,
+      nodeEnv: process.env.NODE_ENV || 'development',
+      railwayEnv: process.env.RAILWAY_ENVIRONMENT || 'local',
+      memoryUsage: process.memoryUsage(),
+      uptime: process.uptime(),
+      connectedDevices: connectedDevices.size,
+      activeSessions: activeSessions.size,
+      firebaseStatus: firebaseInitialized ? 'Connected' : 'Not Connected'
+    };
+    
+    const systemHtml = renderTemplate('system', systemData);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(systemHtml);
+  });
+  return;
+}
+
   // System information endpoint
   if (req.url === '/api/system/info' && req.method === 'GET') {
     requireAuth((session) => {
