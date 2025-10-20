@@ -550,43 +550,44 @@ label:has(input[type="checkbox"]:checked) {
             }
         }
         
-        function sendCommand(deviceId, relay, action) {
-            const userId = prompt("Enter your registered phone number (10-14 digits, numbers only):");
-            if (!userId) return;
-            
-            const cleanUserId = userId.replace(/\D/g, '');
-            
-            if (!/^\d{10,14}$/.test(cleanUserId)) {
-                alert('Please enter a valid phone number (10-14 digits, numbers only)\n\nExamples:\n• US: 1234567890\n• International: 972501234567');
-                return;
+function sendCommand(deviceId, relay, action) {
+    // NO MORE PROMPT - use system user directly
+    const systemUserId = "999999999";  // Dashboard system user
+    
+    if (!confirm('Send ' + action + ' command?')) {
+        return;
+    }
+    
+    fetch('/api/device/' + deviceId + '/send-command', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-Command-Source': 'dashboard'  // NEW: Identify source
+        },
+        body: JSON.stringify({
+            id: 'web_' + Date.now(),
+            action: 'relay_activate',
+            relay: relay,
+            duration: 2000,
+            user: 'dashboard',
+            user_id: systemUserId,  // Always use system user
+            dashboard_user: {       // NEW: Track actual user
+                email: '{{userEmail}}',
+                name: '{{userName}}',
+                phone: '{{userPhone}}'  // Will need to add this to session
             }
-            
-            if (!confirm('Send ' + action + ' command with user ID: ' + cleanUserId + '?')) {
-                return;
-            }
-            
-            fetch('/api/device/' + deviceId + '/send-command', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json; charset=utf-8' },
-                body: JSON.stringify({
-                    id: 'web_' + Date.now(),
-                    action: 'relay_activate',
-                    relay: relay,
-                    duration: 2000,
-                    user: 'dashboard',
-                    user_id: cleanUserId
-                })
-            })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) {
-                    alert('✅ Command sent: ' + action);
-                } else {
-                    alert('❌ Command failed');
-                }
-            })
-            .catch(e => alert('❌ Error: ' + e.message));
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            alert('✅ Command sent: ' + action);
+        } else {
+            alert('❌ Command failed');
         }
+    })
+    .catch(e => alert('❌ Error: ' + e.message));
+}
         
         function openSettings(deviceId) {
             currentDeviceId = deviceId;
