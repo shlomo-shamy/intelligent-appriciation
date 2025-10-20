@@ -378,6 +378,14 @@
         </div>
     </div>
 
+// Debuging After line 369, add:
+console.log('=== DASHBOARD DEBUG ===');
+console.log('Raw devices type:', typeof devices);
+console.log('Devices:', devices);
+console.log('Is array?', Array.isArray(devices));
+console.log('isSuperAdmin:', isSuperAdmin);
+console.log('showSuperAdminFeatures:', '{{showSuperAdminFeatures}}');
+    
     <!-- Organizations Modal -->
     <div id="organizationsModal" class="modal" style="display: none;">
         <div class="modal-content">
@@ -703,7 +711,7 @@ label:has(input[type="checkbox"]:checked) {
     
     <script>
         // Initialize data from server
-        const devices = {{devicesData}};
+        const devices = JSON.parse('{{{devicesData}}}');
         const registeredUsers = {{registeredUsersData}};
         const isSuperAdmin = {{isSuperAdmin}};
         
