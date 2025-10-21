@@ -266,8 +266,8 @@ manufacturingDevices.set('GC-2025-002', {
 
 // Simple dashboard authentication - Default admin users
 const DASHBOARD_USERS = new Map([
-  ['admin@gatecontroller.com', { password: 'admin123', name: 'Administrator', userLevel: 2, phone: '0000000000' }],
-  ['manager@gatecontroller.com', { password: 'gate2024', name: 'Gate Manager', userLevel: 1, phone: '0000000001' }]
+  ['admin@gatecontroller.com', { password: 'admin123', name: 'Administrator', userLevel: 2, phone: '1234567890' }],
+  ['manager@gatecontroller.com', { password: 'gate2024', name: 'Gate Manager', userLevel: 1, phone: '972522554743' }]
 ]);
 
 // Store active sessions (in production, use Redis or database)
