@@ -126,7 +126,7 @@ organizations.set('platform_org', {
   members: {
     'admin@gatecontroller.com': {
       role: 'superadmin',
-      phone: '0000000000',
+      phone: '1234567890',
       name: 'Administrator',
       addedAt: new Date().toISOString(),
       addedBy: 'system'
@@ -151,7 +151,15 @@ function getUserOrganizations(userEmail) {
 }
 
 // Helper function to get user's highest role
+// Helper function to get user's highest role
 function getUserHighestRole(userEmail) {
+  // First check dashboard users for explicit organizationRole
+  const dashboardUser = DASHBOARD_USERS.get(userEmail);
+  if (dashboardUser && dashboardUser.organizationRole) {
+    return dashboardUser.organizationRole;
+  }
+  
+  // Then check organizations
   const userOrgs = getUserOrganizations(userEmail);
   
   // Check for superadmin first
@@ -167,6 +175,13 @@ function getUserHighestRole(userEmail) {
   // Then manager
   if (userOrgs.some(org => org.role === 'manager')) {
     return 'manager';
+  }
+  
+  // Finally check if dashboard user has userLevel that implies a role
+  if (dashboardUser) {
+    const derivedRole = userLevelToRole(dashboardUser.userLevel);
+    if (derivedRole === 'admin') return 'admin';
+    if (derivedRole === 'manager') return 'manager';
   }
   
   return 'user';
@@ -266,9 +281,45 @@ manufacturingDevices.set('GC-2025-002', {
 
 // Simple dashboard authentication - Default admin users
 const DASHBOARD_USERS = new Map([
-  ['admin@gatecontroller.com', { password: 'admin123', name: 'Administrator', userLevel: 2, phone: '1234567890' }],
-  ['972522554743@gatecontroller.com', { password: 'gate2024', name: 'Gate Manager', userLevel: 1, phone: '972522554743' }]
+  ['admin@gatecontroller.com', { 
+    password: 'admin123', 
+    name: 'Administrator', 
+    userLevel: 2, 
+    phone: '1234567890',
+    organizationRole: 'superadmin'  // ✅ ADD THIS
+  }],
+  ['972522554743@gatecontroller.com', { 
+    password: 'gate2024', 
+    name: 'Shlomo Shamy',  // ✅ Better name match
+    userLevel: 1, 
+    phone: '972522554743',
+    organizationRole: 'manager'  // ✅ ADD THIS
+  }]
 ]);
+
+// Helper: Convert userLevel to organization role
+function userLevelToRole(userLevel) {
+  switch(userLevel) {
+    case 2: return 'admin';
+    case 1: return 'manager';
+    case 0: return 'user';
+    default: return 'user';
+  }
+}
+
+// Helper: Get user's organization role (prioritize explicit organizationRole)
+function getUserOrgRole(userEmail) {
+  const dashboardUser = DASHBOARD_USERS.get(userEmail);
+  if (!dashboardUser) return 'user';
+  
+  // If explicit organizationRole is set, use it
+  if (dashboardUser.organizationRole) {
+    return dashboardUser.organizationRole;
+  }
+  
+  // Otherwise, derive from userLevel
+  return userLevelToRole(dashboardUser.userLevel);
+}
 
 // Store active sessions (in production, use Redis or database)
 const activeSessions = new Map();
@@ -696,15 +747,22 @@ if (req.url === '/dashboard/login' && req.method === 'POST') {
         const { email, password } = data;
         const user = DASHBOARD_USERS.get(email);
         
-        if (user && user.password === password) {
-            const sessionToken = generateSessionToken();
-            activeSessions.set(sessionToken, {
-                email: email,
-                name: user.name,
-                userLevel: user.userLevel,
-                phone: user.phone,  // ADD THIS - already in DASHBOARD_USERS
-                loginTime: new Date().toISOString()
-        });
+if (user && user.password === password) {
+    const sessionToken = generateSessionToken();
+    
+    // Get organization role
+    const orgRole = getUserOrgRole(email);
+    
+    activeSessions.set(sessionToken, {
+        email: email,
+        name: user.name,
+        userLevel: user.userLevel,
+        organizationRole: orgRole,  // ✅ ADD THIS
+        phone: user.phone,
+        loginTime: new Date().toISOString()
+});
+
+console.log(`🔐 Dashboard login successful: ${email} (userLevel: ${user.userLevel}, orgRole: ${orgRole})`);
         
         console.log(`🔐 Dashboard login successful: ${email}`);
         
@@ -712,11 +770,16 @@ if (req.url === '/dashboard/login' && req.method === 'POST') {
           'Content-Type': 'application/json; charset=utf-8',
           'Set-Cookie': `session=${sessionToken}; HttpOnly; Path=/; Max-Age=86400` // 24 hours
         });
-        res.end(JSON.stringify({
-          success: true,
-          message: 'Login successful',
-          user: { email, name: user.name, userLevel: user.userLevel }
-        }));
+res.end(JSON.stringify({
+  success: true,
+  message: 'Login successful',
+  user: { 
+    email, 
+    name: user.name, 
+    userLevel: user.userLevel,
+    organizationRole: orgRole  // ✅ ADD THIS
+  }
+}));
       } else {
         console.log(`🔐 Dashboard login failed: ${email}`);
         res.writeHead(401);
