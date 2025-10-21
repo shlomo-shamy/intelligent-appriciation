@@ -1217,7 +1217,8 @@ async function loadStatus() {
 // ADD THIS: Auto-refresh every 3 seconds when status tab is open
 let statusRefreshInterval = null;
 
-function switchTab(tabName, clickedButton) {
+/*
+   function switchTab(tabName, clickedButton) {
     // Remove active class from all tabs
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
     document.querySelectorAll('.tab-content').forEach(content => {
@@ -1268,12 +1269,13 @@ switch(tabName) {
         break;
 }
 }
-
+*/
+        
 // ALSO ADD: Stop refresh when modal closes
 function closeModal() {
-    if (statusRefreshInterval) {
-        clearInterval(statusRefreshInterval);
-        statusRefreshInterval = null;
+    if (window.statusRefreshInterval) {
+        clearInterval(window.statusRefreshInterval);
+        window.statusRefreshInterval = null;
     }
     document.getElementById('settingsModal').style.display = 'none';
     currentDeviceId = null;
