@@ -111,23 +111,56 @@ function closeModal(modalId = null) {
 }
 
 // Tab switching
-function switchTab(tabName, event = null) {
-    if (event) {
-        // Remove active class from all tabs
-        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        
-        // Add active class to selected tab
-        event.target.classList.add('active');
-        document.getElementById(tabName + '-tab').classList.add('active');
+// Tab switching
+function switchTab(tabName, clickedElement = null) {
+    // Remove active class from all tabs
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+        content.style.display = 'none';
+    });
+    
+    // Add active class to clicked tab button
+    if (clickedElement) {
+        clickedElement.classList.add('active');
+    } else {
+        // If no button provided, activate the first tab button
+        const firstTabBtn = document.querySelector('.tab-btn');
+        if (firstTabBtn) firstTabBtn.classList.add('active');
+    }
+    
+    // Show selected tab content
+    const tabContent = document.getElementById(tabName + '-tab');
+    if (tabContent) {
+        tabContent.classList.add('active');
+        tabContent.style.display = 'block';
+    }
+    
+    // Clear any previous status refresh interval
+    if (window.statusRefreshInterval) {
+        clearInterval(window.statusRefreshInterval);
+        window.statusRefreshInterval = null;
     }
     
     // Load data based on tab
     switch(tabName) {
-        case 'users': loadUsers(); break;
-        case 'status': loadStatus(); break;
-        case 'logs': loadLogs(); break;
-        case 'schedules': loadSchedules(); break;
+        case 'users': 
+            loadUsers(); 
+            break;
+        case 'status': 
+            loadStatus();
+            // Start auto-refresh for status tab only
+            window.statusRefreshInterval = setInterval(loadStatus, 3000);
+            break;
+        case 'settings':
+            loadSettings();
+            break;
+        case 'logs': 
+            loadLogs(); 
+            break;
+        case 'schedules': 
+            loadSchedules(); 
+            break;
     }
 }
 
