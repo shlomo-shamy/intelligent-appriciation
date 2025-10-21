@@ -809,7 +809,6 @@ res.end(JSON.stringify({
     return;
   }
 
-  // ESP32 Heartbeat endpoint (no auth required for device communication)
 // ESP32 Heartbeat endpoint (no auth required for device communication)
 if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
   console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
@@ -835,6 +834,16 @@ if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
       name: mfgDevice ? mfgDevice.name : deviceId,
       location: mfgDevice ? mfgDevice.location : 'Unknown location'
     });
+
+    // ✅ ADD THIS: Auto-assign to platform_org if not already assigned
+    const platformOrg = organizations.get('platform_org');
+    if (platformOrg && !platformOrg.devices.includes(deviceId)) {
+      platformOrg.devices.push(deviceId);
+      organizations.set('platform_org', platformOrg);
+      console.log(`✅ Auto-assigned ${deviceId} to platform_org on heartbeat`);
+    }
+    
+    addDeviceLog(deviceId, 'heartbeat', 'system', `Signal: ${data.signalStrength}dBm`);
     
     addDeviceLog(deviceId, 'heartbeat', 'system', `Signal: ${data.signalStrength}dBm`);
     
