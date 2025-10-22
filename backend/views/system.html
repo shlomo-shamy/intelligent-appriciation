@@ -68,6 +68,15 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
         }
         
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0f0f0;
+        }
+        
         .status-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -124,6 +133,8 @@
         .action-btn.danger:hover { background: #c82333; }
         .action-btn.warning { background: #ffc107; color: #212529; }
         .action-btn.warning:hover { background: #e0a800; }
+        .action-btn.success { background: #28a745; }
+        .action-btn.success:hover { background: #218838; }
         
         .log-container {
             max-height: 400px;
@@ -145,11 +156,134 @@
         .log-level-warn { color: #ffc107; }
         .log-level-error { color: #dc3545; }
         
+        /* User Management Table */
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        
+        .user-table th,
+        .user-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .user-table th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .user-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        
+        .role-superadmin { background: #dc3545; color: white; }
+        .role-admin { background: #f59e0b; color: white; }
+        .role-manager { background: #667eea; color: white; }
+        .role-user { background: #6c757d; color: white; }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+        
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .modal-header {
+            background: #667eea;
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 { margin: 0; }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .form-group small {
+            display: block;
+            margin-top: 5px;
+            color: #666;
+            font-size: 12px;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
         /* Responsive */
         @media (max-width: 768px) {
             .nav-header { flex-direction: column; align-items: stretch; }
             .nav-buttons { justify-content: center; }
             .status-grid { grid-template-columns: 1fr; }
+            .user-table { font-size: 12px; }
+            .user-table th, .user-table td { padding: 8px; }
         }
     </style>
 </head>
@@ -202,31 +336,46 @@
                 </div>
             </div>
             
-            <div class="status-card {{firebaseStatus === 'Connected' ? '' : 'warning'}}">
+            <div class="status-card">
                 <div class="status-header">🔥 Firebase Status</div>
                 <div class="status-item">
                     <span class="status-label">Connection:</span>
-                    <span class="status-value {{firebaseStatus === 'Connected' ? 'status-success' : 'status-warning'}}">
-                        {{firebaseStatus === 'Connected' ? '✅ Connected' : '❌ Not Connected'}}
-                    </span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Project ID:</span>
-                    <span class="status-value {{firebaseProjectId === 'SET' ? 'status-success' : 'status-error'}}">{{firebaseProjectId}}</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Client Email:</span>
-                    <span class="status-value {{firebaseClientEmail === 'SET' ? 'status-success' : 'status-error'}}">{{firebaseClientEmail}}</span>
-                </div>
-                <div class="status-item">
-                    <span class="status-label">Private Key:</span>
-                    <span class="status-value {{firebasePrivateKey !== 'MISSING' ? 'status-success' : 'status-error'}}">{{firebasePrivateKey}}</span>
+                    <span class="status-value status-success">{{firebase}}</span>
                 </div>
             </div>
         </div>
         
+        <!-- Dashboard Users Management (NEW!) -->
+        <div class="card">
+            <div class="section-header">
+                <h2>👥 Dashboard Users</h2>
+                <button class="action-btn success" onclick="showAddUserModal()">
+                    ➕ Add User
+                </button>
+            </div>
+            
+            <table class="user-table" id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Email</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 20px;">
+                            Loading users...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        
         <!-- System Actions -->
-        <div class="card" style="display: {{showAdminFeatures}};">
+        <div class="card">
             <h3>🔧 System Management</h3>
             <div style="margin: 15px 0;">
                 <button class="action-btn" onclick="syncFirebase()">
@@ -290,13 +439,110 @@
                 <div class="log-entry">
                     <span class="log-timestamp">[2024-01-01 12:00:01]</span>
                     <span class="log-level-info">[INFO]</span>
-                    Firebase {{firebaseStatus === 'Connected' ? 'connected' : 'connection failed'}}
+                    Firebase {{firebase}}
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add/Edit User Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">➕ Add Dashboard User</h2>
+                <button class="close-btn" onclick="closeUserModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="userForm" onsubmit="saveUser(event)">
+                    <input type="hidden" id="editingEmail">
+                    
+                    <div class="form-group">
+                        <label>Email Address *</label>
+                        <input type="email" id="userEmail" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Full Name *</label>
+                        <input type="text" id="userName" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Phone Number *</label>
+                        <input type="tel" id="userPhone" placeholder="10-14 digits" required>
+                        <small>Enter 10-14 digits (e.g., 1234567890, 972501234567)</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Password *</label>
+                        <input type="password" id="userPassword" minlength="6" required>
+                        <small>Minimum 6 characters (leave empty when editing to keep current password)</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Organization Role *</label>
+                        <select id="userOrgRole" required>
+                            <option value="user">👤 User</option>
+                            <option value="manager">👔 Manager</option>
+                            <option value="admin">🔐 Admin</option>
+                            <option value="superadmin">⚡ SuperAdmin</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>User Level (Legacy) *</label>
+                        <select id="userLevel" required>
+                            <option value="0">0 - Basic User</option>
+                            <option value="1">1 - Manager</option>
+                            <option value="2">2 - Admin</option>
+                        </select>
+                    </div>
+                    
+                    <button type="submit" class="action-btn success" style="width: 100%; margin-top: 10px;">
+                        💾 Save User
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Change Password Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>🔑 Change Password</h2>
+                <button class="close-btn" onclick="closePasswordModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="passwordForm" onsubmit="changePassword(event)">
+                    <input type="hidden" id="passwordEmail">
+                    <p id="passwordUsername" style="margin-bottom: 20px; font-weight: bold;"></p>
+                    
+                    <div class="form-group">
+                        <label>New Password *</label>
+                        <input type="password" id="newPassword" minlength="6" required>
+                        <small>Minimum 6 characters</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Confirm Password *</label>
+                        <input type="password" id="confirmPassword" minlength="6" required>
+                    </div>
+                    
+                    <button type="submit" class="action-btn success" style="width: 100%; margin-top: 10px;">
+                        💾 Change Password
+                    </button>
+                </form>
             </div>
         </div>
     </div>
 
     <script>
+        // Load users on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadUsers();
+            loadSystemInfo();
+        });
+        
         function navigateTo(path) {
             window.location.href = path;
         }
@@ -310,10 +556,199 @@
             }
         }
         
-        async function syncFirebase() {
-            if (!confirm('🔥 Sync all local users to Firebase?\n\nThis will update Firebase with all locally registered users.')) {
+        // ==================== USER MANAGEMENT ====================
+        
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/dashboard-users');
+                const users = await response.json();
+                
+                const tbody = document.getElementById('usersTableBody');
+                
+                if (users.error || users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px;">No users found</td></tr>';
+                    return;
+                }
+                
+                tbody.innerHTML = users.map(user => `
+                    <tr>
+                        <td>${user.email}</td>
+                        <td>${user.name}</td>
+                        <td>${user.phone}</td>
+                        <td><span class="role-badge role-${user.organizationRole}">${user.organizationRole}</span></td>
+                        <td>
+                            <button class="action-btn" style="padding: 6px 12px; font-size: 12px; margin: 2px;" onclick="showChangePasswordModal('${user.email}', '${user.name}')">
+                                🔑 Password
+                            </button>
+                            <button class="action-btn" style="padding: 6px 12px; font-size: 12px; margin: 2px;" onclick="editUser('${user.email}')">
+                                ✏️ Edit
+                            </button>
+                            ${user.email !== '{{userEmail}}' ? `
+                            <button class="action-btn danger" style="padding: 6px 12px; font-size: 12px; margin: 2px;" onclick="deleteUser('${user.email}', '${user.name}')">
+                                🗑️
+                            </button>
+                            ` : ''}
+                        </td>
+                    </tr>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('usersTableBody').innerHTML = 
+                    '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #dc3545;">Error loading users</td></tr>';
+            }
+        }
+        
+        function showAddUserModal() {
+            document.getElementById('modalTitle').textContent = '➕ Add Dashboard User';
+            document.getElementById('editingEmail').value = '';
+            document.getElementById('userForm').reset();
+            document.getElementById('userPassword').required = true;
+            document.getElementById('userEmail').disabled = false;
+            document.getElementById('userModal').style.display = 'block';
+        }
+        
+        function closeUserModal() {
+            document.getElementById('userModal').style.display = 'none';
+        }
+        
+        async function editUser(email) {
+            try {
+                const response = await fetch('/api/dashboard-users/' + encodeURIComponent(email));
+                const user = await response.json();
+                
+                document.getElementById('modalTitle').textContent = '✏️ Edit User';
+                document.getElementById('editingEmail').value = email;
+                document.getElementById('userEmail').value = user.email;
+                document.getElementById('userEmail').disabled = true;
+                document.getElementById('userName').value = user.name;
+                document.getElementById('userPhone').value = user.phone;
+                document.getElementById('userPassword').value = '';
+                document.getElementById('userPassword').required = false;
+                document.getElementById('userOrgRole').value = user.organizationRole;
+                document.getElementById('userLevel').value = user.userLevel;
+                
+                document.getElementById('userModal').style.display = 'block';
+            } catch (error) {
+                alert('Error loading user: ' + error.message);
+            }
+        }
+        
+        async function saveUser(event) {
+            event.preventDefault();
+            
+            const editingEmail = document.getElementById('editingEmail').value;
+            const isEditing = !!editingEmail;
+            
+            const userData = {
+                email: document.getElementById('userEmail').value,
+                name: document.getElementById('userName').value,
+                phone: document.getElementById('userPhone').value,
+                organizationRole: document.getElementById('userOrgRole').value,
+                userLevel: parseInt(document.getElementById('userLevel').value)
+            };
+            
+            const password = document.getElementById('userPassword').value;
+            if (password) {
+                userData.password = password;
+            }
+            
+            try {
+                const url = isEditing ? `/api/dashboard-users/${encodeURIComponent(editingEmail)}` : '/api/dashboard-users';
+                const method = isEditing ? 'PUT' : 'POST';
+                
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(userData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert(isEditing ? '✅ User updated!' : '✅ User created!');
+                    closeUserModal();
+                    loadUsers();
+                    document.getElementById('userEmail').disabled = false;
+                    document.getElementById('userPassword').required = true;
+                } else {
+                    alert('❌ Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        function showChangePasswordModal(email, name) {
+            document.getElementById('passwordEmail').value = email;
+            document.getElementById('passwordUsername').textContent = `Change password for: ${name} (${email})`;
+            document.getElementById('passwordForm').reset();
+            document.getElementById('passwordModal').style.display = 'block';
+        }
+        
+        function closePasswordModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+        }
+        
+        async function changePassword(event) {
+            event.preventDefault();
+            
+            const email = document.getElementById('passwordEmail').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                alert('❌ Passwords do not match!');
                 return;
             }
+            
+            try {
+                const response = await fetch(`/api/dashboard-users/${encodeURIComponent(email)}/password`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: newPassword })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Password changed!');
+                    closePasswordModal();
+                } else {
+                    alert('❌ Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        async function deleteUser(email, name) {
+            if (!confirm(`🗑️ Delete user: ${name} (${email})?\n\nThis cannot be undone!`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/dashboard-users/${encodeURIComponent(email)}`, {
+                    method: 'DELETE'
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User deleted!');
+                    loadUsers();
+                } else {
+                    alert('❌ Error: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+        
+        // ==================== SYSTEM MANAGEMENT ====================
+        
+        async function syncFirebase() {
+            if (!confirm('🔥 Sync all local users to Firebase?')) return;
             
             try {
                 const response = await fetch('/api/firebase/sync', {
@@ -326,49 +761,32 @@
                 if (result.success) {
                     alert('✅ Firebase Sync Complete!\n\nDevices: ' + result.syncedDevices + '\nUsers: ' + result.syncedUsers);
                 } else {
-                    alert('❌ Firebase Sync Failed: ' + (result.error || 'Unknown error'));
+                    alert('❌ Sync Failed: ' + (result.error || 'Unknown error'));
                 }
             } catch (error) {
-                alert('❌ Sync Error: ' + error.message);
+                alert('❌ Error: ' + error.message);
             }
         }
         
         async function checkFirebaseStatus() {
             try {
-                const response = await fetch('/api/firebase/status');
+                const response = await fetch('/api/firebase/');
                 const status = await response.json();
                 
-                const statusText = `
-🔥 Firebase Status Report:
-                
-Connection: ${status.firebase_initialized ? '✅ Connected' : '❌ Disconnected'}
-Project ID: ${status.project_id}
-Client Email: ${status.client_email}
-Private Key: ${status.private_key}
-
-Overall Status: ${status.status}
-                `;
-                
-                alert(statusText);
+                alert(`🔥 Firebase Status:\n\nConnected: ${status.firebase_initialized}\nProject: ${status.project_id}\nEmail: ${status.client_email}`);
             } catch (error) {
-                alert('❌ Status Check Error: ' + error.message);
+                alert('❌ Error: ' + error.message);
             }
         }
         
         async function clearCache() {
-            if (!confirm('Clear server cache?\n\nThis will remove temporary data but keep user registrations.')) {
-                return;
-            }
+            if (!confirm('Clear server cache?')) return;
             
             try {
                 const response = await fetch('/api/system/clear-cache', { method: 'POST' });
                 const result = await response.json();
                 
-                if (result.success) {
-                    alert('✅ Cache cleared successfully!');
-                } else {
-                    alert('❌ Failed to clear cache: ' + result.error);
-                }
+                alert(result.success ? '✅ Cache cleared!' : '❌ Failed');
             } catch (error) {
                 alert('❌ Error: ' + error.message);
             }
@@ -388,31 +806,25 @@ Overall Status: ${status.status}
                 window.URL.revokeObjectURL(url);
                 document.body.removeChild(a);
                 
-                alert('✅ Data exported successfully!');
+                alert('✅ Data exported!');
             } catch (error) {
-                alert('❌ Export Error: ' + error.message);
+                alert('❌ Error: ' + error.message);
             }
         }
         
         async function restartServer() {
-            if (!confirm('⚠️ Restart Server?\n\nThis will disconnect all devices and users.\nThey will need to reconnect.')) {
-                return;
-            }
+            if (!confirm('⚠️ Restart Server?\n\nAll users will be disconnected.')) return;
             
             try {
                 await fetch('/api/system/restart', { method: 'POST' });
-                alert('🔄 Server restart initiated...\nPage will refresh in 10 seconds.');
-                
-                setTimeout(() => {
-                    window.location.reload();
-                }, 10000);
+                alert('🔄 Restarting...\nPage will refresh in 10 seconds.');
+                setTimeout(() => window.location.reload(), 10000);
             } catch (error) {
-                alert('❌ Restart Error: ' + error.message);
+                alert('❌ Error: ' + error.message);
             }
         }
         
         function refreshLogs() {
-            // Implement log refresh
             alert('📝 Logs refreshed!');
         }
         
@@ -423,13 +835,12 @@ Overall Status: ${status.status}
         }
         
         function filterLogs() {
-            // Implement log filtering
             const level = document.getElementById('logLevel').value;
             alert('🔍 Filtering logs by: ' + level);
         }
         
         // Load environment data
-        window.addEventListener('load', async () => {
+        async function loadSystemInfo() {
             try {
                 const response = await fetch('/api/system/info');
                 const info = await response.json();
@@ -446,7 +857,15 @@ Overall Status: ${status.status}
             } catch (error) {
                 console.error('Failed to load system info:', error);
             }
-        });
+        }
+        
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+            }
+        };
     </script>
 </body>
 </html>
+            
