@@ -809,6 +809,274 @@ res.end(JSON.stringify({
     return;
   }
 
+  // ==================== DASHBOARD USER MANAGEMENT ENDPOINTS ====================
+
+// Get all dashboard users (SuperAdmin only)
+if (req.url === '/api/dashboard-users' && req.method === 'GET') {
+  requireAuth((session) => {
+    const userRole = getUserHighestRole(session.email);
+    
+    if (userRole !== 'superadmin') {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'SuperAdmin access required' }));
+      return;
+    }
+    
+    const users = Array.from(DASHBOARD_USERS.entries()).map(([email, user]) => ({
+      email: email,
+      name: user.name,
+      phone: user.phone,
+      userLevel: user.userLevel,
+      organizationRole: user.organizationRole || userLevelToRole(user.userLevel)
+    }));
+    
+    res.writeHead(200);
+    res.end(JSON.stringify(users));
+  });
+  return;
+}
+
+// Get single dashboard user
+if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'GET') {
+  requireAuth((session) => {
+    const userRole = getUserHighestRole(session.email);
+    
+    if (userRole !== 'superadmin') {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'SuperAdmin access required' }));
+      return;
+    }
+    
+    const email = decodeURIComponent(req.url.split('/').pop());
+    const user = DASHBOARD_USERS.get(email);
+    
+    if (!user) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'User not found' }));
+      return;
+    }
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      email: email,
+      name: user.name,
+      phone: user.phone,
+      userLevel: user.userLevel,
+      organizationRole: user.organizationRole || userLevelToRole(user.userLevel)
+    }));
+  });
+  return;
+}
+
+// Create new dashboard user (SuperAdmin only)
+if (req.url === '/api/dashboard-users' && req.method === 'POST') {
+  requireAuth((session) => {
+    const userRole = getUserHighestRole(session.email);
+    
+    if (userRole !== 'superadmin') {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'SuperAdmin access required' }));
+      return;
+    }
+    
+    readBody((data) => {
+      const { email, name, phone, password, organizationRole, userLevel } = data;
+      
+      if (!email || !name || !phone || !password) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Email, name, phone, and password are required' }));
+        return;
+      }
+      
+      if (DASHBOARD_USERS.has(email)) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'User with this email already exists' }));
+        return;
+      }
+      
+      // Validate phone
+      const phoneValidation = validatePhoneNumber(phone);
+      if (!phoneValidation.valid) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: phoneValidation.message }));
+        return;
+      }
+      
+      // Validate password
+      if (password.length < 6) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Password must be at least 6 characters' }));
+        return;
+      }
+      
+      DASHBOARD_USERS.set(email, {
+        password: password,
+        name: name,
+        userLevel: userLevel || 0,
+        phone: phoneValidation.cleanPhone,
+        organizationRole: organizationRole || 'user'
+      });
+      
+      console.log(`✅ Dashboard user created: ${email} (${organizationRole})`);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: 'User created successfully',
+        email: email
+      }));
+    });
+  });
+  return;
+}
+
+// Update dashboard user (SuperAdmin only)
+if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'PUT') {
+  requireAuth((session) => {
+    const userRole = getUserHighestRole(session.email);
+    
+    if (userRole !== 'superadmin') {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'SuperAdmin access required' }));
+      return;
+    }
+    
+    const email = decodeURIComponent(req.url.split('/').pop());
+    const user = DASHBOARD_USERS.get(email);
+    
+    if (!user) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'User not found' }));
+      return;
+    }
+    
+    readBody((data) => {
+      const { name, phone, password, organizationRole, userLevel } = data;
+      
+      // Validate phone if provided
+      if (phone) {
+        const phoneValidation = validatePhoneNumber(phone);
+        if (!phoneValidation.valid) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: phoneValidation.message }));
+          return;
+        }
+        user.phone = phoneValidation.cleanPhone;
+      }
+      
+      // Validate password if provided
+      if (password) {
+        if (password.length < 6) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'Password must be at least 6 characters' }));
+          return;
+        }
+        user.password = password;
+      }
+      
+      // Update other fields
+      if (name) user.name = name;
+      if (organizationRole) user.organizationRole = organizationRole;
+      if (userLevel !== undefined) user.userLevel = userLevel;
+      
+      DASHBOARD_USERS.set(email, user);
+      
+      console.log(`✅ Dashboard user updated: ${email}`);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: 'User updated successfully'
+      }));
+    });
+  });
+  return;
+}
+
+// Change password (SuperAdmin or self)
+if (req.url.match(/^\/api\/dashboard-users\/[^\/]+\/password$/) && req.method === 'PUT') {
+  requireAuth((session) => {
+    const email = decodeURIComponent(req.url.split('/')[3]);
+    const userRole = getUserHighestRole(session.email);
+    
+    // Allow superadmin or self
+    if (userRole !== 'superadmin' && session.email !== email) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'Access denied' }));
+      return;
+    }
+    
+    const user = DASHBOARD_USERS.get(email);
+    
+    if (!user) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'User not found' }));
+      return;
+    }
+    
+    readBody((data) => {
+      const { password } = data;
+      
+      if (!password || password.length < 6) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Password must be at least 6 characters' }));
+        return;
+      }
+      
+      user.password = password;
+      DASHBOARD_USERS.set(email, user);
+      
+      console.log(`✅ Password changed for: ${email}`);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Password changed successfully'
+      }));
+    });
+  });
+  return;
+}
+
+// Delete dashboard user (SuperAdmin only)
+if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'DELETE') {
+  requireAuth((session) => {
+    const userRole = getUserHighestRole(session.email);
+    
+    if (userRole !== 'superadmin') {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'SuperAdmin access required' }));
+      return;
+    }
+    
+    const email = decodeURIComponent(req.url.split('/').pop());
+    
+    // Prevent deleting yourself
+    if (email === session.email) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: 'Cannot delete your own account' }));
+      return;
+    }
+    
+    if (!DASHBOARD_USERS.has(email)) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'User not found' }));
+      return;
+    }
+    
+    DASHBOARD_USERS.delete(email);
+    
+    console.log(`✅ Dashboard user deleted: ${email}`);
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      success: true,
+      message: 'User deleted successfully'
+    }));
+  });
+  return;
+}
+  
 // ESP32 Heartbeat endpoint (no auth required for device communication)
 if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
   console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
