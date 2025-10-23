@@ -1668,10 +1668,101 @@ function renderDevices() {
             }
         }
 
-        function addMemberToOrg(orgId) {
-            // TODO: Implement member addition UI (Phase 3)
-            alert('Member addition UI coming in Phase 3');
+async function addMemberToOrg(orgId) {
+    const org = currentOrganizations.find(o => o.id === orgId);
+    
+    if (!org) {
+        alert('Organization not found');
+        return;
+    }
+    
+    // Get list of current members
+    const currentMembers = Object.keys(org.members || {});
+    
+    // Prompt for user details
+    const userEmail = prompt('Enter user email address to add:\n\n' + 
+                            (currentMembers.length > 0 ? 
+                            'Current members:\n' + currentMembers.join('\n') : 
+                            'No members yet'));
+    
+    if (!userEmail) return;
+    
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
+        alert('❌ Invalid email format');
+        return;
+    }
+    
+    // Check if already a member
+    if (currentMembers.includes(userEmail)) {
+        alert('❌ User is already a member of this organization');
+        return;
+    }
+    
+    // Prompt for member details
+    const userName = prompt('Enter user name:', userEmail.split('@')[0]);
+    if (!userName) return;
+    
+    const userPhone = prompt('Enter user phone number (10-14 digits):', '');
+    if (!userPhone) return;
+    
+    // Validate phone
+    const cleanPhone = userPhone.replace(/\D/g, '');
+    if (cleanPhone.length < 10 || cleanPhone.length > 14) {
+        alert('❌ Phone must be 10-14 digits');
+        return;
+    }
+    
+    // Prompt for role
+    const roleOptions = org.id === 'platform_org' ? 
+        'superadmin, admin, manager' : 
+        'admin, manager, user';
+    
+    const role = prompt('Enter role (' + roleOptions + '):', 
+                       org.id === 'platform_org' ? 'admin' : 'manager');
+    
+    if (!role) return;
+    
+    // Validate role
+    const validRoles = org.id === 'platform_org' ? 
+        ['superadmin', 'admin', 'manager'] : 
+        ['admin', 'manager', 'user'];
+    
+    if (!validRoles.includes(role.toLowerCase())) {
+        alert('❌ Invalid role. Must be one of: ' + roleOptions);
+        return;
+    }
+    
+    // Confirm addition
+    if (!confirm(`Add member to "${org.name}"?\n\nEmail: ${userEmail}\nName: ${userName}\nPhone: ${cleanPhone}\nRole: ${role}`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/organizations/add-member', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                organizationId: orgId,
+                userEmail: userEmail,
+                userName: userName,
+                userPhone: cleanPhone,
+                role: role.toLowerCase()
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Member added to organization!\n\nUser can now access this organization\'s gates.');
+            loadOrganizations(); // Refresh the list
+        } else {
+            alert('❌ Failed to add member: ' + (result.error || 'Unknown error'));
         }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
 
         function viewOrgDetails(orgId) {
             const org = currentOrganizations.find(o => o.id === orgId);
