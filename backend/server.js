@@ -1814,6 +1814,85 @@ if (req.url === '/api/organizations/add-member' && req.method === 'POST') {
   return;
 }
 
+// Remove member from organization (Admin or SuperAdmin)
+if (req.url === '/api/organizations/remove-member' && req.method === 'POST') {
+  requireAuth((session) => {
+    readBody(async (data) => {
+      const { organizationId, userEmail } = data;
+      
+      if (!organizationId || !userEmail) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Organization ID and email required' }));
+        return;
+      }
+      
+      const org = organizations.get(organizationId);
+      if (!org) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'Organization not found' }));
+        return;
+      }
+      
+      // Check if session user has permission to remove members
+      const sessionRole = getUserHighestRole(session.email);
+      const sessionMember = org.members[session.email];
+      
+      // SuperAdmin can always remove members
+      if (sessionRole === 'superadmin') {
+        // Allow - superadmin has access to all organizations
+      } else if (!sessionMember) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'You are not a member of this organization' }));
+        return;
+      } else if (sessionMember.role !== 'admin' && sessionMember.role !== 'superadmin') {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'Admin or SuperAdmin access required' }));
+        return;
+      }
+      
+      // Prevent removing yourself
+      if (userEmail === session.email) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Cannot remove yourself from the organization' }));
+        return;
+      }
+      
+      // Check if user is a member
+      if (!org.members[userEmail]) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'User is not a member of this organization' }));
+        return;
+      }
+      
+      // Prevent removing the last superadmin from platform_org
+      if (organizationId === 'platform_org' && org.members[userEmail].role === 'superadmin') {
+        const superadminCount = Object.values(org.members).filter(m => m.role === 'superadmin').length;
+        if (superadminCount <= 1) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'Cannot remove the last superadmin from platform organization' }));
+          return;
+        }
+      }
+      
+      // Remove member from organization
+      delete org.members[userEmail];
+      organizations.set(organizationId, org);
+      
+      // Update Firebase
+      const firebaseResult = await saveOrganizationToFirebase(organizationId, org);
+      
+      console.log(`✅ Member ${userEmail} removed from org ${organizationId} (Firebase: ${firebaseResult.success ? 'synced' : 'local_only'})`);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Member removed from organization'
+      }));
+    });
+  });
+  return;
+}
+  
 // Get organization details (Members can view their own org)
 if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
   requireAuth((session) => {
