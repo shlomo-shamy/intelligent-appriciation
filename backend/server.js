@@ -1729,15 +1729,9 @@ if (req.url === '/api/organizations/add-member' && req.method === 'POST') {
       organizations.set(organizationId, org);
       
       // Update Firebase
-const firebaseResult = await saveOrganizationToFirebase(organizationId, org);
-
-console.log(`✅ Member ${userEmail} added to org ${organizationId} (Firebase: ${firebaseResult.success ? 'synced' : 'local_only'})`);
-        } catch (error) {
-          console.error('❌ Firebase member addition error:', error);
-        }
-      }
+      const firebaseResult = await saveOrganizationToFirebase(organizationId, org);
       
-      console.log(`✅ Member ${userEmail} added to organization ${organizationId}`);
+      console.log(`✅ Member ${userEmail} added to org ${organizationId} (Firebase: ${firebaseResult.success ? 'synced' : 'local_only'})`);
       
       res.writeHead(200);
       res.end(JSON.stringify({
