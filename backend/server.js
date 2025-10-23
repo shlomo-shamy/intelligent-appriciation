@@ -1662,22 +1662,13 @@ if (req.url === '/api/organizations/remove-gate' && req.method === 'POST') {
       
       // Remove gate from organization
       org.devices = org.devices.filter(d => d !== gateSerial);
-      organizations.set(organizationId, org);
-      
-      // Update Firebase
+organizations.set(organizationId, org);
+
 // Update Firebase
 const firebaseResult = await saveOrganizationToFirebase(organizationId, org);
-          
-          const gateRef = db.collection('gates').doc(gateSerial);
-          await gateRef.update({
-            organizations: admin.firestore.FieldValue.arrayRemove(organizationId)
-          });
-          
-          console.log(`✅ Gate ${gateSerial} removed from org ${organizationId} in Firebase`);
-        } catch (error) {
-          console.error('❌ Firebase gate removal error:', error);
-        }
-      }
+
+console.log(`✅ Member ${userEmail} added to org ${organizationId} (Firebase: ${firebaseResult.success ? 'synced' : 'local_only'})`);
+      
       
       console.log(`✅ Gate ${gateSerial} removed from organization ${organizationId}`);
       
