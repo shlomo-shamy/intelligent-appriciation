@@ -1729,9 +1729,6 @@ if (req.url === '/api/organizations/add-member' && req.method === 'POST') {
       organizations.set(organizationId, org);
       
       // Update Firebase
-organizations.set(organizationId, org);
-
-// Update Firebase
 const firebaseResult = await saveOrganizationToFirebase(organizationId, org);
 
 console.log(`✅ Member ${userEmail} added to org ${organizationId} (Firebase: ${firebaseResult.success ? 'synced' : 'local_only'})`);
