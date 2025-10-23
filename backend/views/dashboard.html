@@ -705,6 +705,8 @@ label:has(input[type="checkbox"]:checked) {
 }
 </style>
 
+
+    
     <script>
         // Initialize data from server
         const devices = JSON.parse(decodeURIComponent('{{devicesData}}').replace(/&#34;/g, '"'));
@@ -1547,22 +1549,25 @@ function renderDevices() {
                             </div>
                         </div>
                         
-                        <div class="org-actions">
-                            <button class="org-btn org-btn-primary" onclick="viewOrgDetails('${org.id}')">
-                                👁️ View Details
-                            </button>
-                            <button class="org-btn org-btn-success" onclick="assignGateToOrg('${org.id}')">
-                                ➕ Assign Gate
-                            </button>
-                            ${org.id !== 'platform_org' ? `
-                            <button class="org-btn org-btn-danger" onclick="removeGateFromOrg('${org.id}')">
-                                ➖ Remove Gate
-                            </button>
-                            ` : ''}
-                            <button class="org-btn org-btn-secondary" onclick="addMemberToOrg('${org.id}')">
-                                👤 Add Member
-                            </button>
-                        </div>
+<div class="org-actions">
+    <button class="org-btn org-btn-primary" onclick="viewOrgDetails('${org.id}')">
+        👁️ View Details
+    </button>
+    <button class="org-btn org-btn-success" onclick="assignGateToOrg('${org.id}')">
+        ➕ Assign Gate
+    </button>
+    ${org.id !== 'platform_org' ? `
+    <button class="org-btn org-btn-danger" onclick="removeGateFromOrg('${org.id}')">
+        ➖ Remove Gate
+    </button>
+    ` : ''}
+    <button class="org-btn org-btn-secondary" onclick="addMemberToOrg('${org.id}')">
+        👤 Add Member
+    </button>
+    <button class="org-btn org-btn-danger" onclick="removeMemberFromOrg('${org.id}')">
+        🗑️ Remove Member
+    </button>
+</div>
                     </div>
                 `).join('');
                 
@@ -1764,6 +1769,93 @@ async function addMemberToOrg(orgId) {
     }
 }
 
+// ==================== ADD THESE THREE FUNCTIONS ====================
+
+function removeMemberFromOrg(orgId) {
+    const org = currentOrganizations.find(o => o.id === orgId);
+    
+    if (!org) {
+        alert('Organization not found');
+        return;
+    }
+    
+    const members = Object.keys(org.members || {});
+    
+    if (members.length === 0) {
+        alert('No members in this organization');
+        return;
+    }
+    
+    // Set modal data
+    document.getElementById('removeMemberOrgName').textContent = `Remove member from: ${org.name}`;
+    
+    // Get current user email from page
+    const currentUserEmail = '{{userEmail}}';
+    
+    // Populate member list
+    const memberListHtml = members.map(email => {
+        const member = org.members[email];
+        const isCurrentUser = email === currentUserEmail;
+        
+        return `
+            <div style="background: #f8f9fa; padding: 15px; margin-bottom: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>${member.name || 'Unknown'}</strong><br>
+                    <small style="color: #666;">${email}</small><br>
+                    <span class="role-badge role-${member.role || 'user'}">${member.role || 'user'}</span>
+                </div>
+                <button class="org-btn org-btn-danger" 
+                        ${isCurrentUser ? 'disabled' : ''}
+                        onclick="confirmRemoveMember('${orgId}', '${email}', '${(member.name || 'Unknown').replace(/'/g, "\\'")}')"
+                        style="${isCurrentUser ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+                    ${isCurrentUser ? '❌ You' : '🗑️ Remove'}
+                </button>
+            </div>
+        `;
+    }).join('');
+    
+    document.getElementById('removeMemberList').innerHTML = memberListHtml;
+    
+    // Show modal
+    document.getElementById('removeMemberModal').style.display = 'block';
+}
+
+function closeRemoveMemberModal() {
+    document.getElementById('removeMemberModal').style.display = 'none';
+}
+
+async function confirmRemoveMember(orgId, userEmail, userName) {
+    const org = currentOrganizations.find(o => o.id === orgId);
+    const member = org.members[userEmail];
+    
+    if (!confirm(`Remove member?\n\nName: ${userName}\nEmail: ${userEmail}\nRole: ${member.role || 'user'}\n\n⚠️ This action cannot be undone!`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/organizations/remove-member', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                organizationId: orgId,
+                userEmail: userEmail
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Member removed successfully!');
+            closeRemoveMemberModal();
+            loadOrganizations();
+        } else {
+            alert('❌ Failed: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}      
+        
         function viewOrgDetails(orgId) {
             const org = currentOrganizations.find(o => o.id === orgId);
             if (org) {
@@ -1809,5 +1901,22 @@ async function addMemberToOrg(orgId) {
         
     </script>
 <script src="/public/common.js"></script>
+<!-- Remove Member Modal -->
+<div id="removeMemberModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 600px;">
+        <div class="modal-header">
+            <h2>🗑️ Remove Member from Organization</h2>
+            <button class="close-btn" onclick="closeRemoveMemberModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="removeMemberOrgName" style="font-weight: bold; margin-bottom: 20px;"></p>
+            <p style="color: #dc3545; margin-bottom: 20px;">⚠️ Select a member to remove from this organization:</p>
+            
+            <div id="removeMemberList" style="max-height: 400px; overflow-y: auto;">
+                <!-- Members will be populated here -->
+            </div>
+        </div>
+    </div>
+</div>    
 </body>
 </html>
