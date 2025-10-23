@@ -110,6 +110,13 @@ try {
   console.log('Full error:', error);
 }
 
+} catch (error) {
+  console.log('Firebase initialization error:', error.message);
+  console.log('Full error:', error);
+}
+
+console.log('🚀 Starting Railway server with ESP32 support...');
+
 console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
 
 // Organization storage (will migrate to Firebase)
