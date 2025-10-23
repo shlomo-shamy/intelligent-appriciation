@@ -110,12 +110,76 @@ try {
   console.log('Full error:', error);
 }
 
-} catch (error) {
-  console.log('Firebase initialization error:', error.message);
-  console.log('Full error:', error);
+// ==================== DASHBOARD USERS FIREBASE SYNC ====================
+
+// Load dashboard users from Firebase on startup
+async function loadDashboardUsersFromFirebase() {
+  if (!firebaseInitialized) {
+    console.log('⚠️ Firebase not initialized, using hardcoded dashboard users');
+    return;
+  }
+  
+  try {
+    const usersSnapshot = await db.collection('dashboardUsers').get();
+    
+    if (usersSnapshot.empty) {
+      console.log('📋 No dashboard users in Firebase, initializing with defaults');
+      // Save the default hardcoded users to Firebase
+      for (const [email, userData] of DASHBOARD_USERS.entries()) {
+        await db.collection('dashboardUsers').doc(email).set(userData);
+      }
+      console.log('✅ Default dashboard users saved to Firebase');
+      return;
+    }
+    
+    // Load users from Firebase into memory
+    let loadedCount = 0;
+    usersSnapshot.forEach(doc => {
+      DASHBOARD_USERS.set(doc.id, doc.data());
+      loadedCount++;
+    });
+    
+    console.log(`✅ Loaded ${loadedCount} dashboard users from Firebase`);
+    
+  } catch (error) {
+    console.error('❌ Error loading dashboard users from Firebase:', error);
+    console.log('⚠️ Using hardcoded dashboard users as fallback');
+  }
 }
 
-console.log('🚀 Starting Railway server with ESP32 support...');
+// Save a dashboard user to Firebase
+async function saveDashboardUserToFirebase(email, userData) {
+  if (!firebaseInitialized) {
+    console.log('⚠️ Firebase not initialized, user only in memory');
+    return { success: false, error: 'Firebase not available' };
+  }
+  
+  try {
+    await db.collection('dashboardUsers').doc(email).set(userData);
+    console.log(`✅ Dashboard user saved to Firebase: ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`❌ Error saving dashboard user to Firebase:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Delete a dashboard user from Firebase
+async function deleteDashboardUserFromFirebase(email) {
+  if (!firebaseInitialized) {
+    console.log('⚠️ Firebase not initialized, user only deleted from memory');
+    return { success: false, error: 'Firebase not available' };
+  }
+  
+  try {
+    await db.collection('dashboardUsers').doc(email).delete();
+    console.log(`✅ Dashboard user deleted from Firebase: ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`❌ Error deleting dashboard user from Firebase:`, error);
+    return { success: false, error: error.message };
+  }
+}
 
 console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
 
