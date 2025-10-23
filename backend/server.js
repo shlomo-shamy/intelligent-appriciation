@@ -222,6 +222,82 @@ function userCanAccessGate(userEmail, userRole, gateSerial) {
   return userGates.includes(gateSerial);
 }
 
+// ==================== ORGANIZATIONS FIREBASE SYNC ====================
+
+// Load organizations from Firebase on startup
+async function loadOrganizationsFromFirebase() {
+  if (!firebaseInitialized) {
+    console.log('⚠️ Firebase not initialized, using default organizations');
+    return;
+  }
+  
+  try {
+    const orgsSnapshot = await db.collection('organizations').get();
+    
+    if (orgsSnapshot.empty) {
+      console.log('📋 No organizations in Firebase, initializing with defaults');
+      // Save the default platform_org to Firebase
+      for (const [orgId, orgData] of organizations.entries()) {
+        await db.collection('organizations').doc(orgId).set(orgData);
+      }
+      console.log('✅ Default organizations saved to Firebase');
+      return;
+    }
+    
+    // Clear memory and load from Firebase
+    organizations.clear();
+    
+    let loadedCount = 0;
+    orgsSnapshot.forEach(doc => {
+      organizations.set(doc.id, {
+        id: doc.id,
+        ...doc.data()
+      });
+      loadedCount++;
+    });
+    
+    console.log(`✅ Loaded ${loadedCount} organizations from Firebase`);
+    
+  } catch (error) {
+    console.error('❌ Error loading organizations from Firebase:', error);
+    console.log('⚠️ Using default organizations as fallback');
+  }
+}
+
+// Save an organization to Firebase
+async function saveOrganizationToFirebase(orgId, orgData) {
+  if (!firebaseInitialized) {
+    console.log('⚠️ Firebase not initialized, organization only in memory');
+    return { success: false, error: 'Firebase not available' };
+  }
+  
+  try {
+    await db.collection('organizations').doc(orgId).set(orgData);
+    console.log(`✅ Organization saved to Firebase: ${orgId}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`❌ Error saving organization to Firebase:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Delete an organization from Firebase
+async function deleteOrganizationFromFirebase(orgId) {
+  if (!firebaseInitialized) {
+    console.log('⚠️ Firebase not initialized, organization only deleted from memory');
+    return { success: false, error: 'Firebase not available' };
+  }
+  
+  try {
+    await db.collection('organizations').doc(orgId).delete();
+    console.log(`✅ Organization deleted from Firebase: ${orgId}`);
+    return { success: true };
+  } catch (error) {
+    console.error(`❌ Error deleting organization from Firebase:`, error);
+    return { success: false, error: error.message };
+  }
+}
+
 // Let Railway assign the port - don't force 3000
 const PORT = process.env.PORT || 3001;
 
@@ -638,15 +714,19 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
     device.name = deviceName || `Gate ${serial}`;
     device.location = location || 'Location not specified';
     
-    // 6. AUTO-ASSIGN TO PLATFORM ORGANIZATION
-    const platformOrg = organizations.get('platform_org');
-    if (platformOrg) {
-      if (!platformOrg.devices.includes(serial)) {
-        platformOrg.devices.push(serial);
-        organizations.set('platform_org', platformOrg);
-        console.log(`✅ Gate ${serial} auto-assigned to platform_org`);
-      }
-    }
+// 6. AUTO-ASSIGN TO PLATFORM ORGANIZATION
+const platformOrg = organizations.get('platform_org');
+if (platformOrg) {
+  if (!platformOrg.devices.includes(serial)) {
+    platformOrg.devices.push(serial);
+    organizations.set('platform_org', platformOrg);
+    
+    // Save to Firebase
+    await saveOrganizationToFirebase('platform_org', platformOrg);
+    
+    console.log(`✅ Gate ${serial} auto-assigned to platform_org`);
+  }
+}
     
     // 7. Create Firebase gate document
     if (firebaseInitialized) {
@@ -1103,13 +1183,19 @@ if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
       location: mfgDevice ? mfgDevice.location : 'Unknown location'
     });
 
-    // ✅ ADD THIS: Auto-assign to platform_org if not already assigned
-    const platformOrg = organizations.get('platform_org');
-    if (platformOrg && !platformOrg.devices.includes(deviceId)) {
-      platformOrg.devices.push(deviceId);
-      organizations.set('platform_org', platformOrg);
-      console.log(`✅ Auto-assigned ${deviceId} to platform_org on heartbeat`);
-    }
+// Auto-assign to platform_org if not already assigned
+const platformOrg = organizations.get('platform_org');
+if (platformOrg && !platformOrg.devices.includes(deviceId)) {
+  platformOrg.devices.push(deviceId);
+  organizations.set('platform_org', platformOrg);
+  
+  // Save to Firebase (async, don't block heartbeat)
+  saveOrganizationToFirebase('platform_org', platformOrg).catch(err => {
+    console.error('Failed to save org on heartbeat:', err);
+  });
+  
+  console.log(`✅ Auto-assigned ${deviceId} to platform_org on heartbeat`);
+}
     
     addDeviceLog(deviceId, 'heartbeat', 'system', `Signal: ${data.signalStrength}dBm`);
     
@@ -1451,21 +1537,14 @@ if (req.url === '/api/organizations' && req.method === 'POST') {
         members: {}
       };
       
-      // Store locally
-      organizations.set(orgId, newOrg);
+// Store locally
+organizations.set(orgId, newOrg);
+
+// Store in Firebase
+const firebaseResult = await saveOrganizationToFirebase(orgId, newOrg);
+
+console.log(`✅ Organization created: ${orgId} (Firebase: ${firebaseResult.success ? 'synced' : 'local_only'})`);
       
-      // Store in Firebase if available
-      if (firebaseInitialized) {
-        try {
-          await db.collection('organizations').doc(orgId).set({
-            ...newOrg,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-          });
-          console.log(`✅ Organization created in Firebase: ${orgId}`);
-        } catch (error) {
-          console.error('❌ Firebase organization creation error:', error);
-        }
-      }
       
       console.log(`✅ Organization created: ${name} (${orgId})`);
       
@@ -1513,7 +1592,8 @@ if (req.url === '/api/organizations/assign-gate' && req.method === 'POST') {
       }
       
       // Update Firebase gate document
-      if (firebaseInitialized) {
+const firebaseResult = await saveOrganizationToFirebase(organizationId, org);
+if (firebaseInitialized && gateRef) {
         try {
           const gateRef = db.collection('gates').doc(gateSerial);
           const gateDoc = await gateRef.get();
@@ -1585,11 +1665,8 @@ if (req.url === '/api/organizations/remove-gate' && req.method === 'POST') {
       organizations.set(organizationId, org);
       
       // Update Firebase
-      if (firebaseInitialized) {
-        try {
-          await db.collection('organizations').doc(organizationId).update({
-            devices: admin.firestore.FieldValue.arrayRemove(gateSerial)
-          });
+// Update Firebase
+const firebaseResult = await saveOrganizationToFirebase(organizationId, org);
           
           const gateRef = db.collection('gates').doc(gateSerial);
           await gateRef.update({
@@ -1661,19 +1738,12 @@ if (req.url === '/api/organizations/add-member' && req.method === 'POST') {
       organizations.set(organizationId, org);
       
       // Update Firebase
-      if (firebaseInitialized) {
-        try {
-          await db.collection('organizations').doc(organizationId).update({
-            [`members.${userEmail}`]: {
-              role: role,
-              phone: userPhone,
-              name: userName,
-              addedAt: admin.firestore.FieldValue.serverTimestamp(),
-              addedBy: session.email
-            }
-          });
-          
-          console.log(`✅ Member ${userEmail} added to org ${organizationId} in Firebase`);
+organizations.set(organizationId, org);
+
+// Update Firebase
+const firebaseResult = await saveOrganizationToFirebase(organizationId, org);
+
+console.log(`✅ Member ${userEmail} added to org ${organizationId} (Firebase: ${firebaseResult.success ? 'synced' : 'local_only'})`);
         } catch (error) {
           console.error('❌ Firebase member addition error:', error);
         }
@@ -3211,8 +3281,19 @@ async function syncSchedulesOnStartup() {
   }
 }
 
-// Call sync after server starts
+// ==================== FIREBASE DATA INITIALIZATION ====================
+// Load all data from Firebase after server starts
+
+// Load schedules
 setTimeout(syncSchedulesOnStartup, 2000);
+
+// Load dashboard users
+setTimeout(loadDashboardUsersFromFirebase, 2500);
+
+// Load organizations
+setTimeout(loadOrganizationsFromFirebase, 3000);
+
+console.log('✅ Firebase data loaders scheduled');
   
   // Clean up old sessions (older than 24 hours)
   const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
