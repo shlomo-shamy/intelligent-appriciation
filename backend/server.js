@@ -1190,8 +1190,9 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+\/password$/) && req.method ==
 }
 
 // Delete dashboard user (SuperAdmin only)
+// Delete dashboard user (SuperAdmin only)
 if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'DELETE') {
-  requireAuth((session) => {
+  requireAuth(async (session) => {  // ← Make sure it's async
     const userRole = getUserHighestRole(session.email);
     
     if (userRole !== 'superadmin') {
@@ -1202,7 +1203,6 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'DELETE'
     
     const email = decodeURIComponent(req.url.split('/').pop());
     
-    // Prevent deleting yourself
     if (email === session.email) {
       res.writeHead(400);
       res.end(JSON.stringify({ error: 'Cannot delete your own account' }));
@@ -1215,9 +1215,13 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'DELETE'
       return;
     }
     
+    // Delete from memory
     DASHBOARD_USERS.delete(email);
     
-    console.log(`✅ Dashboard user deleted: ${email}`);
+    // ✅ Delete from Firebase
+    const firebaseResult = await deleteDashboardUserFromFirebase(email);
+    
+    console.log(`✅ Dashboard user deleted: ${email} (Firebase: ${firebaseResult.success ? 'synced' : 'local_only'})`);
     
     res.writeHead(200);
     res.end(JSON.stringify({
