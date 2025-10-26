@@ -133,13 +133,16 @@ async function loadDashboardUsersFromFirebase() {
     }
     
     // Load users from Firebase into memory
+// Clear memory and load users from Firebase (Firebase is source of truth)
+    DASHBOARD_USERS.clear();
+    
     let loadedCount = 0;
     usersSnapshot.forEach(doc => {
       DASHBOARD_USERS.set(doc.id, doc.data());
       loadedCount++;
     });
     
-    console.log(`✅ Loaded ${loadedCount} dashboard users from Firebase`);
+    console.log(`✅ Loaded ${loadedCount} dashboard users from Firebase (memory cleared and synced)`);
     
   } catch (error) {
     console.error('❌ Error loading dashboard users from Firebase:', error);
@@ -962,9 +965,9 @@ res.end(JSON.stringify({
 
   // ==================== DASHBOARD USER MANAGEMENT ENDPOINTS ====================
 
-// Get all dashboard users (SuperAdmin only)
+// Get all dashboard users (SuperAdmin only) - READ FROM FIREBASE
 if (req.url === '/api/dashboard-users' && req.method === 'GET') {
-  requireAuth((session) => {
+  requireAuth(async (session) => {  // ← Add async here
     const userRole = getUserHighestRole(session.email);
     
     if (userRole !== 'superadmin') {
@@ -973,20 +976,49 @@ if (req.url === '/api/dashboard-users' && req.method === 'GET') {
       return;
     }
     
-    const users = Array.from(DASHBOARD_USERS.entries()).map(([email, user]) => ({
-      email: email,
-      name: user.name,
-      phone: user.phone,
-      userLevel: user.userLevel,
-      organizationRole: user.organizationRole || userLevelToRole(user.userLevel)
-    }));
-    
-    res.writeHead(200);
-    res.end(JSON.stringify(users));
+    try {
+      let users = [];
+      
+      if (firebaseInitialized) {
+        // READ FROM FIREBASE (source of truth)
+        const usersSnapshot = await db.collection('dashboardUsers').get();
+        
+        usersSnapshot.forEach(doc => {
+          users.push({
+            email: doc.id,
+            name: doc.data().name || 'Unknown',
+            phone: doc.data().phone || '',
+            userLevel: doc.data().userLevel || 0,
+            organizationRole: doc.data().organizationRole || 'user'
+          });
+        });
+        
+        console.log(`📋 Loaded ${users.length} dashboard users from Firebase for display`);
+      } else {
+        // Fallback to memory if Firebase unavailable
+        users = Array.from(DASHBOARD_USERS.entries()).map(([email, user]) => ({
+          email: email,
+          name: user.name || 'Unknown',
+          phone: user.phone || '',
+          userLevel: user.userLevel || 0,
+          organizationRole: user.organizationRole || 'user'
+        }));
+        
+        console.log(`⚠️ Loaded ${users.length} dashboard users from memory (Firebase unavailable)`);
+      }
+      
+      res.writeHead(200);
+      res.end(JSON.stringify(users));
+      
+    } catch (error) {
+      console.error('❌ Error reading dashboard users:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: 'Failed to load users' }));
+    }
   });
   return;
 }
-
+  
 // Get single dashboard user
 if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'GET') {
   requireAuth((session) => {
