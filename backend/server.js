@@ -1052,6 +1052,7 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'GET') {
 }
 
 // Create new dashboard user (SuperAdmin only)
+// Create new dashboard user (SuperAdmin only)
 if (req.url === '/api/dashboard-users' && req.method === 'POST') {
   requireAuth((session) => {
     const userRole = getUserHighestRole(session.email);
@@ -1062,7 +1063,7 @@ if (req.url === '/api/dashboard-users' && req.method === 'POST') {
       return;
     }
     
-    readBody((data) => {
+    readBody(async (data) => {  // ← Make sure it's async
       const { email, name, phone, password, organizationRole, userLevel } = data;
       
       if (!email || !name || !phone || !password) {
@@ -1092,21 +1093,28 @@ if (req.url === '/api/dashboard-users' && req.method === 'POST') {
         return;
       }
       
-      DASHBOARD_USERS.set(email, {
+      const newUser = {
         password: password,
         name: name,
         userLevel: userLevel || 0,
         phone: phoneValidation.cleanPhone,
         organizationRole: organizationRole || 'user'
-      });
+      };
       
-      console.log(`✅ Dashboard user created: ${email} (${organizationRole})`);
+      // Save to memory
+      DASHBOARD_USERS.set(email, newUser);
+      
+      // ✅ Save to Firebase
+      const firebaseResult = await saveDashboardUserToFirebase(email, newUser);
+      
+      console.log(`✅ Dashboard user created: ${email} (${organizationRole}) - Firebase: ${firebaseResult.success ? 'synced' : 'local_only'}`);
       
       res.writeHead(200);
       res.end(JSON.stringify({
         success: true,
         message: 'User created successfully',
-        email: email
+        email: email,
+        firebase_status: firebaseResult.success ? 'synced' : 'local_only'
       }));
     });
   });
