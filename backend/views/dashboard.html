@@ -1709,9 +1709,23 @@ async function addMemberToOrg(orgId) {
             return;
         }
         
-        // Filter out users who are already members
-        const currentMembers = Object.keys(org.members || {});
-        const availableUsers = allUsers.filter(user => !currentMembers.includes(user.email));
+// Filter out users who are already members
+const currentMembers = Object.keys(org.members || {});
+
+// For non-platform orgs, also filter out superadmins (they have global access anyway)
+const availableUsers = allUsers.filter(user => {
+    // Skip if already a member
+    if (currentMembers.includes(user.email)) {
+        return false;
+    }
+    
+    // For non-platform orgs, skip superadmins (they already have access via global role)
+    if (org.id !== 'platform_org' && user.organizationRole === 'superadmin') {
+        return false;
+    }
+    
+    return true;
+});
         
         // Populate dropdown
         const select = document.getElementById('addMemberUserSelect');
