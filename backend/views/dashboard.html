@@ -1682,67 +1682,106 @@ async function addMemberToOrg(orgId) {
         return;
     }
     
-    // Get list of current members
-    const currentMembers = Object.keys(org.members || {});
+    // Set modal data
+    document.getElementById('addMemberOrgId').value = orgId;
+    document.getElementById('addMemberOrgName').textContent = `Add member to: ${org.name}`;
     
-    // Prompt for user details
-    const userEmail = prompt('Enter user email address to add:\n\n' + 
-                            (currentMembers.length > 0 ? 
-                            'Current members:\n' + currentMembers.join('\n') : 
-                            'No members yet'));
+    // Configure role options based on org type
+    const roleSelect = document.getElementById('addMemberRole');
+    const superadminOption = roleSelect.querySelector('option[value="superadmin"]');
     
-    if (!userEmail) return;
+    if (org.id === 'platform_org') {
+        superadminOption.style.display = 'block';
+    } else {
+        superadminOption.style.display = 'none';
+        if (roleSelect.value === 'superadmin') {
+            roleSelect.value = '';
+        }
+    }
     
-    // Validate email format
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(userEmail)) {
-        alert('❌ Invalid email format');
+    // Load available dashboard users (excluding current members)
+    try {
+        const response = await fetch('/api/dashboard-users');
+        const allUsers = await response.json();
+        
+        if (allUsers.error) {
+            alert('Error loading dashboard users: ' + allUsers.error);
+            return;
+        }
+        
+        // Filter out users who are already members
+        const currentMembers = Object.keys(org.members || {});
+        const availableUsers = allUsers.filter(user => !currentMembers.includes(user.email));
+        
+        // Populate dropdown
+        const select = document.getElementById('addMemberUserSelect');
+        select.innerHTML = '<option value="">-- Select a user --</option>';
+        
+        if (availableUsers.length === 0) {
+            select.innerHTML = '<option value="">No available users (all are already members)</option>';
+            select.disabled = true;
+        } else {
+            select.disabled = false;
+            availableUsers.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.email;
+                option.textContent = `${user.name} (${user.email}) - ${user.organizationRole}`;
+                option.dataset.name = user.name;
+                option.dataset.phone = user.phone;
+                option.dataset.role = user.organizationRole;
+                select.appendChild(option);
+            });
+        }
+        
+        // Reset form
+        document.getElementById('addMemberForm').reset();
+        document.getElementById('selectedUserInfo').style.display = 'none';
+        
+        // Show modal
+        document.getElementById('addMemberModal').style.display = 'block';
+        
+    } catch (error) {
+        alert('Error loading users: ' + error.message);
+    }
+}
+
+function loadSelectedUserData() {
+    const select = document.getElementById('addMemberUserSelect');
+    const selectedOption = select.options[select.selectedIndex];
+    
+    if (!selectedOption || !selectedOption.value) {
+        document.getElementById('selectedUserInfo').style.display = 'none';
         return;
     }
     
-    // Check if already a member
-    if (currentMembers.includes(userEmail)) {
-        alert('❌ User is already a member of this organization');
+    // Show user info
+    document.getElementById('selectedUserEmail').textContent = selectedOption.value;
+    document.getElementById('selectedUserName').textContent = selectedOption.dataset.name || '-';
+    document.getElementById('selectedUserPhone').textContent = selectedOption.dataset.phone || '-';
+    document.getElementById('selectedUserDashboardRole').textContent = selectedOption.dataset.role || '-';
+    document.getElementById('selectedUserInfo').style.display = 'block';
+}
+
+function closeAddMemberModal() {
+    document.getElementById('addMemberModal').style.display = 'none';
+}
+
+async function submitAddMember(event) {
+    event.preventDefault();
+    
+    const orgId = document.getElementById('addMemberOrgId').value;
+    const select = document.getElementById('addMemberUserSelect');
+    const selectedOption = select.options[select.selectedIndex];
+    const role = document.getElementById('addMemberRole').value;
+    
+    if (!selectedOption || !selectedOption.value) {
+        alert('Please select a user');
         return;
     }
     
-    // Prompt for member details
-    const userName = prompt('Enter user name:', userEmail.split('@')[0]);
-    if (!userName) return;
-    
-    const userPhone = prompt('Enter user phone number (10-14 digits):', '');
-    if (!userPhone) return;
-    
-    // Validate phone
-    const cleanPhone = userPhone.replace(/\D/g, '');
-    if (cleanPhone.length < 10 || cleanPhone.length > 14) {
-        alert('❌ Phone must be 10-14 digits');
-        return;
-    }
-    
-    // Prompt for role
-    const roleOptions = org.id === 'platform_org' ? 
-        'superadmin, admin, manager' : 
-        'admin, manager, user';
-    
-    const role = prompt('Enter role (' + roleOptions + '):', 
-                       org.id === 'platform_org' ? 'admin' : 'manager');
-    
-    if (!role) return;
-    
-    // Validate role
-    const validRoles = org.id === 'platform_org' ? 
-        ['superadmin', 'admin', 'manager'] : 
-        ['admin', 'manager', 'user'];
-    
-    if (!validRoles.includes(role.toLowerCase())) {
-        alert('❌ Invalid role. Must be one of: ' + roleOptions);
-        return;
-    }
-    
-    // Confirm addition
-    if (!confirm(`Add member to "${org.name}"?\n\nEmail: ${userEmail}\nName: ${userName}\nPhone: ${cleanPhone}\nRole: ${role}`)) {
-        return;
-    }
+    const userEmail = selectedOption.value;
+    const userName = selectedOption.dataset.name;
+    const userPhone = selectedOption.dataset.phone;
     
     try {
         const response = await fetch('/api/organizations/add-member', {
@@ -1752,24 +1791,25 @@ async function addMemberToOrg(orgId) {
                 organizationId: orgId,
                 userEmail: userEmail,
                 userName: userName,
-                userPhone: cleanPhone,
-                role: role.toLowerCase()
+                userPhone: userPhone,
+                role: role
             })
         });
         
         const result = await response.json();
         
         if (result.success) {
-            alert('✅ Member added to organization!\n\nUser can now access this organization\'s gates.');
-            loadOrganizations(); // Refresh the list
+            alert('✅ Member added successfully!');
+            closeAddMemberModal();
+            loadOrganizations();
         } else {
-            alert('❌ Failed to add member: ' + (result.error || 'Unknown error'));
+            alert('❌ Failed: ' + (result.error || 'Unknown error'));
         }
     } catch (error) {
         alert('❌ Error: ' + error.message);
     }
 }
-
+        
 // ==================== ADD THESE THREE FUNCTIONS ====================
 
 function removeMemberFromOrg(orgId) {
@@ -1886,19 +1926,28 @@ async function confirmRemoveMember(orgId, userEmail, userName) {
             renderDevices();
         });
         
-        // Close modal when clicking outside
-        window.onclick = function(event) {
-            const orgModal = document.getElementById('organizationsModal');
-            if (event.target === orgModal) {
-                closeOrganizationsModal();
-            }
-            
-            // Keep your existing modal close code
-            const settingsModal = document.getElementById('settingsModal');
-            if (event.target === settingsModal) {
-                closeModal();
-            }
-        };
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const orgModal = document.getElementById('organizationsModal');
+    if (event.target === orgModal) {
+        closeOrganizationsModal();
+    }
+    
+    const settingsModal = document.getElementById('settingsModal');
+    if (event.target === settingsModal) {
+        closeModal();
+    }
+    
+    const addMemberModal = document.getElementById('addMemberModal');
+    if (event.target === addMemberModal) {
+        closeAddMemberModal();
+    }
+    
+    const removeMemberModal = document.getElementById('removeMemberModal');
+    if (event.target === removeMemberModal) {
+        closeRemoveMemberModal();
+    }
+};
         
     </script>
 <script src="/public/common.js"></script>
@@ -1919,5 +1968,81 @@ async function confirmRemoveMember(orgId, userEmail, userName) {
         </div>
     </div>
 </div>    
+
+<!-- Add Member Modal -->
+<div id="addMemberModal" class="modal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2>👤 Add Member to Organization</h2>
+            <button class="close-btn" onclick="closeAddMemberModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="addMemberOrgName" style="font-weight: bold; margin-bottom: 20px; color: #667eea;"></p>
+            
+            <form id="addMemberForm" onsubmit="submitAddMember(event)">
+                <input type="hidden" id="addMemberOrgId">
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Select Dashboard User *</label>
+                    <select id="addMemberUserSelect" required 
+                            style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 4px; font-size: 14px;"
+                            onchange="loadSelectedUserData()">
+                        <option value="">-- Select a user --</option>
+                    </select>
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        Only dashboard users who are not already members are shown
+                    </small>
+                </div>
+                
+                <div id="selectedUserInfo" style="display: none; background: #f8f9fa; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <h4 style="margin: 0 0 10px 0; color: #333;">Selected User Details:</h4>
+                    <div style="display: grid; grid-template-columns: 120px 1fr; gap: 8px; font-size: 14px;">
+                        <strong>Email:</strong>
+                        <span id="selectedUserEmail" style="color: #666;">-</span>
+                        
+                        <strong>Name:</strong>
+                        <span id="selectedUserName" style="color: #666;">-</span>
+                        
+                        <strong>Phone:</strong>
+                        <span id="selectedUserPhone" style="color: #666;">-</span>
+                        
+                        <strong>Dashboard Role:</strong>
+                        <span id="selectedUserDashboardRole" style="color: #666;">-</span>
+                    </div>
+                    <small style="color: #999; display: block; margin-top: 10px;">
+                        ℹ️ User data cannot be edited here. To change name/email/phone, go to System → Dashboard Users
+                    </small>
+                </div>
+                
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-weight: bold; margin-bottom: 5px;">Role in This Organization *</label>
+                    <select id="addMemberRole" required 
+                            style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 4px; font-size: 14px;">
+                        <option value="">Select role...</option>
+                        <option value="superadmin">⚡ SuperAdmin (Platform only)</option>
+                        <option value="admin">🔐 Admin</option>
+                        <option value="manager">👔 Manager</option>
+                        <option value="user">👤 User</option>
+                    </select>
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        This role applies only to this organization
+                    </small>
+                </div>
+                
+                <button type="submit" style="width: 100%; padding: 12px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 16px;">
+                    💾 Add Member to Organization
+                </button>
+                
+                <div style="margin-top: 15px; padding: 10px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 4px;">
+                    <small style="color: #1976D2;">
+                        <strong>💡 Need to add a new user?</strong><br>
+                        Go to <a href="#" onclick="event.preventDefault(); closeAddMemberModal(); document.querySelector('[data-page=system]').click();" style="color: #2196F3; text-decoration: underline;">System → Dashboard Users</a> to create a new dashboard user first.
+                    </small>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+   
 </body>
 </html>
