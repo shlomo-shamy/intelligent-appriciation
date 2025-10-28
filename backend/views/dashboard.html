@@ -756,17 +756,38 @@ function initializeRoleBasedUI() {
     console.log('✅ Role-based UI initialized');
 }
 
+// Global variables - accessible by all functions
+let devices = [];
+let registeredUsers = [];
+let isSuperAdmin = false;
+        
 // Call on page load
 document.addEventListener('DOMContentLoaded', function() {
-    initializeRoleBasedUI();
+initializeRoleBasedUI();
         
-        // Initialize data from server
-        const devices = JSON.parse(decodeURIComponent('{{devicesData}}').replace(/&#34;/g, '"'));
-        const registeredUsers = {{registeredUsersData}};
-        const isSuperAdmin = {{isSuperAdmin}};
+    // Initialize data from server - NO decodeURIComponent needed!
+    try {
+        devices = JSON.parse('{{devicesData}}');
+        registeredUsers = JSON.parse('{{registeredUsersData}}');
+        isSuperAdmin = {{isSuperAdmin}};
         
-        console.log("Dashboard loaded - Devices:", devices.length, "Users:", registeredUsers.length);
-        console.log("User is SuperAdmin:", isSuperAdmin);
+        console.log("✅ Dashboard loaded - Devices:", devices.length, "Users:", registeredUsers.length);
+        console.log("✅ User is SuperAdmin:", isSuperAdmin);
+        console.log("✅ Devices data:", devices);
+        
+        // Render the devices list
+        console.log("📱 Calling renderDevices()...");
+        renderDevices();
+        console.log("✅ renderDevices() completed");
+    } catch (error) {
+        console.error("❌ Error loading dashboard data:", error);
+        console.error("devicesData raw:", '{{devicesData}}');
+        alert("Error loading devices: " + error.message);
+    }
+    
+    function navigateTo(path) {
+        window.location.href = path;
+    }
         
         function navigateTo(path) {
             window.location.href = path;
