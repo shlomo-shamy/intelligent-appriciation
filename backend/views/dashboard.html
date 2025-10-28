@@ -1993,14 +1993,9 @@ async function confirmRemoveMember(orgId, userEmail, userName) {
                 alert(details);
             }
         }
-        
-        // Initialize the page
-        document.addEventListener('DOMContentLoaded', function() {
-                initializeRoleBasedUI(); // ✅ ADD THIS
-            console.log("DOM loaded, rendering devices...");
-            renderDevices();
-        });
-        
+
+}); // ← ADD THIS LINE to close the first DOMContentLoaded
+    
 // Close modal when clicking outside
 window.onclick = function(event) {
     const orgModal = document.getElementById('organizationsModal');
