@@ -1497,6 +1497,9 @@ async function saveSettings(event) {
 function renderDevices() {
     const container = document.getElementById('devices');
     const noDevicesMsg = document.getElementById('noDevicesMessage');
+    
+    console.log('📊 Rendering devices...', devices);
+    
     // Handle both array and object formats
     let deviceArray = devices;
     if (!Array.isArray(devices)) {
@@ -1510,54 +1513,54 @@ function renderDevices() {
         return;
     }
             
-            container.style.display = 'block';
-            noDevicesMsg.style.display = 'none';
-            
-            container.innerHTML = devices.map(([deviceId, info]) => {
-                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-                const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
-                const userCount = deviceUsers ? deviceUsers[1].length : 0;
-                
-                const deviceName = info.name || deviceId;
-                const deviceLocation = info.location || 'No location';
-                const macAddress = info.macAddress || 'Unknown';
-                
-                // Show "Platform Device" badge for SuperAdmins
-                const platformBadge = isSuperAdmin ? 
-                    '<span class="platform-badge">PLATFORM DEVICE</span>' : 
-                    '';
-                
-                return `
-                    <div class="card device ${isOnline ? '' : 'offline'}">
-                        <div class="device-info">
-                            <h3>🎛️ ${deviceName} ${isOnline ? '🟢' : '🔴'} ${platformBadge}</h3>
-                            <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
-                                📍 ${deviceLocation} | 🆔 ${deviceId} | 🔗 MAC: ${macAddress}
-                            </div>
-                            <div class="device-status">
-                                📶 Signal: ${info.signalStrength}dBm | 
-                                🔋 Battery: ${info.batteryLevel}% | 
-                                ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
-                                👥 Users: ${userCount}<br>
-                                🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
-                            </div>
-                        </div>
-                        
-                        <div class="device-actions">
-                            <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                            <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                            <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                            <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                            ${currentUserRole !== 'user' ? `
-                            <button class="btn btn-settings" onclick="openSettings('${deviceid}')"> ⚙️ Settings </button>
-                            ` : ''}
-                        </div>
+    container.style.display = 'block';
+    noDevicesMsg.style.display = 'none';
+    
+    container.innerHTML = deviceArray.map(([deviceId, info]) => {
+        const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+        const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
+        const userCount = deviceUsers ? deviceUsers[1].length : 0;
+        
+        const deviceName = info.name || deviceId;
+        const deviceLocation = info.location || 'No location';
+        const macAddress = info.macAddress || 'Unknown';
+        
+        // Show "Platform Device" badge for SuperAdmins
+        const platformBadge = isSuperAdmin ? 
+            '<span class="platform-badge">PLATFORM DEVICE</span>' : 
+            '';
+        
+        return `
+            <div class="card device ${isOnline ? '' : 'offline'}">
+                <div class="device-info">
+                    <h3>🎛️ ${deviceName} ${isOnline ? '🟢' : '🔴'} ${platformBadge}</h3>
+                    <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
+                        📍 ${deviceLocation} | 🆔 ${deviceId} | 🔗 MAC: ${macAddress}
                     </div>
-                `;
-            }).join('');
-            
-            console.log("Rendered", devices.length, "devices");
-        }
+                    <div class="device-status">
+                        📶 Signal: ${info.signalStrength}dBm | 
+                        🔋 Battery: ${info.batteryLevel}% | 
+                        ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
+                        👥 Users: ${userCount}<br>
+                        🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
+                    </div>
+                </div>
+                
+                <div class="device-actions">
+                    <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                    <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                    <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                    <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                    ${currentUserRole !== 'user' ? `
+                    <button class="btn btn-settings" onclick="openSettings('${deviceId}')">⚙️ Settings</button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    console.log("✅ Rendered", deviceArray.length, "devices");
+}
         
         // Organizations Management
         let currentOrganizations = [];
