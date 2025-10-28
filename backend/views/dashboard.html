@@ -1476,11 +1476,6 @@ async function saveSettings(event) {
 function renderDevices() {
     const container = document.getElementById('devices');
     const noDevicesMsg = document.getElementById('noDevicesMessage');
-    ${currentUserRole !== 'user' ? `
-    <button class="btn btn-settings" onclick="openSettings('${device.id}')">
-        ⚙️ Settings
-    </button>
-` : ''}
     // Handle both array and object formats
     let deviceArray = devices;
     if (!Array.isArray(devices)) {
@@ -1533,7 +1528,7 @@ function renderDevices() {
                             <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
                             <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
                             ${currentUserRole !== 'user' ? `
-                            <button class="btn btn-settings" onclick="openSettings('${device.id}')"> ⚙️ Settings </button>
+                            <button class="btn btn-settings" onclick="openSettings('${deviceid}')"> ⚙️ Settings </button>
                             ` : ''}
                         </div>
                     </div>
