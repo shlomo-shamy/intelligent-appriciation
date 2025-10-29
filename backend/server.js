@@ -186,6 +186,63 @@ async function deleteDashboardUserFromFirebase(email) {
 
 console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
 
+// ==================== DASHBOARD RBAC HELPERS ====================
+
+// Check if organizationRole can access a specific page
+function canAccessPage(organizationRole, pageName) {
+  const permissions = {
+    'dashboard': ['user', 'manager', 'admin', 'superadmin'],
+    'devices': ['manager', 'admin', 'superadmin'],      // User CANNOT access
+    'system': ['superadmin'],
+    'manufacturing': ['superadmin'],
+    'organizations': ['manager', 'admin', 'superadmin']
+  };
+  return permissions[pageName]?.includes(organizationRole) || false;
+}
+
+// Check if organizationRole can access a modal tab
+function canAccessTab(organizationRole, tabName) {
+  const permissions = {
+    'users': ['manager', 'admin', 'superadmin'],
+    'status': ['manager', 'admin', 'superadmin'],
+    'settings': ['admin', 'superadmin'],
+    'logs': ['manager', 'admin', 'superadmin'],
+    'schedules': ['manager', 'admin', 'superadmin']
+  };
+  return permissions[tabName]?.includes(organizationRole) || false;
+}
+
+// Check if organizationRole can perform an action
+function canPerformAction(organizationRole, actionName) {
+  const permissions = {
+    'operate_gates': ['user', 'manager', 'admin', 'superadmin'],
+    'user_crud': ['manager', 'admin', 'superadmin'],
+    'edit_settings': ['admin', 'superadmin'],
+    'manage_schedules': ['manager', 'admin', 'superadmin']
+  };
+  return permissions[actionName]?.includes(organizationRole) || false;
+}
+
+// Get user's accessible devices based on role and organization
+function getUserAccessibleDevices(userEmail, organizationRole) {
+  if (organizationRole === 'superadmin') {
+    // SuperAdmin sees all devices
+    return Array.from(connectedDevices.keys());
+  }
+  
+  // Get user's organizations
+  const userOrgs = getUserOrganizations(userEmail);
+  const orgIds = userOrgs.map(org => org.id);
+  
+  // Filter devices by organization membership
+  return Array.from(connectedDevices.entries())
+    .filter(([deviceId, device]) => {
+      // Check if device belongs to user's organization
+      return orgIds.includes(device.organizationId);
+    })
+    .map(([deviceId]) => deviceId);
+}
+
 // Organization storage (will migrate to Firebase)
 const organizations = new Map();
 
