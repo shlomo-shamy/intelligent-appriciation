@@ -2078,26 +2078,53 @@ if (req.url === '/devices') {
 }
 
   // Manufacturing page
-  if (req.url === '/manufacturing') {
-    requireAuth((session) => {
-      if (session.userLevel < 2) {
-        res.writeHead(403);
-        res.end(JSON.stringify({ error: 'Admin access required for Manufacturing DB' }));
-        return;
-      }
-      
-      const manufacturingData = {
-        userName: session.name,
-        userEmail: session.email,
-        manufacturingDevicesData: JSON.stringify(Array.from(manufacturingDevices.entries()))
-      };
-      
-      const manufacturingHtml = renderTemplate('manufacturing', manufacturingData);
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(manufacturingHtml);
-    });
-    return;
-  }
+// Manufacturing page (PROTECTED - SuperAdmin only)
+if (req.url === '/manufacturing') {
+  requireAuth((session) => {
+    const userRole = session.organizationRole || 'user';
+    
+    // Check page access - SuperAdmin only
+    if (!canAccessPage(userRole, 'manufacturing')) {
+      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Access Denied</title>
+          <style>
+            body { font-family: Arial; text-align: center; padding: 50px; background: #f5f5f5; }
+            .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
+            h1 { color: #dc3545; }
+            .role { color: #667eea; font-weight: bold; }
+            .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; }
+            .btn:hover { background: #5568d3; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>🚫 Access Denied</h1>
+            <p>You need <strong>SuperAdmin</strong> role to access the Manufacturing Database.</p>
+            <p>Your current role: <span class="role">${userRole}</span></p>
+            <a href="/dashboard" class="btn">Return to Home</a>
+          </div>
+        </body>
+        </html>
+      `);
+      return;
+    }
+    
+    const manufacturingData = {
+      userName: session.name,
+      userEmail: session.email,
+      userRole: userRole,
+      isSuperAdmin: 'true'
+    };
+    
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderTemplate('manufacturing', manufacturingData));
+  });
+  return;
+}
 
   // System page
 // System page (PROTECTED - SuperAdmin only)
@@ -2902,7 +2929,26 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/safety-event') && r
 
   // DELETE USER ENDPOINT - require auth
   if (req.url.includes('/delete-user') && req.method === 'DELETE') {
-    requireAuth((session) => {
+  requireAuth((session) => {
+    const userRole = session.organizationRole || 'user';
+    
+    // Check if user can manage device users (Manager+ required)
+    if (!canPerformAction(userRole, 'user_crud')) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ 
+        success: false,
+        error: 'Manager role or higher required to manage device users',
+        yourRole: userRole,
+        requiredRoles: ['manager', 'admin', 'superadmin']
+      }));
+      return;
+    }
+    
+    // [REST OF YOUR EXISTING DELETE CODE CONTINUES HERE]
+  });
+  return;
+}
+      
       const urlParts = req.url.split('/');
       const deviceId = urlParts[3];
       
@@ -3013,9 +3059,26 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/safety-event') && r
     return;
   }
 
-  // UPDATED USER REGISTRATION ENDPOINT - add phone validation
-  if (req.url.includes('/register-user') && req.method === 'POST') {
-    requireAuth((session) => {
+
+// UPDATED USER REGISTRATION ENDPOINT - add phone validation
+if (req.url.includes('/register-user') && req.method === 'POST') {
+  requireAuth((session) => {
+    const userRole = session.organizationRole || 'user';
+    
+    // Check if user can manage device users (Manager+ required)
+    if (!canPerformAction(userRole, 'user_crud')) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ 
+        success: false,
+        error: 'Manager role or higher required to manage device users',
+        yourRole: userRole,
+        requiredRoles: ['manager', 'admin', 'superadmin']
+      }));
+      return;
+    }
+    
+    // Continue with existing code below...
+      
       const urlParts = req.url.split('/');
       const deviceId = urlParts[3];
       
