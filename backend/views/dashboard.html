@@ -450,13 +450,14 @@ console.log('showSuperAdminFeatures:', '{{showSuperAdminFeatures}}');
     </div>
     
     <!-- Device Settings Modal -->
-    <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modalTitle">⚙️ Device Settings</h2>
-                <button class="close-btn" onclick="closeModal()">&times;</button>
-            </div>
-            
+<!-- Settings Modal - CORRECTED VERSION -->
+<div id="settingsModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">⚙️ Device Settings</h2>
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+        </div>
+
 <div class="modal-tabs">
     <button class="tab-btn active" onclick="switchTab('users', this)" id="usersTabBtn">👥 Users</button>
     <button class="tab-btn" onclick="switchTab('status', this)" id="statusTabBtn">📊 Status</button>
@@ -512,7 +513,7 @@ console.log('showSuperAdminFeatures:', '{{showSuperAdminFeatures}}');
                 <!-- Status Tab -->
                 <div id="statusTab" class="tab-content">
                     <h3>📊 Device Status</h3>
-                    <div id="deviceStatus">
+                    <div id="statusTab">
                         <p>Loading status...</p>
                     </div>
                 </div>
@@ -520,7 +521,7 @@ console.log('showSuperAdminFeatures:', '{{showSuperAdminFeatures}}');
 <!-- Settings Tab -->
 <div id="settingsTab" class="tab-content">
     <h3>⚙️ Device Settings</h3>
-    <div id="deviceSettings">
+    <div id="settingsTab">
         <p>Loading settings...</p>
     </div>
 </div>
@@ -528,7 +529,7 @@ console.log('showSuperAdminFeatures:', '{{showSuperAdminFeatures}}');
                 <!-- Logs Tab -->
                 <div id="logsTab" class="tab-content">
                     <h3>📝 Device Logs</h3>
-                    <div id="deviceLogs">
+                    <div id="logsTab">
                         <p>Loading logs...</p>
                     </div>
                 </div>
@@ -542,13 +543,14 @@ console.log('showSuperAdminFeatures:', '{{showSuperAdminFeatures}}');
         </button>
     </div>
     
-    <div id="schedulesContainer">
+    <div id="schedulesTab">
         <p style="color: #666;">Loading schedules...</p>
     </div>
 </div>
             </div>
         </div>
     </div>
+</div>
 <!-- Schedule Modal -->
 <div id="scheduleModal" class="modal" style="display: none;">
     <div class="modal-content" style="max-width: 700px;">
