@@ -1462,6 +1462,147 @@ async function saveSettings(event) {
                 alert('❌ Delete Error: ' + error.message);
             }
         }
+
+// ============================================================================
+// MODAL TAB SWITCHING
+// ============================================================================
+function switchTab(tabName, button) {
+    console.log('🔄 Switching to tab:', tabName);
+    
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Remove active class from all tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Show selected tab content
+    const selectedTab = document.getElementById(tabName + '-tab');
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    }
+    
+    // Add active class to clicked button
+    if (button) {
+        button.classList.add('active');
+    }
+    
+    // Load data for the selected tab
+    if (tabName === 'status') {
+        loadStatus();
+    } else if (tabName === 'settings') {
+        loadSettings();
+    } else if (tabName === 'logs') {
+        loadLogs();
+    } else if (tabName === 'schedules') {
+        loadSchedules();
+    } else if (tabName === 'users') {
+        loadUsers();
+    }
+}
+
+// ============================================================================
+// SCHEDULES TAB
+// ============================================================================
+async function loadSchedules() {
+    if (!currentDeviceId) return;
+    
+    const container = document.getElementById('schedulesContainer');
+    container.innerHTML = '<p style="color: #666;">Loading schedules...</p>';
+    
+    try {
+        const response = await fetch('/api/device/' + currentDeviceId + '/schedules');
+        const schedules = await response.json();
+        
+        if (!schedules || schedules.length === 0) {
+            container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px;">No schedules configured yet. Click "Add Schedule" to create one.</p>';
+            return;
+        }
+        
+        container.innerHTML = schedules.map(schedule => {
+            const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            const activeDays = schedule.days.map(d => days[d]).join(', ');
+            
+            return `
+                <div style="background: #f8f9fa; padding: 15px; margin-bottom: 10px; border-radius: 6px; border-left: 4px solid ${schedule.enabled ? '#28a745' : '#6c757d'};">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="font-size: 16px;">${schedule.name}</strong>
+                            <span style="margin-left: 10px; padding: 2px 8px; background: ${schedule.enabled ? '#28a745' : '#6c757d'}; color: white; border-radius: 4px; font-size: 11px;">
+                                ${schedule.enabled ? 'ENABLED' : 'DISABLED'}
+                            </span>
+                            <br>
+                            <small style="color: #666;">
+                                📅 ${activeDays} | ⏰ ${schedule.startTime} - ${schedule.endTime}
+                            </small>
+                        </div>
+                        <button onclick="deleteSchedule(${schedule.id})" style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
+                            🗑️ Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        container.innerHTML = '<p style="color: #dc3545;">Error loading schedules: ' + error.message + '</p>';
+    }
+}
+
+function showAddScheduleModal() {
+    document.getElementById('scheduleModal').style.display = 'block';
+}
+
+function closeScheduleModal() {
+    document.getElementById('scheduleModal').style.display = 'none';
+}
+
+async function saveSchedule(event) {
+    event.preventDefault();
+    alert('Schedule save functionality coming soon!');
+    closeScheduleModal();
+}
+
+async function deleteSchedule(scheduleId) {
+    if (!confirm('Delete this schedule?')) return;
+    
+    try {
+        const response = await fetch('/api/device/' + currentDeviceId + '/schedules/' + scheduleId, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Schedule deleted');
+            loadSchedules();
+        } else {
+            alert('❌ Failed to delete schedule');
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
+
+function updateScheduleFormFields() {
+    // Show/hide fields based on schedule type
+    const scheduleType = document.getElementById('scheduleType').value;
+    
+    document.getElementById('automationFields').style.display = 'none';
+    document.getElementById('groupAuthFields').style.display = 'none';
+    document.getElementById('userAuthFields').style.display = 'none';
+    
+    if (scheduleType === '1') {
+        document.getElementById('automationFields').style.display = 'block';
+    } else if (scheduleType === '2') {
+        document.getElementById('groupAuthFields').style.display = 'block';
+    } else if (scheduleType === '3') {
+        document.getElementById('userAuthFields').style.display = 'block';
+    }
+}
         
 function renderDevices() {
     const container = document.getElementById('devices');
