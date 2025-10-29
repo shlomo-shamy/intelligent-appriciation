@@ -224,23 +224,28 @@ function canPerformAction(organizationRole, actionName) {
 }
 
 // Get user's accessible devices based on role and organization
+// Get user's accessible devices based on role and organization
 function getUserAccessibleDevices(userEmail, organizationRole) {
+  // SuperAdmin sees ALL devices (no filtering)
   if (organizationRole === 'superadmin') {
-    // SuperAdmin sees all devices
     return Array.from(connectedDevices.keys());
   }
   
-  // Get user's organizations
+  // For non-superadmin: get devices from their organizations
   const userOrgs = getUserOrganizations(userEmail);
-  const orgIds = userOrgs.map(org => org.id);
+  const accessibleDevices = new Set();
   
-  // Filter devices by organization membership
-  return Array.from(connectedDevices.entries())
-    .filter(([deviceId, device]) => {
-      // Check if device belongs to user's organization
-      return orgIds.includes(device.organizationId);
-    })
-    .map(([deviceId]) => deviceId);
+  // Collect all devices from all user's organizations
+  for (const org of userOrgs) {
+    const orgData = organizations.get(org.id);
+    if (orgData && orgData.devices) {
+      orgData.devices.forEach(deviceId => accessibleDevices.add(deviceId));
+    }
+  }
+  
+  // If no organizations or no devices found, return empty array
+  // This means users without organizations will see no devices (correct RBAC behavior)
+  return Array.from(accessibleDevices);
 }
 
 // Organization storage (will migrate to Firebase)
