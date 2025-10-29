@@ -2927,8 +2927,8 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/safety-event') && r
     return;
   }
 
-  // DELETE USER ENDPOINT - require auth
-  if (req.url.includes('/delete-user') && req.method === 'DELETE') {
+// DELETE USER ENDPOINT - require auth
+if (req.url.includes('/delete-user') && req.method === 'DELETE') {
   requireAuth((session) => {
     const userRole = session.organizationRole || 'user';
     
@@ -2944,120 +2944,115 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/safety-event') && r
       return;
     }
     
-    // [REST OF YOUR EXISTING DELETE CODE CONTINUES HERE]
+    const urlParts = req.url.split('/');
+    const deviceId = urlParts[3];
+    
+    console.log(`🗑️ User deletion for device: ${deviceId} by ${session.email}`);
+    
+    readBody(async (data) => {
+      const { phone, email } = data;
+      
+      if (!phone && !email) {
+        res.writeHead(400);
+        res.end(JSON.stringify({
+          success: false,
+          error: 'Phone or email required for deletion'
+        }));
+        return;
+      }
+      
+      // Find and remove user from local storage
+      const users = registeredUsers.get(deviceId) || [];
+      const userIndex = users.findIndex(u => 
+        (phone && u.phone === phone) || (email && u.email === email)
+      );
+      
+      if (userIndex === -1) {
+        res.writeHead(404);
+        res.end(JSON.stringify({
+          success: false,
+          error: 'User not found'
+        }));
+        return;
+      }
+      
+      const deletedUser = users[userIndex];
+      users.splice(userIndex, 1);
+      registeredUsers.set(deviceId, users);
+      
+      // Remove from dashboard users if exists
+      if (deletedUser.canLogin && deletedUser.email) {
+        DASHBOARD_USERS.delete(deletedUser.email);
+      }
+      
+      // Send delete command to ESP32
+      const deleteCommand = {
+        id: 'del_' + Date.now(),
+        action: 'delete_user',
+        phone: deletedUser.phone,
+        email: deletedUser.email,
+        timestamp: Date.now(),
+        deletedBy: session.email
+      };
+      
+      if (!deviceCommands.has(deviceId)) {
+        deviceCommands.set(deviceId, []);
+      }
+      deviceCommands.get(deviceId).push(deleteCommand);
+      
+      // FIREBASE: Remove user from Firebase if connected
+      if (firebaseInitialized) {
+        try {
+          // Remove user from gate document
+          await db.collection('gates').doc(deviceId).update({
+            [`users.${deletedUser.phone}`]: admin.firestore.FieldValue.delete()
+          });
+          
+          // Remove gate from user permissions or delete document if no gates left
+          const userPermRef = db.collection('userPermissions').doc(deletedUser.phone);
+          const userPermDoc = await userPermRef.get();
+          
+          if (userPermDoc.exists) {
+            const userData = userPermDoc.data();
+            if (userData.gates && Object.keys(userData.gates).length === 1 && userData.gates[deviceId]) {
+              // Delete entire document if this was the only gate
+              await userPermRef.delete();
+            } else {
+              // Remove just this gate
+              await userPermRef.update({
+                [`gates.${deviceId}`]: admin.firestore.FieldValue.delete()
+              });
+            }
+          }
+          
+          console.log(`🔥 Firebase: User ${deletedUser.phone} removed from gate ${deviceId}`);
+          
+        } catch (firebaseError) {
+          console.error('🔥 Firebase user deletion error:', firebaseError);
+        }
+      }
+      
+      // Add log entry
+      addDeviceLog(deviceId, 'user_deleted', session.email, `User: ${deletedUser.name} (${deletedUser.email}/${deletedUser.phone})`);
+      
+      console.log(`🗑️ User deleted from device ${deviceId}:`, deletedUser);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: "User deleted successfully",
+        deletedUser: {
+          name: deletedUser.name,
+          email: deletedUser.email,
+          phone: deletedUser.phone
+        },
+        deviceId: deviceId,
+        firebase_status: firebaseInitialized ? 'removed' : 'local_only'
+      }));
+    });
   });
   return;
 }
-      
-      const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
-      
-      console.log(`🗑️ User deletion for device: ${deviceId} by ${session.email}`);
-      
-      readBody(async (data) => {
-        const { phone, email } = data;
-        
-        if (!phone && !email) {
-          res.writeHead(400);
-          res.end(JSON.stringify({
-            success: false,
-            error: 'Phone or email required for deletion'
-          }));
-          return;
-        }
-        
-        // Find and remove user from local storage
-        const users = registeredUsers.get(deviceId) || [];
-        const userIndex = users.findIndex(u => 
-          (phone && u.phone === phone) || (email && u.email === email)
-        );
-        
-        if (userIndex === -1) {
-          res.writeHead(404);
-          res.end(JSON.stringify({
-            success: false,
-            error: 'User not found'
-          }));
-          return;
-        }
-        
-        const deletedUser = users[userIndex];
-        users.splice(userIndex, 1);
-        registeredUsers.set(deviceId, users);
-        
-        // Remove from dashboard users if exists
-        if (deletedUser.canLogin && deletedUser.email) {
-          DASHBOARD_USERS.delete(deletedUser.email);
-        }
-        
-        // Send delete command to ESP32
-        const deleteCommand = {
-          id: 'del_' + Date.now(),
-          action: 'delete_user',
-          phone: deletedUser.phone,
-          email: deletedUser.email,
-          timestamp: Date.now(),
-          deletedBy: session.email
-        };
-        
-        if (!deviceCommands.has(deviceId)) {
-          deviceCommands.set(deviceId, []);
-        }
-        deviceCommands.get(deviceId).push(deleteCommand);
-        
-        // FIREBASE: Remove user from Firebase if connected
-        if (firebaseInitialized) {
-          try {
-            // Remove user from gate document
-            await db.collection('gates').doc(deviceId).update({
-              [`users.${deletedUser.phone}`]: admin.firestore.FieldValue.delete()
-            });
-            
-            // Remove gate from user permissions or delete document if no gates left
-            const userPermRef = db.collection('userPermissions').doc(deletedUser.phone);
-            const userPermDoc = await userPermRef.get();
-            
-            if (userPermDoc.exists) {
-              const userData = userPermDoc.data();
-              if (userData.gates && Object.keys(userData.gates).length === 1 && userData.gates[deviceId]) {
-                // Delete entire document if this was the only gate
-                await userPermRef.delete();
-              } else {
-                // Remove just this gate
-                await userPermRef.update({
-                  [`gates.${deviceId}`]: admin.firestore.FieldValue.delete()
-                });
-              }
-            }
-            
-            console.log(`🔥 Firebase: User ${deletedUser.phone} removed from gate ${deviceId}`);
-            
-          } catch (firebaseError) {
-            console.error('🔥 Firebase user deletion error:', firebaseError);
-          }
-        }
-        
-        // Add log entry
-        addDeviceLog(deviceId, 'user_deleted', session.email, `User: ${deletedUser.name} (${deletedUser.email}/${deletedUser.phone})`);
-        
-        console.log(`🗑️ User deleted from device ${deviceId}:`, deletedUser);
-        
-        res.writeHead(200);
-        res.end(JSON.stringify({
-          success: true,
-          message: "User deleted successfully",
-          deletedUser: {
-            name: deletedUser.name,
-            email: deletedUser.email,
-            phone: deletedUser.phone
-          },
-          deviceId: deviceId,
-          firebase_status: firebaseInitialized ? 'removed' : 'local_only'
-        }));
-      });
-    });
-    return;
-  }
 
 
 // UPDATED USER REGISTRATION ENDPOINT - add phone validation
