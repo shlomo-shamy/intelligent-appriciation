@@ -760,87 +760,9 @@ function initializeRoleBasedUI() {
 let devices = [];
 let registeredUsers = [];
 let isSuperAdmin = false;
-        
-// Call on page load
-document.addEventListener('DOMContentLoaded', function() {
-initializeRoleBasedUI();
-        
-    // Initialize data from server - NO decodeURIComponent needed!
-    try {
-        devices = JSON.parse('{{devicesData}}');
-        registeredUsers = JSON.parse('{{registeredUsersData}}');
-        isSuperAdmin = {{isSuperAdmin}};
-        
-        console.log("✅ Dashboard loaded - Devices:", devices.length, "Users:", registeredUsers.length);
-        console.log("✅ User is SuperAdmin:", isSuperAdmin);
-        console.log("✅ Devices data:", devices);
-        
-        // Render the devices list
-        console.log("📱 Calling renderDevices()...");
-        renderDevices();
-        console.log("✅ renderDevices() completed");
-    } catch (error) {
-        console.error("❌ Error loading dashboard data:", error);
-        console.error("devicesData raw:", '{{devicesData}}');
-        alert("Error loading devices: " + error.message);
-    }
-    
-    function navigateTo(path) {
-        window.location.href = path;
-    }
-        
-        function navigateTo(path) {
-            window.location.href = path;
-        }
-        
-        async function logout() {
-            try {
-                await fetch('/dashboard/logout', { method: 'POST' });
-                window.location.href = '/dashboard';
-            } catch (error) {
-                alert('Logout error: ' + error.message);
-            }
-        }
-        
-        // UPDATED: No popup, use system user
-        function sendCommand(deviceId, relay, action) {
-            const systemUserId = "999999999";  // Dashboard system user
-            
-            if (!confirm('Send ' + action + ' command?')) {
-                return;
-            }
-            
-            fetch('/api/device/' + deviceId + '/send-command', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json; charset=utf-8',
-                    'X-Command-Source': 'dashboard'
-                },
-                body: JSON.stringify({
-                    id: 'web_' + Date.now(),
-                    action: 'relay_activate',
-                    relay: relay,
-                    duration: 2000,
-                    user: 'dashboard',
-                    user_id: systemUserId,
-                    dashboard_user: {
-                        email: '{{userEmail}}',
-                        name: '{{userName}}',
-                        phone: '{{userPhone}}'
-                    }
-                })
-            })
-            .then(r => r.json())
-            .then(d => {
-                if (d.success) {
-                    alert('✅ Command sent: ' + action);
-                } else {
-                    alert('❌ Command failed');
-                }
-            })
-            .catch(e => alert('❌ Error: ' + e.message));
-        }
-        
+let currentDeviceId = null;  // ← ADD THIS
+
+
 async function openSettings(deviceId) {
     currentDeviceId = deviceId;
     
@@ -1341,7 +1263,88 @@ function closeModal() {
                 document.getElementById('deviceLogs').innerHTML = '<p style="color: #dc3545;">Error loading logs: ' + error.message + '</p>';
             }
         }
-              
+        
+// Call on page load
+document.addEventListener('DOMContentLoaded', function() {
+initializeRoleBasedUI();
+        
+    // Initialize data from server - NO decodeURIComponent needed!
+    try {
+        devices = JSON.parse('{{devicesData}}');
+        registeredUsers = JSON.parse('{{registeredUsersData}}');
+        isSuperAdmin = {{isSuperAdmin}};
+        
+        console.log("✅ Dashboard loaded - Devices:", devices.length, "Users:", registeredUsers.length);
+        console.log("✅ User is SuperAdmin:", isSuperAdmin);
+        console.log("✅ Devices data:", devices);
+        
+        // Render the devices list
+        console.log("📱 Calling renderDevices()...");
+        renderDevices();
+        console.log("✅ renderDevices() completed");
+    } catch (error) {
+        console.error("❌ Error loading dashboard data:", error);
+        console.error("devicesData raw:", '{{devicesData}}');
+        alert("Error loading devices: " + error.message);
+    }
+    
+    function navigateTo(path) {
+        window.location.href = path;
+    }
+        
+        function navigateTo(path) {
+            window.location.href = path;
+        }
+        
+        async function logout() {
+            try {
+                await fetch('/dashboard/logout', { method: 'POST' });
+                window.location.href = '/dashboard';
+            } catch (error) {
+                alert('Logout error: ' + error.message);
+            }
+        }
+        
+        // UPDATED: No popup, use system user
+        function sendCommand(deviceId, relay, action) {
+            const systemUserId = "999999999";  // Dashboard system user
+            
+            if (!confirm('Send ' + action + ' command?')) {
+                return;
+            }
+            
+            fetch('/api/device/' + deviceId + '/send-command', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json; charset=utf-8',
+                    'X-Command-Source': 'dashboard'
+                },
+                body: JSON.stringify({
+                    id: 'web_' + Date.now(),
+                    action: 'relay_activate',
+                    relay: relay,
+                    duration: 2000,
+                    user: 'dashboard',
+                    user_id: systemUserId,
+                    dashboard_user: {
+                        email: '{{userEmail}}',
+                        name: '{{userName}}',
+                        phone: '{{userPhone}}'
+                    }
+                })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    alert('✅ Command sent: ' + action);
+                } else {
+                    alert('❌ Command failed');
+                }
+            })
+            .catch(e => alert('❌ Error: ' + e.message));
+        }
+        
+             
         async function registerUserModal() {
             if (!currentDeviceId) return;
             
