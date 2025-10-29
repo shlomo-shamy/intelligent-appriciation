@@ -362,3 +362,75 @@ input:focus, select:focus, textarea:focus {
         padding: 10px;
     }
 }
+/* ==================== ROLE BADGE STYLES ==================== */
+
+.role-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 11px;
+    text-transform: uppercase;
+    margin-left: 8px;
+    letter-spacing: 0.5px;
+}
+
+.user-badge {
+    background: #6c757d;
+    color: white;
+}
+
+.manager-badge {
+    background: #f59e0b;
+    color: white;
+}
+
+.admin-badge {
+    background: #667eea;
+    color: white;
+}
+
+.superadmin-badge {
+    background: #dc3545;
+    color: white;
+}
+
+/* Permission-based element visibility */
+[data-requires-role] {
+    transition: opacity 0.3s ease;
+}
+
+[data-requires-permission]:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+}
+
+/* Access denied styling */
+.access-denied {
+    text-align: center;
+    padding: 50px 20px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.access-denied h1 {
+    color: #dc3545;
+    margin-bottom: 20px;
+}
+
+.access-denied .return-btn {
+    display: inline-block;
+    padding: 12px 24px;
+    background: #667eea;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    margin-top: 20px;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+.access-denied .return-btn:hover {
+    background: #5568d3;
+}
