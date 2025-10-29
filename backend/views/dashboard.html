@@ -1466,6 +1466,9 @@ async function saveSettings(event) {
 // ============================================================================
 // MODAL TAB SWITCHING
 // ============================================================================
+// ============================================================================
+// MODAL TAB SWITCHING
+// ============================================================================
 function switchTab(tabName, button) {
     console.log('🔄 Switching to tab:', tabName);
     
@@ -1498,7 +1501,7 @@ function switchTab(tabName, button) {
     } else if (tabName === 'logs') {
         loadLogs();
     } else if (tabName === 'schedules') {
-        loadSchedules();
+        loadSchedules();  // Calls your ORIGINAL working function
     } else if (tabName === 'users') {
         loadUsers();
     }
