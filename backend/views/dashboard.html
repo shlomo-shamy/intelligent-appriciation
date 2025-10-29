@@ -880,7 +880,33 @@ function closeModal() {
     document.getElementById('settingsModal').style.display = 'none';
     currentDeviceId = null;
 }
+function navigateTo(path) {
+    window.location.href = path;
+}
 
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+function getUserPermissions(user) {
+    const perms = [];
+    if (user.relay1) perms.push('🔓 OPEN');
+    if (user.relay2) perms.push('⏸️ STOP');
+    if (user.relay3) perms.push('🔒 CLOSE');
+    if (user.relay4) perms.push('↗️ PARTIAL');
+    return perms.length > 0 ? perms.join(', ') : 'None';
+}
+
+function registerUserModal() {
+    // This function registers a new user from the modal form
+    // For now, just show an alert - you can implement the full logic later
+    alert('User registration functionality coming soon!\n\nThis will register the user with the selected permissions.');
+}
+
+function showAddScheduleModal() {
+    alert('Schedule creation functionality coming soon!');
+}
+    
 // ============================================================================
 // TAB SWITCHING
 // ============================================================================
@@ -942,10 +968,7 @@ function switchTab(tabName, buttonElement) {
 // TAB CONTENT LOADERS
 // ============================================================================
 async function loadUsers() {
-    if (!currentDeviceId) {
-        console.error('No device ID set');
-        return;
-    }
+    if (!currentDeviceId) return;
     
     console.log('📥 Loading users for device:', currentDeviceId);
     const container = document.getElementById('registeredUsersList');
@@ -957,39 +980,34 @@ async function loadUsers() {
     
     container.innerHTML = '<p>Loading users...</p>';
     
-    try {
-        const response = await fetch(`/dashboard/device/${currentDeviceId}/users`);
-        const data = await response.json();
-        
-        if (data.success && data.users) {
-            if (data.users.length === 0) {
-                container.innerHTML = '<p style="color: #999; padding: 20px;">No users registered for this device.</p>';
-            } else {
-                container.innerHTML = data.users.map(user => `
-                    <div class="user-item" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee;">
-                        <div>
-                            <strong style="font-size: 16px;">${user.name || 'Unknown'}</strong><br>
-                            <span style="color: #666; font-size: 14px;">
-                                📧 ${user.email || ''} ${user.phone ? '📱 ' + user.phone : ''}
-                            </span><br>
-                            <span style="color: #999; font-size: 12px;">
-                                Role: ${user.role || 'user'} | Level: ${user.level || 1}
-                            </span>
-                        </div>
-                        ${['admin', 'superadmin'].includes(currentUserRole) ? `
-                        <button class="btn btn-danger btn-sm" onclick="deleteUser('${user.phone}', '${user.email}', '${user.name}')" style="background: #dc3545; color: white; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer;">
-                            🗑️ Remove
-                        </button>
-                        ` : ''}
-                    </div>
-                `).join('');
-            }
-        } else {
-            container.innerHTML = '<p style="color: #dc3545; padding: 20px;">Error loading users: ' + (data.error || 'Unknown error') + '</p>';
+    // Use the registeredUsers data that's already loaded
+    let deviceUsers = null;
+    
+    if (Array.isArray(registeredUsers)) {
+        const userEntry = registeredUsers.find(([id]) => id === currentDeviceId);
+        if (userEntry) {
+            deviceUsers = userEntry[1];
         }
-    } catch (error) {
-        console.error('❌ Error loading users:', error);
-        container.innerHTML = '<p style="color: #dc3545; padding: 20px;">Error loading users: ' + error.message + '</p>';
+    }
+    
+    if (deviceUsers && deviceUsers.length > 0) {
+        container.innerHTML = deviceUsers.map(user => `
+            <div class="user-item" style="display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee;">
+                <div>
+                    <strong>${user.name || 'Unknown'}</strong><br>
+                    <span style="color: #666;">
+                        📧 ${user.email || ''} ${user.phone ? '📱 ' + user.phone : ''}
+                    </span>
+                </div>
+                ${['admin', 'superadmin'].includes(currentUserRole) ? `
+                <button class="btn btn-danger btn-sm" onclick="alert('Remove user: ${user.name}')">
+                    🗑️ Remove
+                </button>
+                ` : ''}
+            </div>
+        `).join('');
+    } else {
+        container.innerHTML = '<p style="color: #999; padding: 20px;">No users registered for this device.</p>';
     }
 }
 
