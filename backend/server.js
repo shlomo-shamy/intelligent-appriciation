@@ -969,7 +969,6 @@ res.end(JSON.stringify({
 if (req.url === '/api/dashboard-users' && req.method === 'GET') {
   requireAuth(async (session) => {  // ← Add async here
     const userRole = getUserHighestRole(session.email);
-    console.log(`📊 Dashboard accessed by: ${session.email}, Role: ${userRole}`);
     
     if (userRole !== 'superadmin') {
       res.writeHead(403);
@@ -1967,72 +1966,11 @@ if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
 }  
 
   // Devices page
-if (req.url === '/devices') {
+  if (req.url === '/devices') {
     requireAuth((session) => {
-      const userRole = getUserHighestRole(session.email);
-      
-      // Only Admin and SuperAdmin can access Devices page
-      if (userRole !== 'admin' && userRole !== 'superadmin') {
-        console.log(`🚫 Access denied to /devices for ${session.email} (role: ${userRole})`);
-        res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>403 - Access Denied</title>
-            <style>
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                margin: 0;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              }
-              .error-box {
-                background: white;
-                padding: 40px;
-                border-radius: 12px;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-                text-align: center;
-                max-width: 400px;
-              }
-              h1 { color: #e74c3c; margin-top: 0; }
-              p { color: #555; margin: 20px 0; }
-              a {
-                display: inline-block;
-                background: #667eea;
-                color: white;
-                padding: 12px 24px;
-                border-radius: 6px;
-                text-decoration: none;
-                margin-top: 20px;
-                transition: background 0.3s;
-              }
-              a:hover { background: #5568d3; }
-            </style>
-          </head>
-          <body>
-            <div class="error-box">
-              <h1>🚫 403 - Access Denied</h1>
-              <p><strong>Admin access required</strong></p>
-              <p>You need Admin or SuperAdmin privileges to access the Devices page.</p>
-              <p>Your current role: <strong>${userRole}</strong></p>
-              <a href="/dashboard">← Back to Dashboard</a>
-            </div>
-          </body>
-          </html>
-        `);
-        return;
-      }
-      
-      console.log(`✅ Devices page accessed by: ${session.email} (role: ${userRole})`);
-      
       const devicesData = {
         userName: session.name,
         userEmail: session.email,
-        userRole: userRole,
         devicesData: JSON.stringify(Array.from(connectedDevices.entries())),
         registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
         showActivationPanel: session.userLevel >= 2 ? 'block' : 'none'
@@ -2046,72 +1984,17 @@ if (req.url === '/devices') {
   }
 
   // Manufacturing page
-if (req.url === '/manufacturing') {
+  if (req.url === '/manufacturing') {
     requireAuth((session) => {
-      const userRole = getUserHighestRole(session.email);
-      
-      // Only SuperAdmin can access Manufacturing DB
-      if (userRole !== 'superadmin') {
-        console.log(`🚫 Access denied to /manufacturing for ${session.email} (role: ${userRole})`);
-        res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end(`
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <title>403 - Access Denied</title>
-            <style>
-              body {
-                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                margin: 0;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              }
-              .error-box {
-                background: white;
-                padding: 40px;
-                border-radius: 12px;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-                text-align: center;
-                max-width: 400px;
-              }
-              h1 { color: #e74c3c; margin-top: 0; }
-              p { color: #555; margin: 20px 0; }
-              a {
-                display: inline-block;
-                background: #667eea;
-                color: white;
-                padding: 12px 24px;
-                border-radius: 6px;
-                text-decoration: none;
-                margin-top: 20px;
-                transition: background 0.3s;
-              }
-              a:hover { background: #5568d3; }
-            </style>
-          </head>
-          <body>
-            <div class="error-box">
-              <h1>🚫 403 - Access Denied</h1>
-              <p><strong>SuperAdmin access required</strong></p>
-              <p>You need SuperAdmin privileges to access the Manufacturing Database.</p>
-              <p>Your current role: <strong>${userRole}</strong></p>
-              <a href="/dashboard">← Back to Dashboard</a>
-            </div>
-          </body>
-          </html>
-        `);
+      if (session.userLevel < 2) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'Admin access required for Manufacturing DB' }));
         return;
       }
-      
-      console.log(`✅ Manufacturing page accessed by: ${session.email} (role: ${userRole})`);
       
       const manufacturingData = {
         userName: session.name,
         userEmail: session.email,
-        userRole: userRole,
         manufacturingDevicesData: JSON.stringify(Array.from(manufacturingDevices.entries()))
       };
       
@@ -2125,70 +2008,9 @@ if (req.url === '/manufacturing') {
   // System page
 if (req.url === '/system') {
   requireAuth((session) => {
-    const userRole = getUserHighestRole(session.email);
-    
-    // Only SuperAdmin can access System page
-    if (userRole !== 'superadmin') {
-      console.log(`🚫 Access denied to /system for ${session.email} (role: ${userRole})`);
-      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>403 - Access Denied</title>
-          <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              height: 100vh;
-              margin: 0;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            }
-            .error-box {
-              background: white;
-              padding: 40px;
-              border-radius: 12px;
-              box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-              text-align: center;
-              max-width: 400px;
-            }
-            h1 { color: #e74c3c; margin-top: 0; }
-            p { color: #555; margin: 20px 0; }
-            a {
-              display: inline-block;
-              background: #667eea;
-              color: white;
-              padding: 12px 24px;
-              border-radius: 6px;
-              text-decoration: none;
-              margin-top: 20px;
-              transition: background 0.3s;
-            }
-            a:hover { background: #5568d3; }
-          </style>
-        </head>
-        <body>
-          <div class="error-box">
-            <h1>🚫 403 - Access Denied</h1>
-            <p><strong>SuperAdmin access required</strong></p>
-            <p>You need SuperAdmin privileges to access the System page.</p>
-            <p>Your current role: <strong>${userRole}</strong></p>
-            <a href="/dashboard">← Back to Dashboard</a>
-          </div>
-        </body>
-        </html>
-      `);
-      return;
-    }
-    
-    console.log(`✅ System page accessed by: ${session.email} (role: ${userRole})`);
-    
     const systemData = {
       userName: session.name,
       userEmail: session.email,
-      userRole: userRole,
       nodeEnv: process.env.NODE_ENV || 'development',
       railwayEnv: process.env.RAILWAY_ENVIRONMENT || 'local',
       memoryUsage: process.memoryUsage(),
@@ -3658,5 +3480,3 @@ console.log('✅ Firebase data loaders scheduled');
     }
   }
 }, 30000);
-
-
