@@ -343,40 +343,28 @@
                 </div>
             </div>
             
-<nav class="nav-buttons">
-    <!-- Everyone can see Home -->
-    <button class="nav-btn active" onclick="navigateTo('/dashboard')" data-page="dashboard">
-        🏠 Home
-    </button>
-    
-    <!-- Admin and up can access Devices page -->
-    <button class="nav-btn" onclick="navigateTo('/devices')" data-page="devices" 
-            id="devicesBtn" style="display: none;">
-        📱 Devices
-    </button>
-    
-    <!-- Manager and up can view Organizations -->
-    <button class="nav-btn" onclick="navigateTo('/organizations')" data-page="organizations" 
-            id="organizationsBtn" style="display: none;">
-        🏢 Organizations
-    </button>
-    
-    <!-- Only SuperAdmin can access System -->
-    <button class="nav-btn" onclick="navigateTo('/system')" data-page="system" 
-            id="systemBtn" style="display: none;">
-        ⚙️ System
-    </button>
-    
-    <!-- Only SuperAdmin can access Manufacturing DB -->
-    <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing" 
-            id="manufacturingBtn" style="display: none;">
-        🏭 Manufacturing DB
-    </button>
-    
-    <button class="nav-btn" onclick="logout()">
-        🚪 Logout
-    </button>
-</nav>
+            <nav class="nav-buttons">
+                <button class="nav-btn active" onclick="navigateTo('/dashboard')" data-page="dashboard">
+                    🏠 Home
+                </button>
+                <button class="nav-btn" onclick="navigateTo('/system')" data-page="system">
+                    ⚙️ System
+                </button>
+                <button class="nav-btn" onclick="navigateTo('/devices')" data-page="devices">
+                    📱 Devices
+                </button>
+                <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing" 
+                        style="display: {{showSuperAdminFeatures}}">
+                    🏭 Manufacturing DB
+                </button>
+                <button class="nav-btn" onclick="showOrganizationsModal()" 
+                        style="display: {{showSuperAdminFeatures}}">
+                    🏢 Organizations
+                </button>
+            </nav>
+            
+            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+        </div>
         
         <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
         
@@ -450,25 +438,24 @@ console.log('showSuperAdminFeatures:', '{{showSuperAdminFeatures}}');
     </div>
     
     <!-- Device Settings Modal -->
-<!-- Settings Modal - CORRECTED VERSION -->
-<div id="settingsModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="modalTitle">⚙️ Device Settings</h2>
-            <button class="close-btn" onclick="closeModal()">&times;</button>
-        </div>
-
-<div class="modal-tabs">
-    <button class="tab-btn active" onclick="switchTab('users', this)" id="usersTabBtn">👥 Users</button>
-    <button class="tab-btn" onclick="switchTab('status', this)" id="statusTabBtn">📊 Status</button>
-    <button class="tab-btn" onclick="switchTab('settings', this)" id="settingsTabBtn" style="display: none;">⚙️ Settings</button>
-    <button class="tab-btn" onclick="switchTab('logs', this)" id="logsTabBtn">📝 Logs</button>
-    <button class="tab-btn" onclick="switchTab('schedules', this)" id="schedulesTabBtn">⏰ Schedules</button>
-</div>
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">⚙️ Device Settings</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <div class="modal-tabs">
+                <button class="tab-btn active" onclick="switchTab('users', this)">👥 Users</button>
+                <button class="tab-btn" onclick="switchTab('status', this)">📊 Status</button>
+                <button class="tab-btn" onclick="switchTab('settings', this)">⚙️ Settings</button>
+                <button class="tab-btn" onclick="switchTab('logs', this)">📝 Logs</button>
+                <button class="tab-btn" onclick="switchTab('schedules', this)">⏰ Schedules</button>
+            </div>
             
             <div class="modal-body">
                 <!-- Users Tab -->
-                <div id="usersTab" class="tab-content active">
+                <div id="users-tab" class="tab-content active">
                     <h3>➕ Add New User</h3>
                     <div class="form-grid">
                         <input type="email" id="modalEmail" placeholder="Email Address" required>
@@ -504,38 +491,38 @@ console.log('showSuperAdminFeatures:', '{{showSuperAdminFeatures}}');
                     
                     <div class="users-list">
                         <h3>👥 Registered Users</h3>
-                        <div id="registeredUsersList">
+                        <div id="usersList">
                             <p>Loading users...</p>
                         </div>
                     </div>
                 </div>
                 
                 <!-- Status Tab -->
-                <div id="statusTab" class="tab-content">
+                <div id="status-tab" class="tab-content">
                     <h3>📊 Device Status</h3>
-                    <div id="statusTab">
+                    <div id="deviceStatus">
                         <p>Loading status...</p>
                     </div>
                 </div>
 
 <!-- Settings Tab -->
-<div id="settingsTab" class="tab-content">
+<div id="settings-tab" class="tab-content">
     <h3>⚙️ Device Settings</h3>
-    <div id="settingsTab">
+    <div id="deviceSettings">
         <p>Loading settings...</p>
     </div>
 </div>
                 
                 <!-- Logs Tab -->
-                <div id="logsTab" class="tab-content">
+                <div id="logs-tab" class="tab-content">
                     <h3>📝 Device Logs</h3>
-                    <div id="logsTab">
+                    <div id="deviceLogs">
                         <p>Loading logs...</p>
                     </div>
                 </div>
                 
 <!-- Schedules Tab -->
-<div id="schedulesTab" class="tab-content">
+<div id="schedules-tab" class="tab-content">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h3>⏰ Device Schedules</h3>
         <button onclick="showAddScheduleModal()" style="background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold;">
@@ -543,14 +530,13 @@ console.log('showSuperAdminFeatures:', '{{showSuperAdminFeatures}}');
         </button>
     </div>
     
-    <div id="schedulesTab">
+    <div id="schedulesContainer">
         <p style="color: #666;">Loading schedules...</p>
     </div>
 </div>
             </div>
         </div>
     </div>
-</div>
 <!-- Schedule Modal -->
 <div id="scheduleModal" class="modal" style="display: none;">
     <div class="modal-content" style="max-width: 700px;">
@@ -720,56 +706,719 @@ label:has(input[type="checkbox"]:checked) {
 }
 </style>
 
-<script>
-// ============================================================================
-// GLOBAL VARIABLES
-// ============================================================================
-let devices = [];
-let registeredUsers = [];
-let isSuperAdmin = false;
-let currentDeviceId = null;
-let currentUserRole = '{{userRole}}';
-let currentOrganizations = [];
 
-// ============================================================================
-// RBAC - ROLE-BASED UI INITIALIZATION
-// ============================================================================
-function initializeRoleBasedUI() {
-    console.log('🔐 Initializing UI for role:', currentUserRole);
     
-    const devicesBtn = document.getElementById('devicesBtn');
-    const organizationsBtn = document.getElementById('organizationsBtn');
-    const systemBtn = document.getElementById('systemBtn');
-    const manufacturingBtn = document.getElementById('manufacturingBtn');
+    <script>
+        // Initialize data from server
+        const devices = JSON.parse(decodeURIComponent('{{devicesData}}').replace(/&#34;/g, '"'));
+        const registeredUsers = {{registeredUsersData}};
+        const isSuperAdmin = {{isSuperAdmin}};
+        
+        console.log("Dashboard loaded - Devices:", devices.length, "Users:", registeredUsers.length);
+        console.log("User is SuperAdmin:", isSuperAdmin);
+        
+        function navigateTo(path) {
+            window.location.href = path;
+        }
+        
+        async function logout() {
+            try {
+                await fetch('/dashboard/logout', { method: 'POST' });
+                window.location.href = '/dashboard';
+            } catch (error) {
+                alert('Logout error: ' + error.message);
+            }
+        }
+        
+        // UPDATED: No popup, use system user
+        function sendCommand(deviceId, relay, action) {
+            const systemUserId = "999999999";  // Dashboard system user
+            
+            if (!confirm('Send ' + action + ' command?')) {
+                return;
+            }
+            
+            fetch('/api/device/' + deviceId + '/send-command', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json; charset=utf-8',
+                    'X-Command-Source': 'dashboard'
+                },
+                body: JSON.stringify({
+                    id: 'web_' + Date.now(),
+                    action: 'relay_activate',
+                    relay: relay,
+                    duration: 2000,
+                    user: 'dashboard',
+                    user_id: systemUserId,
+                    dashboard_user: {
+                        email: '{{userEmail}}',
+                        name: '{{userName}}',
+                        phone: '{{userPhone}}'
+                    }
+                })
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    alert('✅ Command sent: ' + action);
+                } else {
+                    alert('❌ Command failed');
+                }
+            })
+            .catch(e => alert('❌ Error: ' + e.message));
+        }
+        
+        function openSettings(deviceId) {
+            currentDeviceId = deviceId;
+            document.getElementById('modalTitle').textContent = '⚙️ Settings - ' + deviceId;
+            document.getElementById('settingsModal').style.display = 'block';
+            
+            // Switch to users tab and load data
+            switchTab('users');
+            loadUsers();
+        }
+
+async function loadSettings() {
+    if (!currentDeviceId) return;
     
-    // Admin and up can access Devices page
-    if (['admin', 'superadmin'].includes(currentUserRole)) {
-        if (devicesBtn) devicesBtn.style.display = 'inline-block';
+    try {
+        const response = await fetch('/api/device/' + currentDeviceId + '/settings');
+        const settings = await response.json();
+        
+        document.getElementById('deviceSettings').innerHTML = `
+            <style>
+                .settings-form {
+                    max-width: 600px;
+                }
+                .form-group {
+                    background: #f8f9fa;
+                    padding: 15px;
+                    margin-bottom: 15px;
+                    border-radius: 8px;
+                    border-left: 4px solid #667eea;
+                }
+                .form-group h4 {
+                    margin: 0 0 15px 0;
+                    color: #333;
+                    font-size: 14px;
+                }
+                .form-row {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                }
+                .form-row:last-child {
+                    margin-bottom: 0;
+                }
+                .form-label {
+                    font-weight: 600;
+                    color: #555;
+                }
+                .form-input {
+                    padding: 8px 12px;
+                    border: 2px solid #ddd;
+                    border-radius: 4px;
+                    width: 200px;
+                }
+                .form-select {
+                    padding: 8px 12px;
+                    border: 2px solid #ddd;
+                    border-radius: 4px;
+                    width: 200px;
+                }
+                .save-btn {
+                    background: #28a745;
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    margin-top: 20px;
+                    width: 100%;
+                }
+                .save-btn:hover {
+                    background: #218838;
+                }
+                .readonly-value {
+                    color: #666;
+                    font-family: 'Courier New', monospace;
+                }
+            </style>
+            
+            <form class="settings-form" onsubmit="saveSettings(event)">
+                <div class="form-group">
+                    <h4>Gate Operation</h4>
+                    <div class="form-row">
+                        <label class="form-label">Command Duration</label>
+                        <input type="number" id="commandDuration" class="form-input" 
+                               value="${settings.commandDuration}" min="100" max="10000" step="100">
+                        <span style="color: #666; font-size: 12px;">ms</span>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Motor Reverse Delay</label>
+                        <input type="number" id="motorReverseDelay" class="form-input" 
+                               value="${settings.motorReverseDelay}" min="0" max="2000" step="100">
+                        <span style="color: #666; font-size: 12px;">ms</span>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Partial Open Time</label>
+                        <input type="number" id="partialTime" class="form-input" 
+                               value="${settings.partialTime}" min="1000" max="30000" step="1000">
+                        <span style="color: #666; font-size: 12px;">ms</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <h4>Operating Modes</h4>
+                    <div class="form-row">
+                        <label class="form-label">Gate Mode</label>
+                        <select id="gateMode" class="form-select">
+                            <option value="0" ${settings.gateMode === 0 ? 'selected' : ''}>Normal</option>
+                            <option value="1" ${settings.gateMode === 1 ? 'selected' : ''}>Step-by-Step</option>
+                            <option value="2" ${settings.gateMode === 2 ? 'selected' : ''}>Deadman</option>
+                            <option value="3" ${settings.gateMode === 3 ? 'selected' : ''}>Relay Module</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Magnetic Loop Mode</label>
+                        <select id="magneticLoopMode" class="form-select">
+                            <option value="0" ${settings.magneticLoopMode === 0 ? 'selected' : ''}>Normal</option>
+                            <option value="1" ${settings.magneticLoopMode === 1 ? 'selected' : ''}>Safety</option>
+                            <option value="2" ${settings.magneticLoopMode === 2 ? 'selected' : ''}>Free</option>
+                            <option value="3" ${settings.magneticLoopMode === 3 ? 'selected' : ''}>Conditional</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Emergency Lock</label>
+                        <select id="emergencyLock" class="form-select">
+                            <option value="0" ${settings.emergencyLock === 0 ? 'selected' : ''}>Normal</option>
+                            <option value="1" ${settings.emergencyLock === 1 ? 'selected' : ''}>Lock Open</option>
+                            <option value="2" ${settings.emergencyLock === 2 ? 'selected' : ''}>Lock Closed</option>
+                        </select>
+                    </div>
+<!-- COMMENTED OUT: Manual Mode Software Override
+<div class="form-row">
+    <label class="form-label">Manual Mode (Software Override)</label>
+    <select id="manualModeEnabled" class="form-select">
+        <option value="false" ${settings.manualModeEnabled === false ? 'selected' : ''}>Disabled - Remote Commands Allowed</option>
+        <option value="true" ${settings.manualModeEnabled === true ? 'selected' : ''}>Enabled - Only Physical Buttons Work</option>
+    </select>
+</div>
+-->      
+                </div>
+                
+                <div class="form-group">
+                    <h4>Auto-Close</h4>
+                    <div class="form-row">
+                        <label class="form-label">Auto-Close Enabled</label>
+                        <input type="checkbox" id="autoCloseEnabled" 
+                               ${settings.autoCloseEnabled ? 'checked' : ''}>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Auto-Close Delay</label>
+                        <input type="number" id="autoCloseDelay" class="form-input" 
+                               value="${settings.autoCloseDelay / 1000}" min="1" max="300" step="1">
+                        <span style="color: #666; font-size: 12px;">seconds</span>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <h4>Learned Timings (Read-Only)</h4>
+                    <div class="form-row">
+                        <label class="form-label">Open Time</label>
+                        <span class="readonly-value">${(settings.openTimeLearned / 1000).toFixed(1)}s</span>
+                    </div>
+                    <div class="form-row">
+                        <label class="form-label">Close Time</label>
+                        <span class="readonly-value">${(settings.closeTimeLearned / 1000).toFixed(1)}s</span>
+                    </div>
+                </div>
+                
+                <button type="submit" class="save-btn">Save Settings</button>
+            </form>
+        `;
+        
+    } catch (error) {
+        document.getElementById('deviceSettings').innerHTML = 
+            '<p style="color: #dc3545;">Error loading settings: ' + error.message + '</p>';
     }
-    
-    // Manager and up can view Organizations
-    if (['manager', 'admin', 'superadmin'].includes(currentUserRole)) {
-        if (organizationsBtn) organizationsBtn.style.display = 'inline-block';
-    }
-    
-    // Only SuperAdmin can access System and Manufacturing DB
-    if (currentUserRole === 'superadmin') {
-        if (systemBtn) systemBtn.style.display = 'inline-block';
-        if (manufacturingBtn) manufacturingBtn.style.display = 'inline-block';
-    }
-    
-    console.log('✅ Role-based UI initialized');
 }
 
-// ============================================================================
-// DEVICE RENDERING
-// ============================================================================
+async function loadUsers() {
+    if (!currentDeviceId) return;
+    
+    try {
+        const response = await fetch('/api/gates/' + currentDeviceId + '/users');
+        const data = await response.json();
+        
+        console.log('Raw response:', data); // DEBUG LINE
+        console.log('Is array?', Array.isArray(data)); // DEBUG LINE
+        
+        const usersList = document.getElementById('usersList');
+        
+        // Handle both object and array responses
+        let users;
+        if (Array.isArray(data)) {
+            users = data;
+        } else if (data && typeof data === 'object') {
+            // Convert object to array
+            users = Object.keys(data).map(phone => ({
+                phone: phone,
+                ...data[phone]
+            }));
+        } else {
+            users = [];
+        }
+        
+        if (users.length === 0) {
+            usersList.innerHTML = '<p style="color: #666;">No users registered yet.</p>';
+            return;
+        }
+        
+        usersList.innerHTML = users.map(user => {
+            const permissions = [];
+            if (user.relayMask & 1) permissions.push('🔓 OPEN');
+            if (user.relayMask & 2) permissions.push('⏸️ STOP');
+            if (user.relayMask & 4) permissions.push('🔒 CLOSE');
+            if (user.relayMask & 8) permissions.push('↗️ PARTIAL');
+            
+            const userLevelText = ['👤 Basic', '👔 Manager', '🔐 Admin'][user.userLevel] || '👤 Basic';
+            const addedDate = user.registeredAt || user.addedDate || new Date().toISOString();
+            
+            return `
+                <div class="user-item">
+                    <div class="user-info">
+                        <div class="user-name">${user.name}</div>
+                        <div class="user-details">
+                            📧 ${user.email} | 📱 ${user.phone} | ${userLevelText}<br>
+                            Permissions: ${permissions.join(', ')}<br>
+                            Added by: ${user.addedBy || 'Unknown'} | Date: ${new Date(addedDate).toLocaleDateString()}
+                        </div>
+                    </div>
+                    <button onclick="deleteUser('${user.phone}', '${user.email}', '${user.name}')" 
+                            style="background: #dc3545; color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer;">
+                        🗑️ Delete
+                    </button>
+                </div>
+            `;
+        }).join('');
+        
+        console.log('Loaded', users.length, 'users');
+        
+    } catch (error) {
+        console.error('Error loading users:', error);
+        document.getElementById('usersList').innerHTML = 
+            '<p style="color: #dc3545;">Error loading users: ' + error.message + '</p>';
+    }
+}
+        
+async function loadStatus() {
+    if (!currentDeviceId) return;
+    
+    try {
+        const [statusResponse, devicesResponse] = await Promise.all([
+            fetch('/api/gates/' + currentDeviceId + '/status'),
+            fetch('/api/device/' + currentDeviceId + '/info')
+        ]);
+        
+        const statusData = await statusResponse.json();
+        const deviceInfo = await devicesResponse.json();
+        
+        const lastHeartbeatTime = new Date(deviceInfo.lastHeartbeat).getTime();
+        const now = Date.now();
+        const timeSinceHeartbeat = now - lastHeartbeatTime;
+        const isOnline = timeSinceHeartbeat < 60000;
+        
+        document.getElementById('deviceStatus').innerHTML = `
+            <style>
+                .status-section {
+                    background: #f8f9fa;
+                    padding: 15px;
+                    margin-bottom: 15px;
+                    border-radius: 8px;
+                    border-left: 4px solid #667eea;
+                }
+                .status-section h4 {
+                    margin: 0 0 10px 0;
+                    color: #333;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                .status-row {
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 8px 0;
+                    border-bottom: 1px solid #e0e0e0;
+                }
+                .status-row:last-child {
+                    border-bottom: none;
+                }
+                .status-label {
+                    font-weight: 600;
+                    color: #555;
+                }
+                .status-value {
+                    color: #333;
+                    font-family: 'Courier New', monospace;
+                }
+                .status-alert {
+                    background: #ffe6e6;
+                    border-left-color: #dc3545;
+                }
+                .status-ok {
+                    color: #28a745;
+                    font-weight: bold;
+                }
+                .status-warn {
+                    color: #ffc107;
+                    font-weight: bold;
+                }
+                .status-error {
+                    color: #dc3545;
+                    font-weight: bold;
+                }
+            </style>
+            
+            <div class="status-section ${isOnline ? '' : 'status-alert'}">
+                <h4>Gate Status</h4>
+                <div class="status-row">
+                    <span class="status-label">Logic State</span>
+                    <span class="status-value">${statusData.gateState}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Last Command</span>
+                    <span class="status-value">${statusData.lastCommand}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Connection</span>
+                    <span class="status-value ${isOnline ? 'status-ok' : 'status-error'}">
+                        ${isOnline ? 'Online' : 'Offline'} (${Math.floor(timeSinceHeartbeat / 1000)}s ago)
+                    </span>
+                </div>
+            </div>
+            
+            <div class="status-section">
+                <h4>Active Relays</h4>
+                <div class="status-row">
+                    <span class="status-label">OPEN</span>
+                    <span class="status-value">${statusData.relay1 ? 'ON' : 'OFF'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">STOP</span>
+                    <span class="status-value">${statusData.relay2 ? 'ON' : 'OFF'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">CLOSE</span>
+                    <span class="status-value">${statusData.relay3 ? 'ON' : 'OFF'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">PARTIAL</span>
+                    <span class="status-value">${statusData.relay4 ? 'ON' : 'OFF'}</span>
+                </div>
+            </div>
+            
+            <div class="status-section ${statusData.photoBlocked || statusData.edgeContact ? 'status-alert' : ''}">
+                <h4>Safety Systems</h4>
+                <div class="status-row">
+                    <span class="status-label">Photo Beams</span>
+                    <span class="status-value">
+                        INT: ${statusData.photoIntBlocked ? 'BLOCKED' : 'CLEAR'} | 
+                        EXT: ${statusData.photoExtBlocked ? 'BLOCKED' : 'CLEAR'}
+                        ${statusData.photoBlocked ? '<span class="status-warn"> ⚠️</span>' : '<span class="status-ok"> ✓</span>'}
+                    </span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Safety Edges</span>
+                    <span class="status-value">
+                        INT: ${statusData.edgeIntContact ? 'CONTACT' : 'CLEAR'} | 
+                        EXT: ${statusData.edgeExtContact ? 'CONTACT' : 'CLEAR'}
+                        ${statusData.edgeContact ? '<span class="status-warn"> ⚠️</span>' : '<span class="status-ok"> ✓</span>'}
+                    </span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Limit Switches</span>
+                    <span class="status-value">
+                        FCC: ${statusData.fccPosition ? 'CLOSED' : 'OPEN'} | 
+                        FCA: ${statusData.fcaPosition ? 'CLOSED' : 'OPEN'}
+                    </span>
+                </div>
+            </div>
+            
+            <div class="status-section">
+                <h4>Mode & Configuration</h4>
+                <div class="status-row">
+                    <span class="status-label">Mode Switch</span>
+                    <span class="status-value">${statusData.modeSwitch}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Learning Mode</span>
+                    <span class="status-value">${statusData.learningMode ? 'ACTIVE' : 'INACTIVE'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Auto-Close</span>
+                    <span class="status-value">
+                        ${statusData.autoCloseEnabled ? 'ENABLED' : 'DISABLED'}
+                        ${statusData.autoCloseTimer ? ` (${statusData.autoCloseRemaining}s)` : ''}
+                    </span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Partial Sequence</span>
+                    <span class="status-value">${statusData.partialActive ? 'ACTIVE' : 'INACTIVE'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Emergency Lock</span>
+                    <span class="status-value">${statusData.emergencyLock}</span>
+                </div>
+            </div>
+            
+            <div class="status-section">
+                <h4>Remote Controls</h4>
+                <div class="status-row">
+                    <span class="status-label">OPEN Button</span>
+                    <span class="status-value">${statusData.remoteOpen ? 'PRESSED' : 'UP'}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">STOP Button</span>
+                    <span class="status-value">${statusData.remoteStop ? 'PRESSED' : 'UP'}</span>
+                </div>
+            </div>
+            
+            <div class="status-section">
+                <h4>System Information</h4>
+                <div class="status-row">
+                    <span class="status-label">Users</span>
+                    <span class="status-value">${statusData.userCount}/100</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Free Memory</span>
+                    <span class="status-value">${deviceInfo.freeHeap} bytes</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Signal Strength</span>
+                    <span class="status-value">${deviceInfo.signalStrength} dBm</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Uptime</span>
+                    <span class="status-value">${Math.floor(deviceInfo.uptime / 1000)} seconds</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">Firmware</span>
+                    <span class="status-value">${deviceInfo.firmwareVersion}</span>
+                </div>
+            </div>
+        `;
+        
+    } catch (error) {
+        document.getElementById('deviceStatus').innerHTML = 
+            '<p style="color: #dc3545;">Error loading status: ' + error.message + '</p>';
+    }
+}
+        
+// ADD THIS: Auto-refresh every 3 seconds when status tab is open
+let statusRefreshInterval = null;
+
+// ALSO ADD: Stop refresh when modal closes
+function closeModal() {
+    if (window.statusRefreshInterval) {
+        clearInterval(window.statusRefreshInterval);
+        window.statusRefreshInterval = null;
+    }
+    document.getElementById('settingsModal').style.display = 'none';
+    currentDeviceId = null;
+}
+
+        
+        async function loadLogs() {
+            if (!currentDeviceId) return;
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/logs');
+                const logs = await response.json();
+                
+                const logsContainer = document.getElementById('deviceLogs');
+                
+                if (logs.length === 0) {
+                    logsContainer.innerHTML = '<p style="color: #666;">No logs available.</p>';
+                    return;
+                }
+                
+                logsContainer.innerHTML = logs.map(log => `
+                    <div class="log-item">
+                        <div class="log-header">
+                            <span class="log-action">📝 ${log.action.replace('_', ' ').toUpperCase()}</span>
+                            <span class="log-time">${new Date(log.timestamp).toLocaleString()}</span>
+                        </div>
+                        <div class="log-details">
+                            👤 User: ${log.user} | ${log.details}
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                document.getElementById('deviceLogs').innerHTML = '<p style="color: #dc3545;">Error loading logs: ' + error.message + '</p>';
+            }
+        }
+              
+        async function registerUserModal() {
+            if (!currentDeviceId) return;
+            
+            const email = document.getElementById('modalEmail').value;
+            const phoneRaw = document.getElementById('modalPhone').value;
+            const name = document.getElementById('modalName').value;
+            const password = document.getElementById('modalPassword').value;
+            const userLevel = parseInt(document.getElementById('modalUserLevel').value);
+            const canLogin = document.getElementById('modalCanLogin').checked;
+            
+            let relayMask = 0;
+            if (document.getElementById('modalRelay1').checked) relayMask |= 1;
+            if (document.getElementById('modalRelay2').checked) relayMask |= 2;
+            if (document.getElementById('modalRelay3').checked) relayMask |= 4;
+            if (document.getElementById('modalRelay4').checked) relayMask |= 8;
+            
+            if (!email || !phoneRaw || !name) {
+                alert('Please fill in email, phone, and name fields');
+                return;
+            }
+            
+            const cleanPhone = phoneRaw.toString().replace(/\D/g, '');
+            
+            if (cleanPhone.length < 10 || cleanPhone.length > 14) {
+                alert(`Phone number must be 10-14 digits. Received: ${cleanPhone} (${cleanPhone.length} digits)`);
+                return;
+            }
+            
+            if (!/^\d{10,14}$/.test(cleanPhone)) {
+                alert('Phone number must contain only digits');
+                return;
+            }
+            
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                alert('Please enter a valid email address');
+                return;
+            }
+            
+            if (canLogin && (!password || password.length < 6)) {
+                alert('Password must be at least 6 characters if login is allowed');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/register-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({
+                        email: email,
+                        phone: cleanPhone,
+                        name: name,
+                        password: password,
+                        relayMask: relayMask,
+                        userLevel: userLevel,
+                        canLogin: canLogin
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User registered: ' + name + ' (' + email + ')\nPhone: ' + result.phone);
+                    
+                    // Clear form
+                    document.getElementById('modalEmail').value = '';
+                    document.getElementById('modalPhone').value = '';
+                    document.getElementById('modalName').value = '';
+                    document.getElementById('modalPassword').value = '';
+                    document.getElementById('modalUserLevel').value = '0';
+                    document.getElementById('modalCanLogin').checked = false;
+                    document.querySelectorAll('#settingsModal input[type="checkbox"]').forEach(cb => cb.checked = false);
+                    document.getElementById('modalRelay1').checked = true;
+                    
+                    // Reload users list
+                    loadUsers();
+                } else {
+                    alert('❌ Registration failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+async function saveSettings(event) {
+    event.preventDefault();
+    
+    if (!currentDeviceId) return;
+    
+    const settings = {
+        commandDuration: parseInt(document.getElementById('commandDuration').value),
+        motorReverseDelay: parseInt(document.getElementById('motorReverseDelay').value),
+        partialTime: parseInt(document.getElementById('partialTime').value),
+        gateMode: parseInt(document.getElementById('gateMode').value),
+        magneticLoopMode: parseInt(document.getElementById('magneticLoopMode').value),
+        emergencyLock: parseInt(document.getElementById('emergencyLock').value),
+        autoCloseEnabled: document.getElementById('autoCloseEnabled').checked,
+        autoCloseDelay: parseInt(document.getElementById('autoCloseDelay').value) * 1000
+//        manualModeEnabled: document.getElementById('manualModeEnabled').value === 'true'  // ADD THIS
+
+    };
+    
+    try {
+        const response = await fetch('/api/device/' + currentDeviceId + '/settings/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Settings saved! ESP32 will apply changes within 5 seconds.');
+        } else {
+            alert('Failed to save settings');
+        }
+    } catch (error) {
+        alert('Error: ' + error.message);
+    }
+}
+        
+        async function deleteUser(phone, email, name) {
+            if (!currentDeviceId) return;
+            
+            if (!confirm('🗑️ Delete User: ' + name + '?\n\nThis will:\n• Remove user from device\n• Delete Firebase records\n• Remove dashboard access (if enabled)\n\nThis action cannot be undone!')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/device/' + currentDeviceId + '/delete-user', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json; charset=utf-8' },
+                    body: JSON.stringify({
+                        phone: phone,
+                        email: email
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ User Deleted Successfully!\n\nUser: ' + result.deletedUser.name + '\nPhone: ' + result.deletedUser.phone + '\nFirebase: ' + result.firebase_status);
+                    
+                    // Reload users list
+                    loadUsers();
+                } else {
+                    alert('❌ Delete Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Delete Error: ' + error.message);
+            }
+        }
+        
 function renderDevices() {
     const container = document.getElementById('devices');
     const noDevicesMsg = document.getElementById('noDevicesMessage');
     
-    console.log('📊 Rendering devices...', devices);
-    
+    // Handle both array and object formats
     let deviceArray = devices;
     if (!Array.isArray(devices)) {
         console.error('Devices is not an array, attempting to convert...');
@@ -782,545 +1431,349 @@ function renderDevices() {
         return;
     }
             
-    container.style.display = 'block';
-    noDevicesMsg.style.display = 'none';
-    
-    container.innerHTML = deviceArray.map(([deviceId, info]) => {
-        const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
-        const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
-        const userCount = deviceUsers ? deviceUsers[1].length : 0;
-        
-        const deviceName = info.name || deviceId;
-        const deviceLocation = info.location || 'No location';
-        const macAddress = info.macAddress || 'Unknown';
-        
-        const platformBadge = isSuperAdmin ? 
-            '<span class="platform-badge">PLATFORM DEVICE</span>' : '';
-        
-        return `
-            <div class="card device ${isOnline ? '' : 'offline'}">
-                <div class="device-info">
-                    <h3>🎛️ ${deviceName} ${isOnline ? '🟢' : '🔴'} ${platformBadge}</h3>
-                    <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
-                        📍 ${deviceLocation} | 🆔 ${deviceId} | 🔗 MAC: ${macAddress}
-                    </div>
-                    <div class="device-status">
-                        📶 Signal: ${info.signalStrength}dBm | 
-                        🔋 Battery: ${info.batteryLevel}% | 
-                        ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
-                        👥 Users: ${userCount}<br>
-                        🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
-                    </div>
-                </div>
-                
-                <div class="device-actions">
-                    <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
-                    <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
-                    <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
-                    <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                    ${currentUserRole !== 'user' ? `
-                    <button class="btn btn-settings" onclick="openSettings('${deviceId}')">⚙️ Settings</button>
-                    ` : ''}
-                </div>
-            </div>
-        `;
-    }).join('');
-    
-    console.log("✅ Rendered", deviceArray.length, "devices");
-}
-
-// ============================================================================
-// DEVICE CONTROL
-// ============================================================================
-function sendCommand(deviceId, relay, action) {
-    console.log(`Sending ${action} command to ${deviceId}, relay ${relay}`);
-    
-    fetch('/dashboard/control', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ deviceId, relay, action })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('✅ Command sent successfully:', data);
-            alert(`✅ ${action} command sent successfully`);
-        } else {
-            alert('❌ Error: ' + (data.error || 'Command failed'));
-        }
-    })
-    .catch(error => {
-        console.error('❌ Error sending command:', error);
-        alert('❌ Error sending command: ' + error.message);
-    });
-}
-
-// ============================================================================
-// SETTINGS MODAL
-// ============================================================================
-async function openSettings(deviceId) {
-    currentDeviceId = deviceId;
-    
-    // Show/hide Settings tab based on role
-    const settingsTabBtn = document.getElementById('settingsTabBtn');
-    if (['admin', 'superadmin'].includes(currentUserRole)) {
-        if (settingsTabBtn) settingsTabBtn.style.display = 'inline-block';
-    } else {
-        if (settingsTabBtn) settingsTabBtn.style.display = 'none';
-    }
-    
-    document.getElementById('modalTitle').textContent = '⚙️ Settings - ' + deviceId;
-    document.getElementById('settingsModal').style.display = 'block';
-    
-    // Switch to users tab and load data
-    switchTab('users');
-}
-
-function closeModal() {
-    document.getElementById('settingsModal').style.display = 'none';
-    currentDeviceId = null;
-}
-function navigateTo(path) {
-    window.location.href = path;
-}
-
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
-
-function getUserPermissions(user) {
-    const perms = [];
-    if (user.relay1) perms.push('🔓 OPEN');
-    if (user.relay2) perms.push('⏸️ STOP');
-    if (user.relay3) perms.push('🔒 CLOSE');
-    if (user.relay4) perms.push('↗️ PARTIAL');
-    return perms.length > 0 ? perms.join(', ') : 'None';
-}
-
-function registerUserModal() {
-    // This function registers a new user from the modal form
-    // For now, just show an alert - you can implement the full logic later
-    alert('User registration functionality coming soon!\n\nThis will register the user with the selected permissions.');
-}
-
-function showAddScheduleModal() {
-    alert('Schedule creation functionality coming soon!');
-}
-    
-// ============================================================================
-// TAB SWITCHING
-// ============================================================================
-function switchTab(tabName, buttonElement) {
-    console.log('🔄 Switching to tab:', tabName);
-    
-    // Hide all tab contents
-    document.querySelectorAll('.tab-content').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    // Remove active class from all tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    
-    // Show selected tab content
-    const selectedTab = document.getElementById(tabName + 'Tab');
-    if (selectedTab) {
-        selectedTab.classList.add('active');
-    } else {
-        console.error('Tab not found:', tabName + 'Tab');
-    }
-    
-    // Add active class to clicked button
-    if (buttonElement) {
-        buttonElement.classList.add('active');
-    } else {
-        // Find button by ID if element not provided
-        const button = document.getElementById(tabName + 'TabBtn');
-        if (button) {
-            button.classList.add('active');
-        }
-    }
-    
-    // Load data for the selected tab
-    switch(tabName) {
-        case 'users':
-            loadUsers();
-            break;
-        case 'status':
-            loadStatus();
-            break;
-        case 'settings':
-            loadSettings();
-            break;
-        case 'logs':
-            loadLogs();
-            break;
-        case 'schedules':
-            loadSchedules();
-            break;
-        default:
-            console.warn('Unknown tab:', tabName);
-    }
-}
-
-// ============================================================================
-// TAB CONTENT LOADERS
-// ============================================================================
-async function loadUsers() {
-    if (!currentDeviceId) return;
-    
-    console.log('📥 Loading users for device:', currentDeviceId);
-    const container = document.getElementById('registeredUsersList');
-    
-    if (!container) {
-        console.error('registeredUsersList container not found');
-        return;
-    }
-    
-    container.innerHTML = '<p>Loading users...</p>';
-    
-    // Use the registeredUsers data that's already loaded
-    let deviceUsers = null;
-    
-    if (Array.isArray(registeredUsers)) {
-        const userEntry = registeredUsers.find(([id]) => id === currentDeviceId);
-        if (userEntry) {
-            deviceUsers = userEntry[1];
-        }
-    }
-    
-    if (deviceUsers && deviceUsers.length > 0) {
-        container.innerHTML = deviceUsers.map(user => `
-            <div class="user-item" style="display: flex; justify-content: space-between; padding: 15px; border-bottom: 1px solid #eee;">
-                <div>
-                    <strong>${user.name || 'Unknown'}</strong><br>
-                    <span style="color: #666;">
-                        📧 ${user.email || ''} ${user.phone ? '📱 ' + user.phone : ''}
-                    </span>
-                </div>
-                ${['admin', 'superadmin'].includes(currentUserRole) ? `
-                <button class="btn btn-danger btn-sm" onclick="alert('Remove user: ${user.name}')">
-                    🗑️ Remove
-                </button>
-                ` : ''}
-            </div>
-        `).join('');
-    } else {
-        container.innerHTML = '<p style="color: #999; padding: 20px;">No users registered for this device.</p>';
-    }
-}
-
-async function loadStatus() {
-    if (!currentDeviceId) return;
-    
-    console.log('📊 Loading status for device:', currentDeviceId);
-    const container = document.getElementById('statusTab');
-    
-    if (!container) {
-        console.error('statusTab container not found');
-        return;
-    }
-    
-    // Find device in the devices array
-    let deviceInfo = null;
-    if (Array.isArray(devices)) {
-        const device = devices.find(([id]) => id === currentDeviceId);
-        if (device) deviceInfo = device[1];
-    } else {
-        deviceInfo = devices[currentDeviceId];
-    }
-    
-    if (deviceInfo) {
-        const isOnline = (Date.now() - new Date(deviceInfo.lastHeartbeat).getTime()) < 60000;
-        
-        container.innerHTML = `
-            <div style="padding: 20px;">
-                <h3>📊 Device Status</h3>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 20px;">
-                    <div class="status-item">
-                        <strong>Status:</strong>
-                        <span>${isOnline ? '🟢 Online' : '🔴 Offline'}</span>
-                    </div>
-                    <div class="status-item">
-                        <strong>Gate State:</strong>
-                        <span>${deviceInfo.gateState || 'Unknown'}</span>
-                    </div>
-                    <div class="status-item">
-                        <strong>Last Command:</strong>
-                        <span>${deviceInfo.lastCommand || 'NONE'}</span>
-                    </div>
-                    <div class="status-item">
-                        <strong>Signal Strength:</strong>
-                        <span>${deviceInfo.signalStrength} dBm</span>
-                    </div>
-                    <div class="status-item">
-                        <strong>Battery Level:</strong>
-                        <span>${deviceInfo.batteryLevel}%</span>
-                    </div>
-                    <div class="status-item">
-                        <strong>Uptime:</strong>
-                        <span>${Math.floor(deviceInfo.uptime / 1000)} seconds</span>
-                    </div>
-                    <div class="status-item">
-                        <strong>Free Heap:</strong>
-                        <span>${deviceInfo.freeHeap} bytes</span>
-                    </div>
-                    <div class="status-item">
-                        <strong>Firmware Version:</strong>
-                        <span>${deviceInfo.firmwareVersion}</span>
-                    </div>
-                    <div class="status-item">
-                        <strong>MAC Address:</strong>
-                        <span>${deviceInfo.macAddress}</span>
-                    </div>
-                    <div class="status-item">
-                        <strong>Last Heartbeat:</strong>
-                        <span>${new Date(deviceInfo.lastHeartbeat).toLocaleString()}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    } else {
-        container.innerHTML = '<p style="color: #dc3545; padding: 20px;">Device not found</p>';
-    }
-}
-
-async function loadSettings() {
-    if (!currentDeviceId) return;
-    
-    console.log('⚙️ Loading settings for device:', currentDeviceId);
-    const container = document.getElementById('settingsTab');
-    
-    if (!container) {
-        console.error('settingsTab container not found');
-        return;
-    }
-    
-    container.innerHTML = `
-        <div style="padding: 20px;">
-            <h3>⚙️ Device Settings</h3>
-            <p style="color: #666; margin-top: 20px;">
-                Device configuration and advanced settings will be available here.
-            </p>
-            <p style="color: #999; font-size: 14px; margin-top: 10px;">
-                Coming soon: Auto-close timer, partial open position, mode settings, etc.
-            </p>
-        </div>
-    `;
-}
-
-async function loadLogs() {
-    if (!currentDeviceId) return;
-    
-    console.log('📝 Loading logs for device:', currentDeviceId);
-    const container = document.getElementById('logsTab');
-    
-    if (!container) {
-        console.error('logsTab container not found');
-        return;
-    }
-    
-    container.innerHTML = `
-        <div style="padding: 20px;">
-            <h3>📝 Device Logs</h3>
-            <p style="color: #666; margin-top: 20px;">
-                Command history and device event logs will be displayed here.
-            </p>
-            <p style="color: #999; font-size: 14px; margin-top: 10px;">
-                Coming soon: Real-time logs, filtering, export options.
-            </p>
-        </div>
-    `;
-}
-
-async function loadSchedules() {
-    if (!currentDeviceId) return;
-    
-    console.log('⏰ Loading schedules for device:', currentDeviceId);
-    const container = document.getElementById('schedulesTab');
-    
-    if (!container) {
-        console.error('schedulesTab container not found');
-        return;
-    }
-    
-    container.innerHTML = `
-        <div style="padding: 20px;">
-            <h3>⏰ Schedules</h3>
-            <p style="color: #666; margin-top: 20px;">
-                Automated gate schedules and timers will be managed here.
-            </p>
-            <p style="color: #999; font-size: 14px; margin-top: 10px;">
-                Coming soon: Create schedules, set auto-open/close times, recurring events.
-            </p>
-        </div>
-    `;
-}
-
-// ============================================================================
-// USER MANAGEMENT
-// ============================================================================
-async function deleteUser(phone, email, name) {
-    if (!currentDeviceId) return;
-    
-    const confirmMsg = `Are you sure you want to remove ${name} (${email || phone}) from this device?`;
-    if (!confirm(confirmMsg)) return;
-    
-    try {
-        const response = await fetch(`/dashboard/device/${currentDeviceId}/remove-user`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone, email })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert('✅ User removed successfully');
-            loadUsers(); // Reload the users list
-        } else {
-            alert('❌ Error: ' + (data.error || 'Failed to remove user'));
-        }
-    } catch (error) {
-        console.error('Error removing user:', error);
-        alert('❌ Error removing user: ' + error.message);
-    }
-}
-
-async function registerUserModal() {
-    // This function would open a modal to register a new user
-    alert('Register user functionality coming soon!');
-}
-
-// ============================================================================
-// ORGANIZATIONS MANAGEMENT
-// ============================================================================
-function showOrganizationsModal() {
-    document.getElementById('organizationsModal').style.display = 'block';
-    loadOrganizations();
-}
-
-function closeOrganizationsModal() {
-    document.getElementById('organizationsModal').style.display = 'none';
-}
-
-function showCreateOrgForm() {
-    document.getElementById('createOrgForm').style.display = 'block';
-}
-
-function hideCreateOrgForm() {
-    document.getElementById('createOrgForm').style.display = 'none';
-}
-
-async function loadOrganizations() {
-    const container = document.getElementById('organizationsList');
-    container.innerHTML = '<p>Loading organizations...</p>';
-    
-    try {
-        const response = await fetch('/dashboard/organizations');
-        const data = await response.json();
-        
-        if (data.success && data.organizations) {
-            currentOrganizations = data.organizations;
+            container.style.display = 'block';
+            noDevicesMsg.style.display = 'none';
             
-            if (data.organizations.length === 0) {
-                container.innerHTML = '<p style="color: #999;">No organizations yet. Create one to get started!</p>';
-            } else {
-                container.innerHTML = data.organizations.map(org => `
-                    <div class="org-card" style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px;">
-                        <h3>${org.name}</h3>
-                        <p style="color: #666; font-size: 14px;">
-                            👥 ${Object.keys(org.members || {}).length} members | 
-                            🎛️ ${(org.devices || []).length} gates
-                        </p>
-                        <div style="margin-top: 10px;">
-                            <button onclick="viewOrgDetails('${org.id}')" class="btn btn-sm" style="margin-right: 5px;">
-                                👁️ View Details
-                            </button>
-                            ${['admin', 'superadmin'].includes(currentUserRole) ? `
-                            <button onclick="addMemberToOrg('${org.id}')" class="btn btn-sm" style="margin-right: 5px;">
-                                ➕ Add Member
-                            </button>
-                            <button onclick="removeMemberFromOrg('${org.id}')" class="btn btn-sm btn-danger">
-                                ➖ Remove Member
-                            </button>
-                            ` : ''}
+            container.innerHTML = devices.map(([deviceId, info]) => {
+                const isOnline = (Date.now() - new Date(info.lastHeartbeat).getTime()) < 60000;
+                const deviceUsers = registeredUsers.find(([id]) => id === deviceId);
+                const userCount = deviceUsers ? deviceUsers[1].length : 0;
+                
+                const deviceName = info.name || deviceId;
+                const deviceLocation = info.location || 'No location';
+                const macAddress = info.macAddress || 'Unknown';
+                
+                // Show "Platform Device" badge for SuperAdmins
+                const platformBadge = isSuperAdmin ? 
+                    '<span class="platform-badge">PLATFORM DEVICE</span>' : 
+                    '';
+                
+                return `
+                    <div class="card device ${isOnline ? '' : 'offline'}">
+                        <div class="device-info">
+                            <h3>🎛️ ${deviceName} ${isOnline ? '🟢' : '🔴'} ${platformBadge}</h3>
+                            <div style="color: #666; font-size: 12px; margin-bottom: 8px;">
+                                📍 ${deviceLocation} | 🆔 ${deviceId} | 🔗 MAC: ${macAddress}
+                            </div>
+                            <div class="device-status">
+                                📶 Signal: ${info.signalStrength}dBm | 
+                                🔋 Battery: ${info.batteryLevel}% | 
+                                ⏱️ Uptime: ${Math.floor(info.uptime / 1000)}s |
+                                👥 Users: ${userCount}<br>
+                                🔄 Last Heartbeat: ${new Date(info.lastHeartbeat).toLocaleTimeString()}
+                            </div>
+                        </div>
+                        
+                        <div class="device-actions">
+                            <button class="control-btn open" onclick="sendCommand('${deviceId}', 1, 'OPEN')">🔓 OPEN</button>
+                            <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
+                            <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
+                            <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
+                            <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
                         </div>
                     </div>
-                `).join('');
-            }
-        } else {
-            container.innerHTML = '<p style="color: #dc3545;">Error loading organizations</p>';
+                `;
+            }).join('');
+            
+            console.log("Rendered", devices.length, "devices");
         }
-    } catch (error) {
-        console.error('Error loading organizations:', error);
-        container.innerHTML = '<p style="color: #dc3545;">Error: ' + error.message + '</p>';
-    }
-}
+        
+        // Organizations Management
+        let currentOrganizations = [];
 
-async function createOrganization() {
-    const nameInput = document.getElementById('newOrgName');
-    const name = nameInput.value.trim();
-    
-    if (!name) {
-        alert('Please enter an organization name');
-        return;
-    }
-    
-    try {
-        const response = await fetch('/dashboard/organizations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name })
-        });
-        
-        const data = await response.json();
-        
-        if (data.success) {
-            alert('✅ Organization created successfully!');
-            nameInput.value = '';
-            hideCreateOrgForm();
+        function showOrganizationsModal() {
+            document.getElementById('organizationsModal').style.display = 'block';
             loadOrganizations();
-        } else {
-            alert('❌ Error: ' + (data.error || 'Failed to create organization'));
         }
-    } catch (error) {
-        console.error('Error creating organization:', error);
-        alert('❌ Error: ' + error.message);
-    }
-}
 
-function viewOrgDetails(orgId) {
+        function closeOrganizationsModal() {
+            document.getElementById('organizationsModal').style.display = 'none';
+            hideCreateOrgForm();
+        }
+
+        function showCreateOrgForm() {
+            document.getElementById('createOrgForm').style.display = 'block';
+        }
+
+        function hideCreateOrgForm() {
+            document.getElementById('createOrgForm').style.display = 'none';
+            document.getElementById('newOrgName').value = '';
+            document.getElementById('newOrgType').value = 'service_provider';
+        }
+
+        async function loadOrganizations() {
+            try {
+                const response = await fetch('/api/organizations');
+                const orgs = await response.json();
+                
+                if (orgs.error) {
+                    document.getElementById('organizationsList').innerHTML = 
+                        '<p style="color: #dc3545;">Error: ' + orgs.error + '</p>';
+                    return;
+                }
+                
+                currentOrganizations = orgs;
+                
+                const container = document.getElementById('organizationsList');
+                
+                if (orgs.length === 0) {
+                    container.innerHTML = '<p style="text-align: center; color: #666;">No organizations yet.</p>';
+                    return;
+                }
+                
+                container.innerHTML = orgs.map(org => `
+                    <div class="org-card">
+                        <div class="org-header">
+                            <div>
+                                <h3 style="margin: 0 0 5px 0;">${org.name}</h3>
+                                <span class="org-type-badge org-type-${org.type}">${org.type.replace('_', ' ')}</span>
+                                ${org.id === 'platform_org' ? '<span style="color: #dc3545; font-size: 12px; margin-left: 10px;">🔒 PROTECTED</span>' : ''}
+                            </div>
+                            <div style="font-size: 12px; color: #666;">
+                                Created: ${new Date(org.createdAt).toLocaleDateString()}<br>
+                                By: ${org.createdBy}
+                            </div>
+                        </div>
+                        
+                        <div class="org-stats">
+                            <div class="org-stat">
+                                <div class="org-stat-value">${org.devices ? org.devices.length : 0}</div>
+                                <div class="org-stat-label">Gates</div>
+                            </div>
+                            <div class="org-stat">
+                                <div class="org-stat-value">${Object.keys(org.members || {}).length}</div>
+                                <div class="org-stat-label">Members</div>
+                            </div>
+                            <div class="org-stat">
+                                <div class="org-stat-value" style="font-size: 14px; word-break: break-all;">${org.id}</div>
+                                <div class="org-stat-label">ID</div>
+                            </div>
+                        </div>
+                        
+<div class="org-actions">
+    <button class="org-btn org-btn-primary" onclick="viewOrgDetails('${org.id}')">
+        👁️ View Details
+    </button>
+    <button class="org-btn org-btn-success" onclick="assignGateToOrg('${org.id}')">
+        ➕ Assign Gate
+    </button>
+    ${org.id !== 'platform_org' ? `
+    <button class="org-btn org-btn-danger" onclick="removeGateFromOrg('${org.id}')">
+        ➖ Remove Gate
+    </button>
+    ` : ''}
+    <button class="org-btn org-btn-secondary" onclick="addMemberToOrg('${org.id}')">
+        👤 Add Member
+    </button>
+    <button class="org-btn org-btn-danger" onclick="removeMemberFromOrg('${org.id}')">
+        🗑️ Remove Member
+    </button>
+</div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                document.getElementById('organizationsList').innerHTML = 
+                    '<p style="color: #dc3545;">Error loading organizations: ' + error.message + '</p>';
+            }
+        }
+
+        async function createOrganization() {
+            const name = document.getElementById('newOrgName').value.trim();
+            const type = document.getElementById('newOrgType').value;
+            
+            if (!name) {
+                alert('Please enter organization name');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/organizations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, type })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Organization created: ' + name);
+                    hideCreateOrgForm();
+                    loadOrganizations();
+                } else {
+                    alert('❌ Failed to create organization: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function assignGateToOrg(orgId) {
+            const org = currentOrganizations.find(o => o.id === orgId);
+            
+            let prompt_text = 'Enter gate serial number to assign:';
+            if (org && org.devices && org.devices.length > 0) {
+                prompt_text += '\n\nCurrently assigned gates:\n' + org.devices.join(', ');
+            }
+            
+            const gateSerial = prompt(prompt_text);
+            if (!gateSerial) return;
+            
+            try {
+                const response = await fetch('/api/organizations/assign-gate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ organizationId: orgId, gateSerial: gateSerial.trim() })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Gate assigned to organization');
+                    loadOrganizations();
+                } else {
+                    alert('❌ Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        async function removeGateFromOrg(orgId) {
+            const org = currentOrganizations.find(o => o.id === orgId);
+            
+            if (!org || !org.devices || org.devices.length === 0) {
+                alert('No gates assigned to this organization');
+                return;
+            }
+            
+            const gateSerial = prompt('Enter gate serial number to remove:\n\nCurrently assigned gates:\n' + org.devices.join(', '));
+            if (!gateSerial) return;
+            
+            if (!confirm('Remove gate ' + gateSerial + ' from organization ' + org.name + '?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/organizations/remove-gate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ organizationId: orgId, gateSerial: gateSerial.trim() })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    alert('✅ Gate removed from organization');
+                    loadOrganizations();
+                } else {
+                    alert('❌ Failed: ' + (result.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+async function addMemberToOrg(orgId) {
     const org = currentOrganizations.find(o => o.id === orgId);
+    
     if (!org) {
         alert('Organization not found');
         return;
     }
     
-    let details = `Organization: ${org.name}\n\n`;
-    details += `Gates (${(org.devices || []).length}):\n`;
-    if (org.devices && org.devices.length > 0) {
-        details += org.devices.join('\n');
+    // Set modal data
+    document.getElementById('addMemberOrgId').value = orgId;
+    document.getElementById('addMemberOrgName').textContent = `Add member to: ${org.name}`;
+    
+    // Configure role options based on org type
+    const roleSelect = document.getElementById('addMemberRole');
+    const superadminOption = roleSelect.querySelector('option[value="superadmin"]');
+    
+    if (org.id === 'platform_org') {
+        superadminOption.style.display = 'block';
     } else {
-        details += '(No gates assigned)';
-    }
-    details += '\n\nMembers (' + Object.keys(org.members || {}).length + '):\n';
-    for (const [email, member] of Object.entries(org.members || {})) {
-        details += `• ${member.name} (${email}) - ${member.role}\n`;
+        superadminOption.style.display = 'none';
+        if (roleSelect.value === 'superadmin') {
+            roleSelect.value = '';
+        }
     }
     
-    alert(details);
+    // Load available dashboard users (excluding current members)
+    try {
+        const response = await fetch('/api/dashboard-users');
+        const allUsers = await response.json();
+        
+        if (allUsers.error) {
+            alert('Error loading dashboard users: ' + allUsers.error);
+            return;
+        }
+        
+// Filter out users who are already members
+const currentMembers = Object.keys(org.members || {});
+
+// For non-platform orgs, also filter out superadmins (they have global access anyway)
+const availableUsers = allUsers.filter(user => {
+    // Skip if already a member
+    if (currentMembers.includes(user.email)) {
+        return false;
+    }
+    
+    // For non-platform orgs, skip superadmins (they already have access via global role)
+    if (org.id !== 'platform_org' && user.organizationRole === 'superadmin') {
+        return false;
+    }
+    
+    return true;
+});
+        
+        // Populate dropdown
+        const select = document.getElementById('addMemberUserSelect');
+        select.innerHTML = '<option value="">-- Select a user --</option>';
+        
+        if (availableUsers.length === 0) {
+            select.innerHTML = '<option value="">No available users (all are already members)</option>';
+            select.disabled = true;
+        } else {
+            select.disabled = false;
+            availableUsers.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.email;
+                option.textContent = `${user.name} (${user.email}) - ${user.organizationRole}`;
+                option.dataset.name = user.name;
+                option.dataset.phone = user.phone;
+                option.dataset.role = user.organizationRole;
+                select.appendChild(option);
+            });
+        }
+        
+        // Reset form
+        document.getElementById('addMemberForm').reset();
+        document.getElementById('selectedUserInfo').style.display = 'none';
+        
+        // Show modal
+        document.getElementById('addMemberModal').style.display = 'block';
+        
+    } catch (error) {
+        alert('Error loading users: ' + error.message);
+    }
 }
 
-async function addMemberToOrg(orgId) {
-    document.getElementById('addMemberModal').style.display = 'block';
-    document.getElementById('addMemberOrgId').value = orgId;
+function loadSelectedUserData() {
+    const select = document.getElementById('addMemberUserSelect');
+    const selectedOption = select.options[select.selectedIndex];
     
-    const org = currentOrganizations.find(o => o.id === orgId);
-    if (org) {
-        document.getElementById('addMemberOrgName').textContent = `Add Member to: ${org.name}`;
+    if (!selectedOption || !selectedOption.value) {
+        document.getElementById('selectedUserInfo').style.display = 'none';
+        return;
     }
+    
+    // Show user info
+    document.getElementById('selectedUserEmail').textContent = selectedOption.value;
+    document.getElementById('selectedUserName').textContent = selectedOption.dataset.name || '-';
+    document.getElementById('selectedUserPhone').textContent = selectedOption.dataset.phone || '-';
+    document.getElementById('selectedUserDashboardRole').textContent = selectedOption.dataset.role || '-';
+    document.getElementById('selectedUserInfo').style.display = 'block';
 }
 
 function closeAddMemberModal() {
@@ -1331,58 +1784,95 @@ async function submitAddMember(event) {
     event.preventDefault();
     
     const orgId = document.getElementById('addMemberOrgId').value;
-    const userEmail = document.getElementById('addMemberEmail').value.trim();
+    const select = document.getElementById('addMemberUserSelect');
+    const selectedOption = select.options[select.selectedIndex];
     const role = document.getElementById('addMemberRole').value;
     
-    if (!userEmail) {
-        alert('Please enter a user email');
+    if (!selectedOption || !selectedOption.value) {
+        alert('Please select a user');
         return;
     }
     
+    const userEmail = selectedOption.value;
+    const userName = selectedOption.dataset.name;
+    const userPhone = selectedOption.dataset.phone;
+    
     try {
-        const response = await fetch(`/dashboard/organizations/${orgId}/add-member`, {
+        const response = await fetch('/api/organizations/add-member', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userEmail, role })
+            body: JSON.stringify({
+                organizationId: orgId,
+                userEmail: userEmail,
+                userName: userName,
+                userPhone: userPhone,
+                role: role
+            })
         });
         
-        const data = await response.json();
+        const result = await response.json();
         
-        if (data.success) {
+        if (result.success) {
             alert('✅ Member added successfully!');
             closeAddMemberModal();
             loadOrganizations();
         } else {
-            alert('❌ Error: ' + (data.error || 'Failed to add member'));
+            alert('❌ Failed: ' + (result.error || 'Unknown error'));
         }
     } catch (error) {
-        console.error('Error adding member:', error);
         alert('❌ Error: ' + error.message);
     }
 }
+        
+// ==================== ADD THESE THREE FUNCTIONS ====================
 
 function removeMemberFromOrg(orgId) {
     const org = currentOrganizations.find(o => o.id === orgId);
-    if (!org || !org.members || Object.keys(org.members).length === 0) {
-        alert('No members to remove from this organization');
+    
+    if (!org) {
+        alert('Organization not found');
         return;
     }
     
-    document.getElementById('removeMemberModal').style.display = 'block';
-    document.getElementById('removeMemberOrgName').textContent = `Remove Member from: ${org.name}`;
+    const members = Object.keys(org.members || {});
     
-    const membersList = document.getElementById('removeMemberList');
-    membersList.innerHTML = Object.entries(org.members).map(([email, member]) => `
-        <div style="padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center;">
-            <div>
-                <strong>${member.name}</strong><br>
-                <span style="color: #666;">${email} - ${member.role}</span>
+    if (members.length === 0) {
+        alert('No members in this organization');
+        return;
+    }
+    
+    // Set modal data
+    document.getElementById('removeMemberOrgName').textContent = `Remove member from: ${org.name}`;
+    
+    // Get current user email from page
+    const currentUserEmail = '{{userEmail}}';
+    
+    // Populate member list
+    const memberListHtml = members.map(email => {
+        const member = org.members[email];
+        const isCurrentUser = email === currentUserEmail;
+        
+        return `
+            <div style="background: #f8f9fa; padding: 15px; margin-bottom: 10px; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>${member.name || 'Unknown'}</strong><br>
+                    <small style="color: #666;">${email}</small><br>
+                    <span class="role-badge role-${member.role || 'user'}">${member.role || 'user'}</span>
+                </div>
+                <button class="org-btn org-btn-danger" 
+                        ${isCurrentUser ? 'disabled' : ''}
+                        onclick="confirmRemoveMember('${orgId}', '${email}', '${(member.name || 'Unknown').replace(/'/g, "\\'")}')"
+                        style="${isCurrentUser ? 'opacity: 0.5; cursor: not-allowed;' : ''}">
+                    ${isCurrentUser ? '❌ You' : '🗑️ Remove'}
+                </button>
             </div>
-            <button onclick="confirmRemoveMember('${orgId}', '${email}', '${member.name}')" class="btn btn-danger btn-sm">
-                Remove
-            </button>
-        </div>
-    `).join('');
+        `;
+    }).join('');
+    
+    document.getElementById('removeMemberList').innerHTML = memberListHtml;
+    
+    // Show modal
+    document.getElementById('removeMemberModal').style.display = 'block';
 }
 
 function closeRemoveMemberModal() {
@@ -1390,71 +1880,76 @@ function closeRemoveMemberModal() {
 }
 
 async function confirmRemoveMember(orgId, userEmail, userName) {
-    if (!confirm(`Are you sure you want to remove ${userName} from this organization?`)) {
+    const org = currentOrganizations.find(o => o.id === orgId);
+    const member = org.members[userEmail];
+    
+    if (!confirm(`Remove member?\n\nName: ${userName}\nEmail: ${userEmail}\nRole: ${member.role || 'user'}\n\n⚠️ This action cannot be undone!`)) {
         return;
     }
     
     try {
-        const response = await fetch(`/dashboard/organizations/${orgId}/remove-member`, {
+        const response = await fetch('/api/organizations/remove-member', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userEmail })
+            body: JSON.stringify({
+                organizationId: orgId,
+                userEmail: userEmail
+            })
         });
         
-        const data = await response.json();
+        const result = await response.json();
         
-        if (data.success) {
+        if (result.success) {
             alert('✅ Member removed successfully!');
             closeRemoveMemberModal();
             loadOrganizations();
         } else {
-            alert('❌ Error: ' + (data.error || 'Failed to remove member'));
+            alert('❌ Failed: ' + (result.error || 'Unknown error'));
         }
     } catch (error) {
-        console.error('Error removing member:', error);
         alert('❌ Error: ' + error.message);
     }
-}
-
-// ============================================================================
-// PAGE INITIALIZATION
-// ============================================================================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Initializing dashboard...');
-    
-    // Initialize RBAC UI
-    initializeRoleBasedUI();
-    
-    // Load data from server
-    try {
-        devices = JSON.parse('{{devicesData}}');
-        registeredUsers = JSON.parse('{{registeredUsersData}}');
-        isSuperAdmin = {{isSuperAdmin}};
+}      
         
-        console.log("✅ Dashboard loaded - Devices:", devices.length, "Users:", registeredUsers.length);
-        console.log("✅ User role:", currentUserRole, "| SuperAdmin:", isSuperAdmin);
+        function viewOrgDetails(orgId) {
+            const org = currentOrganizations.find(o => o.id === orgId);
+            if (org) {
+                let details = 'Organization Details:\n\n';
+                details += 'Name: ' + org.name + '\n';
+                details += 'Type: ' + org.type + '\n';
+                details += 'ID: ' + org.id + '\n';
+                details += 'Created: ' + new Date(org.createdAt).toLocaleString() + '\n';
+                details += 'Created By: ' + org.createdBy + '\n';
+                details += '\nGates (' + (org.devices ? org.devices.length : 0) + '):\n';
+                if (org.devices && org.devices.length > 0) {
+                    details += org.devices.join('\n');
+                } else {
+                    details += '(No gates assigned)';
+                }
+                details += '\n\nMembers (' + Object.keys(org.members || {}).length + '):\n';
+                for (const [email, member] of Object.entries(org.members || {})) {
+                    details += '• ' + member.name + ' (' + email + ') - ' + member.role + '\n';
+                }
+                alert(details);
+            }
+        }
         
-        // Render devices
-        renderDevices();
-        console.log("✅ Dashboard initialization complete");
-    } catch (error) {
-        console.error("❌ Error loading dashboard data:", error);
-        alert("Error loading dashboard: " + error.message);
-    }
-});
-
-// ============================================================================
-// MODAL CLOSE HANDLERS
-// ============================================================================
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM loaded, rendering devices...");
+            renderDevices();
+        });
+        
+// Close modal when clicking outside
 window.onclick = function(event) {
-    const settingsModal = document.getElementById('settingsModal');
-    if (event.target === settingsModal) {
-        closeModal();
-    }
-    
     const orgModal = document.getElementById('organizationsModal');
     if (event.target === orgModal) {
         closeOrganizationsModal();
+    }
+    
+    const settingsModal = document.getElementById('settingsModal');
+    if (event.target === settingsModal) {
+        closeModal();
     }
     
     const addMemberModal = document.getElementById('addMemberModal');
@@ -1467,9 +1962,8 @@ window.onclick = function(event) {
         closeRemoveMemberModal();
     }
 };
-</script>
-    
-
+        
+    </script>
 <script src="/public/common.js"></script>
 <!-- Remove Member Modal -->
 <div id="removeMemberModal" class="modal" style="display: none;">
