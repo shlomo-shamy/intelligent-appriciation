@@ -1595,19 +1595,22 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.m
 // Protected dashboard - require auth (UPDATED with organization context)
 if (req.url === '/dashboard') {
   requireAuth((session) => {
-    // Get user's organizations and role
-    const userOrgs = getUserOrganizations(session.email);
-    const userRole = getUserHighestRole(session.email);
-    const isSuperAdmin = (userRole === 'superadmin');
+    const userRole = session.organizationRole || 'user';
     
-    // Get gates based on role
-    const userGates = getUserGates(session.email, userRole);
+    // Check page access
+    if (!canAccessPage(userRole, 'dashboard')) {
+      res.writeHead(403);
+      res.end('Access denied - Insufficient permissions');
+      return;
+    }
     
-    // Filter connected devices to only show user's gates
+    // Get user's accessible devices
+    const accessibleDevices = getUserAccessibleDevices(session.email, userRole);
     const userDevices = Array.from(connectedDevices.entries())
-      .filter(([deviceId]) => userGates.includes(deviceId));
+      .filter(([deviceId]) => accessibleDevices.includes(deviceId));
     
-    // Get user's primary organization (first one or platform)
+    // Get user's organizations
+    const userOrgs = getUserOrganizations(session.email);
     const primaryOrg = userOrgs.length > 0 ? userOrgs[0] : null;
     
     const dashboardData = {
@@ -1615,8 +1618,12 @@ if (req.url === '/dashboard') {
       userEmail: session.email,
       userPhone: session.phone,
       userLevel: session.userLevel,
-      userRole: userRole,
-      isSuperAdmin: isSuperAdmin ? 'true' : 'false',
+      userRole: userRole,  // Pass organizationRole to frontend
+      isSuperAdmin: userRole === 'superadmin' ? 'true' : 'false',
+      canAccessDevices: canAccessPage(userRole, 'devices') ? 'true' : 'false',
+      canAccessSystem: canAccessPage(userRole, 'system') ? 'true' : 'false',
+      canAccessManufacturing: canAccessPage(userRole, 'manufacturing') ? 'true' : 'false',
+      canOperateGates: canPerformAction(userRole, 'operate_gates') ? 'true' : 'false',
       organizationName: primaryOrg ? primaryOrg.name : 'No Organization',
       organizationId: primaryOrg ? primaryOrg.id : null,
       organizationsData: JSON.stringify(userOrgs),
@@ -1625,24 +1632,11 @@ if (req.url === '/dashboard') {
       deviceCount: userDevices.length,
       totalDeviceCount: connectedDevices.size,
       activeSessionsCount: activeSessions.size,
-      firebase: firebaseInitialized ? 'Connected' : 'Not Connected',
-      devicesData: JSON.stringify(userDevices),
-      registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
-      showActivationPanel: session.userLevel >= 2 ? 'block' : 'none',
-      showSuperAdminFeatures: isSuperAdmin ? 'block' : 'none'
+      firebase: firebaseInitialized ? 'Connected' : 'Local Mode'
     };
-
-    console.log("Dashboard access:", {
-      user: session.email,
-      role: userRole,
-      isSuperAdmin: isSuperAdmin,
-      gatesVisible: userDevices.length,
-      totalGates: connectedDevices.size
-    });
     
-    const dashboardHtml = renderTemplate('dashboard', dashboardData);
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(dashboardHtml);
+    res.end(renderTemplate('dashboard', dashboardData));
   });
   return;
 }
