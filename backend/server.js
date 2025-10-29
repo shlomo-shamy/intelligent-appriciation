@@ -2017,22 +2017,65 @@ if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
 }  
 
   // Devices page
-  if (req.url === '/devices') {
-    requireAuth((session) => {
-      const devicesData = {
-        userName: session.name,
-        userEmail: session.email,
-        devicesData: JSON.stringify(Array.from(connectedDevices.entries())),
-        registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
-        showActivationPanel: session.userLevel >= 2 ? 'block' : 'none'
-      };
-      
-      const devicesHtml = renderTemplate('devices', devicesData);
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(devicesHtml);
-    });
-    return;
-  }
+// Devices page (PROTECTED - Manager+ only)
+if (req.url === '/devices') {
+  requireAuth((session) => {
+    const userRole = session.organizationRole || 'user';
+    
+    // Check page access - Manager+ only
+    if (!canAccessPage(userRole, 'devices')) {
+      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Access Denied</title>
+          <style>
+            body { font-family: Arial; text-align: center; padding: 50px; background: #f5f5f5; }
+            .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
+            h1 { color: #dc3545; }
+            .role { color: #667eea; font-weight: bold; }
+            .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; }
+            .btn:hover { background: #5568d3; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>🚫 Access Denied</h1>
+            <p>You need <strong>Manager</strong> role or higher to access the Devices page.</p>
+            <p>Your current role: <span class="role">${userRole}</span></p>
+            <a href="/dashboard" class="btn">Return to Home</a>
+          </div>
+        </body>
+        </html>
+      `);
+      return;
+    }
+    
+    // Get user's accessible devices
+    const accessibleDevices = getUserAccessibleDevices(session.email, userRole);
+    const userOrgs = getUserOrganizations(session.email);
+    
+    const devicesData = {
+      userName: session.name,
+      userEmail: session.email,
+      userRole: userRole,
+      isSuperAdmin: userRole === 'superadmin' ? 'true' : 'false',
+      canAccessSystem: canAccessPage(userRole, 'system') ? 'true' : 'false',
+      canAccessManufacturing: canAccessPage(userRole, 'manufacturing') ? 'true' : 'false',
+      canAccessUsersTab: canAccessTab(userRole, 'users') ? 'true' : 'false',
+      canAccessStatusTab: canAccessTab(userRole, 'status') ? 'true' : 'false',
+      canAccessSettingsTab: canAccessTab(userRole, 'settings') ? 'true' : 'false',
+      canAccessLogsTab: canAccessTab(userRole, 'logs') ? 'true' : 'false',
+      canAccessSchedulesTab: canAccessTab(userRole, 'schedules') ? 'true' : 'false',
+      organizationsData: JSON.stringify(userOrgs)
+    };
+    
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(renderTemplate('devices', devicesData));
+  });
+  return;
+}
 
   // Manufacturing page
   if (req.url === '/manufacturing') {
@@ -2057,23 +2100,55 @@ if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
   }
 
   // System page
+// System page (PROTECTED - SuperAdmin only)
 if (req.url === '/system') {
   requireAuth((session) => {
+    const userRole = session.organizationRole || 'user';
+    
+    // Check page access - SuperAdmin only
+    if (!canAccessPage(userRole, 'system')) {
+      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>Access Denied</title>
+          <style>
+            body { font-family: Arial; text-align: center; padding: 50px; background: #f5f5f5; }
+            .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
+            h1 { color: #dc3545; }
+            .role { color: #667eea; font-weight: bold; }
+            .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; }
+            .btn:hover { background: #5568d3; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>🚫 Access Denied</h1>
+            <p>You need <strong>SuperAdmin</strong> role to access the System page.</p>
+            <p>Your current role: <span class="role">${userRole}</span></p>
+            <a href="/dashboard" class="btn">Return to Home</a>
+          </div>
+        </body>
+        </html>
+      `);
+      return;
+    }
+    
     const systemData = {
       userName: session.name,
       userEmail: session.email,
-      nodeEnv: process.env.NODE_ENV || 'development',
-      railwayEnv: process.env.RAILWAY_ENVIRONMENT || 'local',
-      memoryUsage: process.memoryUsage(),
-      uptime: process.uptime(),
-      connectedDevices: connectedDevices.size,
-      activeSessions: activeSessions.size,
-      firebaseStatus: firebaseInitialized ? 'Connected' : 'Not Connected'
+      userRole: userRole,
+      isSuperAdmin: 'true',
+      serverPort: PORT,
+      currentTime: new Date().toISOString(),
+      deviceCount: connectedDevices.size,
+      activeSessionsCount: activeSessions.size,
+      firebase: firebaseInitialized ? 'Connected' : 'Local Mode'
     };
     
-    const systemHtml = renderTemplate('system', systemData);
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(systemHtml);
+    res.end(renderTemplate('system', systemData));
   });
   return;
 }
