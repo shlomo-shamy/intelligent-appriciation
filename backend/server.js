@@ -1668,7 +1668,7 @@ if (req.url === '/dashboard') {
       userEmail: session.email,
       userPhone: session.phone,
       userLevel: session.userLevel,
-      userRole: userRole,  // Pass organizationRole to frontend
+      userRole: userRole,
       isSuperAdmin: userRole === 'superadmin' ? 'true' : 'false',
       canAccessDevices: canAccessPage(userRole, 'devices') ? 'true' : 'false',
       canAccessSystem: canAccessPage(userRole, 'system') ? 'true' : 'false',
@@ -1682,7 +1682,14 @@ if (req.url === '/dashboard') {
       deviceCount: userDevices.length,
       totalDeviceCount: connectedDevices.size,
       activeSessionsCount: activeSessions.size,
-      firebase: firebaseInitialized ? 'Connected' : 'Local Mode'
+      firebase: firebaseInitialized ? 'Connected' : 'Local Mode',
+      devicesData: JSON.stringify(userDevices.map(([id, device]) => ({
+        deviceId: id,
+        name: device.name || id,
+        location: device.location || 'Unknown',
+        status: device.status || 'online'
+      }))),
+      registeredUsersData: '[]'  // Fixed: provide empty array
     };
     
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
