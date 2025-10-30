@@ -1333,6 +1333,51 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'DELETE'
   });
   return;
 }
+
+// API: Get connected devices list (requires auth)
+if (req.url === '/api/connected-devices' && req.method === 'GET') {
+  requireAuth((session) => {
+    const userRole = session.organizationRole || 'user';
+    
+    console.log('\n=== GET CONNECTED DEVICES DEBUG ===');
+    console.log('User:', session.email);
+    console.log('Role:', userRole);
+    console.log('Total devices in map:', connectedDevices.size);
+    console.log('Device IDs:', Array.from(connectedDevices.keys()));
+    
+    // Get accessible devices
+    const accessibleDeviceIds = getUserAccessibleDevices(session.email, userRole);
+    console.log('Accessible device IDs:', accessibleDeviceIds);
+    
+    // Map to device details
+    const devicesList = accessibleDeviceIds
+      .map(deviceId => {
+        const device = connectedDevices.get(deviceId);
+        if (!device) {
+          console.log(`⚠️ Device ${deviceId} not found in connectedDevices`);
+          return null;
+        }
+        
+        return {
+          deviceId: deviceId,
+          name: device.name || deviceId,
+          location: device.location || 'Unknown',
+          status: device.status || 'online',
+          lastHeartbeat: device.lastHeartbeat,
+          signalStrength: device.signalStrength,
+          gateState: device.gateState || 'UNKNOWN'
+        };
+      })
+      .filter(d => d !== null);
+    
+    console.log(`✅ Returning ${devicesList.length} devices`);
+    console.log('===================================\n');
+    
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(devicesList));
+  });
+  return;
+}
   
 // ESP32 Heartbeat endpoint (no auth required for device communication)
 if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
