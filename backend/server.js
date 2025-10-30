@@ -186,68 +186,6 @@ async function deleteDashboardUserFromFirebase(email) {
 
 console.log('🚀 Starting Railway server with ESP32 support, User Management, and Dashboard Login...');
 
-// ==================== DASHBOARD RBAC HELPERS ====================
-
-// Check if organizationRole can access a specific page
-function canAccessPage(organizationRole, pageName) {
-  const permissions = {
-    'dashboard': ['user', 'manager', 'admin', 'superadmin'],
-    'devices': ['manager', 'admin', 'superadmin'],      // User CANNOT access
-    'system': ['superadmin'],
-    'manufacturing': ['superadmin'],
-    'organizations': ['manager', 'admin', 'superadmin']
-  };
-  return permissions[pageName]?.includes(organizationRole) || false;
-}
-
-// Check if organizationRole can access a modal tab
-function canAccessTab(organizationRole, tabName) {
-  const permissions = {
-    'users': ['manager', 'admin', 'superadmin'],
-    'status': ['manager', 'admin', 'superadmin'],
-    'settings': ['admin', 'superadmin'],
-    'logs': ['manager', 'admin', 'superadmin'],
-    'schedules': ['manager', 'admin', 'superadmin']
-  };
-  return permissions[tabName]?.includes(organizationRole) || false;
-}
-
-// Check if organizationRole can perform an action
-function canPerformAction(organizationRole, actionName) {
-  const permissions = {
-    'operate_gates': ['user', 'manager', 'admin', 'superadmin'],
-    'user_crud': ['manager', 'admin', 'superadmin'],
-    'edit_settings': ['admin', 'superadmin'],
-    'manage_schedules': ['manager', 'admin', 'superadmin']
-  };
-  return permissions[actionName]?.includes(organizationRole) || false;
-}
-
-// Get user's accessible devices based on role and organization
-// Get user's accessible devices based on role and organization
-function getUserAccessibleDevices(userEmail, organizationRole) {
-  // SuperAdmin sees ALL devices (no filtering)
-  if (organizationRole === 'superadmin') {
-    return Array.from(connectedDevices.keys());
-  }
-  
-  // For non-superadmin: get devices from their organizations
-  const userOrgs = getUserOrganizations(userEmail);
-  const accessibleDevices = new Set();
-  
-  // Collect all devices from all user's organizations
-  for (const org of userOrgs) {
-    const orgData = organizations.get(org.id);
-    if (orgData && orgData.devices) {
-      orgData.devices.forEach(deviceId => accessibleDevices.add(deviceId));
-    }
-  }
-  
-  // If no organizations or no devices found, return empty array
-  // This means users without organizations will see no devices (correct RBAC behavior)
-  return Array.from(accessibleDevices);
-}
-
 // Organization storage (will migrate to Firebase)
 const organizations = new Map();
 
@@ -1333,51 +1271,6 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'DELETE'
   });
   return;
 }
-
-// API: Get connected devices list (requires auth)
-if (req.url === '/api/connected-devices' && req.method === 'GET') {
-  requireAuth((session) => {
-    const userRole = session.organizationRole || 'user';
-    
-    console.log('\n=== GET CONNECTED DEVICES DEBUG ===');
-    console.log('User:', session.email);
-    console.log('Role:', userRole);
-    console.log('Total devices in map:', connectedDevices.size);
-    console.log('Device IDs:', Array.from(connectedDevices.keys()));
-    
-    // Get accessible devices
-    const accessibleDeviceIds = getUserAccessibleDevices(session.email, userRole);
-    console.log('Accessible device IDs:', accessibleDeviceIds);
-    
-    // Map to device details
-    const devicesList = accessibleDeviceIds
-      .map(deviceId => {
-        const device = connectedDevices.get(deviceId);
-        if (!device) {
-          console.log(`⚠️ Device ${deviceId} not found in connectedDevices`);
-          return null;
-        }
-        
-        return {
-          deviceId: deviceId,
-          name: device.name || deviceId,
-          location: device.location || 'Unknown',
-          status: device.status || 'online',
-          lastHeartbeat: device.lastHeartbeat,
-          signalStrength: device.signalStrength,
-          gateState: device.gateState || 'UNKNOWN'
-        };
-      })
-      .filter(d => d !== null);
-    
-    console.log(`✅ Returning ${devicesList.length} devices`);
-    console.log('===================================\n');
-    
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(devicesList));
-  });
-  return;
-}
   
 // ESP32 Heartbeat endpoint (no auth required for device communication)
 if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
@@ -1645,22 +1538,19 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.m
 // Protected dashboard - require auth (UPDATED with organization context)
 if (req.url === '/dashboard') {
   requireAuth((session) => {
-    const userRole = session.organizationRole || 'user';
-    
-    // Check page access
-    if (!canAccessPage(userRole, 'dashboard')) {
-      res.writeHead(403);
-      res.end('Access denied - Insufficient permissions');
-      return;
-    }
-    
-    // Get user's accessible devices
-    const accessibleDevices = getUserAccessibleDevices(session.email, userRole);
-    const userDevices = Array.from(connectedDevices.entries())
-      .filter(([deviceId]) => accessibleDevices.includes(deviceId));
-    
-    // Get user's organizations
+    // Get user's organizations and role
     const userOrgs = getUserOrganizations(session.email);
+    const userRole = getUserHighestRole(session.email);
+    const isSuperAdmin = (userRole === 'superadmin');
+    
+    // Get gates based on role
+    const userGates = getUserGates(session.email, userRole);
+    
+    // Filter connected devices to only show user's gates
+    const userDevices = Array.from(connectedDevices.entries())
+      .filter(([deviceId]) => userGates.includes(deviceId));
+    
+    // Get user's primary organization (first one or platform)
     const primaryOrg = userOrgs.length > 0 ? userOrgs[0] : null;
     
     const dashboardData = {
@@ -1669,11 +1559,7 @@ if (req.url === '/dashboard') {
       userPhone: session.phone,
       userLevel: session.userLevel,
       userRole: userRole,
-      isSuperAdmin: userRole === 'superadmin' ? 'true' : 'false',
-      canAccessDevices: canAccessPage(userRole, 'devices') ? 'true' : 'false',
-      canAccessSystem: canAccessPage(userRole, 'system') ? 'true' : 'false',
-      canAccessManufacturing: canAccessPage(userRole, 'manufacturing') ? 'true' : 'false',
-      canOperateGates: canPerformAction(userRole, 'operate_gates') ? 'true' : 'false',
+      isSuperAdmin: isSuperAdmin ? 'true' : 'false',
       organizationName: primaryOrg ? primaryOrg.name : 'No Organization',
       organizationId: primaryOrg ? primaryOrg.id : null,
       organizationsData: JSON.stringify(userOrgs),
@@ -1682,18 +1568,24 @@ if (req.url === '/dashboard') {
       deviceCount: userDevices.length,
       totalDeviceCount: connectedDevices.size,
       activeSessionsCount: activeSessions.size,
-      firebase: firebaseInitialized ? 'Connected' : 'Local Mode',
-      devicesData: JSON.stringify(userDevices.map(([id, device]) => ({
-        deviceId: id,
-        name: device.name || id,
-        location: device.location || 'Unknown',
-        status: device.status || 'online'
-      }))),
-      registeredUsersData: '[]'  // Fixed: provide empty array
+      firebase: firebaseInitialized ? 'Connected' : 'Not Connected',
+      devicesData: JSON.stringify(userDevices),
+      registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
+      showActivationPanel: session.userLevel >= 2 ? 'block' : 'none',
+      showSuperAdminFeatures: isSuperAdmin ? 'block' : 'none'
     };
+
+    console.log("Dashboard access:", {
+      user: session.email,
+      role: userRole,
+      isSuperAdmin: isSuperAdmin,
+      gatesVisible: userDevices.length,
+      totalGates: connectedDevices.size
+    });
     
+    const dashboardHtml = renderTemplate('dashboard', dashboardData);
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(renderTemplate('dashboard', dashboardData));
+    res.end(dashboardHtml);
   });
   return;
 }
@@ -2074,165 +1966,63 @@ if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
 }  
 
   // Devices page
-// Devices page (PROTECTED - Manager+ only)
-if (req.url === '/devices') {
-  requireAuth((session) => {
-    const userRole = session.organizationRole || 'user';
-    
-    // Check page access - Manager+ only
-    if (!canAccessPage(userRole, 'devices')) {
-      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Access Denied</title>
-          <style>
-            body { font-family: Arial; text-align: center; padding: 50px; background: #f5f5f5; }
-            .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
-            h1 { color: #dc3545; }
-            .role { color: #667eea; font-weight: bold; }
-            .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; }
-            .btn:hover { background: #5568d3; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>🚫 Access Denied</h1>
-            <p>You need <strong>Manager</strong> role or higher to access the Devices page.</p>
-            <p>Your current role: <span class="role">${userRole}</span></p>
-            <a href="/dashboard" class="btn">Return to Home</a>
-          </div>
-        </body>
-        </html>
-      `);
-      return;
-    }
-    
-    // Get user's accessible devices
-    const accessibleDevices = getUserAccessibleDevices(session.email, userRole);
-    const userOrgs = getUserOrganizations(session.email);
-    
-    const devicesData = {
-      userName: session.name,
-      userEmail: session.email,
-      userRole: userRole,
-      isSuperAdmin: userRole === 'superadmin' ? 'true' : 'false',
-      canAccessSystem: canAccessPage(userRole, 'system') ? 'true' : 'false',
-      canAccessManufacturing: canAccessPage(userRole, 'manufacturing') ? 'true' : 'false',
-      canAccessUsersTab: canAccessTab(userRole, 'users') ? 'true' : 'false',
-      canAccessStatusTab: canAccessTab(userRole, 'status') ? 'true' : 'false',
-      canAccessSettingsTab: canAccessTab(userRole, 'settings') ? 'true' : 'false',
-      canAccessLogsTab: canAccessTab(userRole, 'logs') ? 'true' : 'false',
-      canAccessSchedulesTab: canAccessTab(userRole, 'schedules') ? 'true' : 'false',
-      organizationsData: JSON.stringify(userOrgs)
-    };
-    
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(renderTemplate('devices', devicesData));
-  });
-  return;
-}
+  if (req.url === '/devices') {
+    requireAuth((session) => {
+      const devicesData = {
+        userName: session.name,
+        userEmail: session.email,
+        devicesData: JSON.stringify(Array.from(connectedDevices.entries())),
+        registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
+        showActivationPanel: session.userLevel >= 2 ? 'block' : 'none'
+      };
+      
+      const devicesHtml = renderTemplate('devices', devicesData);
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(devicesHtml);
+    });
+    return;
+  }
 
   // Manufacturing page
-// Manufacturing page (PROTECTED - SuperAdmin only)
-if (req.url === '/manufacturing') {
-  requireAuth((session) => {
-    const userRole = session.organizationRole || 'user';
-    
-    // Check page access - SuperAdmin only
-    if (!canAccessPage(userRole, 'manufacturing')) {
-      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Access Denied</title>
-          <style>
-            body { font-family: Arial; text-align: center; padding: 50px; background: #f5f5f5; }
-            .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
-            h1 { color: #dc3545; }
-            .role { color: #667eea; font-weight: bold; }
-            .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; }
-            .btn:hover { background: #5568d3; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>🚫 Access Denied</h1>
-            <p>You need <strong>SuperAdmin</strong> role to access the Manufacturing Database.</p>
-            <p>Your current role: <span class="role">${userRole}</span></p>
-            <a href="/dashboard" class="btn">Return to Home</a>
-          </div>
-        </body>
-        </html>
-      `);
-      return;
-    }
-    
-    const manufacturingData = {
-      userName: session.name,
-      userEmail: session.email,
-      userRole: userRole,
-      isSuperAdmin: 'true'
-    };
-    
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(renderTemplate('manufacturing', manufacturingData));
-  });
-  return;
-}
+  if (req.url === '/manufacturing') {
+    requireAuth((session) => {
+      if (session.userLevel < 2) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'Admin access required for Manufacturing DB' }));
+        return;
+      }
+      
+      const manufacturingData = {
+        userName: session.name,
+        userEmail: session.email,
+        manufacturingDevicesData: JSON.stringify(Array.from(manufacturingDevices.entries()))
+      };
+      
+      const manufacturingHtml = renderTemplate('manufacturing', manufacturingData);
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(manufacturingHtml);
+    });
+    return;
+  }
 
   // System page
-// System page (PROTECTED - SuperAdmin only)
 if (req.url === '/system') {
   requireAuth((session) => {
-    const userRole = session.organizationRole || 'user';
-    
-    // Check page access - SuperAdmin only
-    if (!canAccessPage(userRole, 'system')) {
-      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Access Denied</title>
-          <style>
-            body { font-family: Arial; text-align: center; padding: 50px; background: #f5f5f5; }
-            .container { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
-            h1 { color: #dc3545; }
-            .role { color: #667eea; font-weight: bold; }
-            .btn { display: inline-block; margin-top: 20px; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; }
-            .btn:hover { background: #5568d3; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <h1>🚫 Access Denied</h1>
-            <p>You need <strong>SuperAdmin</strong> role to access the System page.</p>
-            <p>Your current role: <span class="role">${userRole}</span></p>
-            <a href="/dashboard" class="btn">Return to Home</a>
-          </div>
-        </body>
-        </html>
-      `);
-      return;
-    }
-    
     const systemData = {
       userName: session.name,
       userEmail: session.email,
-      userRole: userRole,
-      isSuperAdmin: 'true',
-      serverPort: PORT,
-      currentTime: new Date().toISOString(),
-      deviceCount: connectedDevices.size,
-      activeSessionsCount: activeSessions.size,
-      firebase: firebaseInitialized ? 'Connected' : 'Local Mode'
+      nodeEnv: process.env.NODE_ENV || 'development',
+      railwayEnv: process.env.RAILWAY_ENVIRONMENT || 'local',
+      memoryUsage: process.memoryUsage(),
+      uptime: process.uptime(),
+      connectedDevices: connectedDevices.size,
+      activeSessions: activeSessions.size,
+      firebaseStatus: firebaseInitialized ? 'Connected' : 'Not Connected'
     };
     
+    const systemHtml = renderTemplate('system', systemData);
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end(renderTemplate('system', systemData));
+    res.end(systemHtml);
   });
   return;
 }
@@ -2984,153 +2774,122 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/safety-event') && r
     return;
   }
 
-// DELETE USER ENDPOINT - require auth
-if (req.url.includes('/delete-user') && req.method === 'DELETE') {
-  requireAuth((session) => {
-    const userRole = session.organizationRole || 'user';
-    
-    // Check if user can manage device users (Manager+ required)
-    if (!canPerformAction(userRole, 'user_crud')) {
-      res.writeHead(403);
-      res.end(JSON.stringify({ 
-        success: false,
-        error: 'Manager role or higher required to manage device users',
-        yourRole: userRole,
-        requiredRoles: ['manager', 'admin', 'superadmin']
-      }));
-      return;
-    }
-    
-    const urlParts = req.url.split('/');
-    const deviceId = urlParts[3];
-    
-    console.log(`🗑️ User deletion for device: ${deviceId} by ${session.email}`);
-    
-    readBody(async (data) => {
-      const { phone, email } = data;
+  // DELETE USER ENDPOINT - require auth
+  if (req.url.includes('/delete-user') && req.method === 'DELETE') {
+    requireAuth((session) => {
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
       
-      if (!phone && !email) {
-        res.writeHead(400);
-        res.end(JSON.stringify({
-          success: false,
-          error: 'Phone or email required for deletion'
-        }));
-        return;
-      }
+      console.log(`🗑️ User deletion for device: ${deviceId} by ${session.email}`);
       
-      // Find and remove user from local storage
-      const users = registeredUsers.get(deviceId) || [];
-      const userIndex = users.findIndex(u => 
-        (phone && u.phone === phone) || (email && u.email === email)
-      );
-      
-      if (userIndex === -1) {
-        res.writeHead(404);
-        res.end(JSON.stringify({
-          success: false,
-          error: 'User not found'
-        }));
-        return;
-      }
-      
-      const deletedUser = users[userIndex];
-      users.splice(userIndex, 1);
-      registeredUsers.set(deviceId, users);
-      
-      // Remove from dashboard users if exists
-      if (deletedUser.canLogin && deletedUser.email) {
-        DASHBOARD_USERS.delete(deletedUser.email);
-      }
-      
-      // Send delete command to ESP32
-      const deleteCommand = {
-        id: 'del_' + Date.now(),
-        action: 'delete_user',
-        phone: deletedUser.phone,
-        email: deletedUser.email,
-        timestamp: Date.now(),
-        deletedBy: session.email
-      };
-      
-      if (!deviceCommands.has(deviceId)) {
-        deviceCommands.set(deviceId, []);
-      }
-      deviceCommands.get(deviceId).push(deleteCommand);
-      
-      // FIREBASE: Remove user from Firebase if connected
-      if (firebaseInitialized) {
-        try {
-          // Remove user from gate document
-          await db.collection('gates').doc(deviceId).update({
-            [`users.${deletedUser.phone}`]: admin.firestore.FieldValue.delete()
-          });
-          
-          // Remove gate from user permissions or delete document if no gates left
-          const userPermRef = db.collection('userPermissions').doc(deletedUser.phone);
-          const userPermDoc = await userPermRef.get();
-          
-          if (userPermDoc.exists) {
-            const userData = userPermDoc.data();
-            if (userData.gates && Object.keys(userData.gates).length === 1 && userData.gates[deviceId]) {
-              // Delete entire document if this was the only gate
-              await userPermRef.delete();
-            } else {
-              // Remove just this gate
-              await userPermRef.update({
-                [`gates.${deviceId}`]: admin.firestore.FieldValue.delete()
-              });
-            }
-          }
-          
-          console.log(`🔥 Firebase: User ${deletedUser.phone} removed from gate ${deviceId}`);
-          
-        } catch (firebaseError) {
-          console.error('🔥 Firebase user deletion error:', firebaseError);
+      readBody(async (data) => {
+        const { phone, email } = data;
+        
+        if (!phone && !email) {
+          res.writeHead(400);
+          res.end(JSON.stringify({
+            success: false,
+            error: 'Phone or email required for deletion'
+          }));
+          return;
         }
-      }
-      
-      // Add log entry
-      addDeviceLog(deviceId, 'user_deleted', session.email, `User: ${deletedUser.name} (${deletedUser.email}/${deletedUser.phone})`);
-      
-      console.log(`🗑️ User deleted from device ${deviceId}:`, deletedUser);
-      
-      res.writeHead(200);
-      res.end(JSON.stringify({
-        success: true,
-        message: "User deleted successfully",
-        deletedUser: {
-          name: deletedUser.name,
+        
+        // Find and remove user from local storage
+        const users = registeredUsers.get(deviceId) || [];
+        const userIndex = users.findIndex(u => 
+          (phone && u.phone === phone) || (email && u.email === email)
+        );
+        
+        if (userIndex === -1) {
+          res.writeHead(404);
+          res.end(JSON.stringify({
+            success: false,
+            error: 'User not found'
+          }));
+          return;
+        }
+        
+        const deletedUser = users[userIndex];
+        users.splice(userIndex, 1);
+        registeredUsers.set(deviceId, users);
+        
+        // Remove from dashboard users if exists
+        if (deletedUser.canLogin && deletedUser.email) {
+          DASHBOARD_USERS.delete(deletedUser.email);
+        }
+        
+        // Send delete command to ESP32
+        const deleteCommand = {
+          id: 'del_' + Date.now(),
+          action: 'delete_user',
+          phone: deletedUser.phone,
           email: deletedUser.email,
-          phone: deletedUser.phone
-        },
-        deviceId: deviceId,
-        firebase_status: firebaseInitialized ? 'removed' : 'local_only'
-      }));
+          timestamp: Date.now(),
+          deletedBy: session.email
+        };
+        
+        if (!deviceCommands.has(deviceId)) {
+          deviceCommands.set(deviceId, []);
+        }
+        deviceCommands.get(deviceId).push(deleteCommand);
+        
+        // FIREBASE: Remove user from Firebase if connected
+        if (firebaseInitialized) {
+          try {
+            // Remove user from gate document
+            await db.collection('gates').doc(deviceId).update({
+              [`users.${deletedUser.phone}`]: admin.firestore.FieldValue.delete()
+            });
+            
+            // Remove gate from user permissions or delete document if no gates left
+            const userPermRef = db.collection('userPermissions').doc(deletedUser.phone);
+            const userPermDoc = await userPermRef.get();
+            
+            if (userPermDoc.exists) {
+              const userData = userPermDoc.data();
+              if (userData.gates && Object.keys(userData.gates).length === 1 && userData.gates[deviceId]) {
+                // Delete entire document if this was the only gate
+                await userPermRef.delete();
+              } else {
+                // Remove just this gate
+                await userPermRef.update({
+                  [`gates.${deviceId}`]: admin.firestore.FieldValue.delete()
+                });
+              }
+            }
+            
+            console.log(`🔥 Firebase: User ${deletedUser.phone} removed from gate ${deviceId}`);
+            
+          } catch (firebaseError) {
+            console.error('🔥 Firebase user deletion error:', firebaseError);
+          }
+        }
+        
+        // Add log entry
+        addDeviceLog(deviceId, 'user_deleted', session.email, `User: ${deletedUser.name} (${deletedUser.email}/${deletedUser.phone})`);
+        
+        console.log(`🗑️ User deleted from device ${deviceId}:`, deletedUser);
+        
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: "User deleted successfully",
+          deletedUser: {
+            name: deletedUser.name,
+            email: deletedUser.email,
+            phone: deletedUser.phone
+          },
+          deviceId: deviceId,
+          firebase_status: firebaseInitialized ? 'removed' : 'local_only'
+        }));
+      });
     });
-  });
-  return;
-}
+    return;
+  }
 
-
-// UPDATED USER REGISTRATION ENDPOINT - add phone validation
-if (req.url.includes('/register-user') && req.method === 'POST') {
-  requireAuth((session) => {
-    const userRole = session.organizationRole || 'user';
-    
-    // Check if user can manage device users (Manager+ required)
-    if (!canPerformAction(userRole, 'user_crud')) {
-      res.writeHead(403);
-      res.end(JSON.stringify({ 
-        success: false,
-        error: 'Manager role or higher required to manage device users',
-        yourRole: userRole,
-        requiredRoles: ['manager', 'admin', 'superadmin']
-      }));
-      return;
-    }
-    
-    // Continue with existing code below...
-      
+  // UPDATED USER REGISTRATION ENDPOINT - add phone validation
+  if (req.url.includes('/register-user') && req.method === 'POST') {
+    requireAuth((session) => {
       const urlParts = req.url.split('/');
       const deviceId = urlParts[3];
       
