@@ -399,6 +399,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btn.dataset.page === currentPage) {
             btn.classList.add('active');
         }
+            // Check if Organizations should auto-open
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('openOrganizations') === 'true') {
+        showOrganizationsModal();
+        // Clean URL
+        window.history.replaceState({}, '', '/dashboard');
+    }
     });
 });
 </script>
