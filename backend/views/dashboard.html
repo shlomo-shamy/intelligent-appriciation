@@ -828,14 +828,21 @@ console.log('🔒 Access Control Initialized - User Role:', userRole);
 
 // 🔒 PROTECTED: openSettings function
 function openSettings(deviceId) {
-    // Block access for regular users and managers
-    if (!canAccessDeviceModal) {
-        alert('⚠️ Access Denied\n\nDevice management requires Admin or SuperAdmin access.\n\nYour current role: ' + userRole);
+    // 🔒 ROLE-BASED ACCESS CONTROL
+    const userRole = '{{userRole}}';
+    
+    // Allow: manager, admin, superadmin
+    // Block: only regular users
+    const canAccessModal = (userRole === 'manager' || userRole === 'admin' || userRole === 'superadmin');
+    
+    // Block access ONLY for regular users
+    if (!canAccessModal) {
+        alert('⚠️ Access Denied\n\nDevice management requires Manager, Admin, or SuperAdmin access.\n\nYour current role: ' + userRole);
         console.log('❌ Access denied to openSettings() for user role:', userRole);
         return;
     }
     
-    // ✅ User has permission - proceed with opening modal
+    // ✅ User has permission - proceed
     currentDeviceId = deviceId;
     document.getElementById('modalTitle').textContent = '⚙️ Settings - ' + deviceId;
     document.getElementById('settingsModal').style.display = 'block';
@@ -847,35 +854,39 @@ function openSettings(deviceId) {
     console.log('✅ Settings modal opened for device:', deviceId, 'by user role:', userRole);
 }
 
-// 🔒 PROTECTED: switchTab function
 const originalSwitchTab = typeof switchTab !== 'undefined' ? switchTab : null;
+// 🔒 PROTECTED: switchTab function
 function switchTab(tabName, element) {
-    // Block Settings tab for non-admin users
+    const userRole = '{{userRole}}';
+    
+    // Settings tab requires Admin or SuperAdmin
+    const canAccessSettings = (userRole === 'admin' || userRole === 'superadmin');
+    
+    // Block Settings tab for managers and regular users
     if (tabName === 'settings' && !canAccessSettings) {
         alert('⚠️ Access Denied: Device Settings require Admin or SuperAdmin access');
         console.log('❌ Access denied to settings tab for user role:', userRole);
         return;
     }
     
-    // Call original function if it exists
-    if (originalSwitchTab) {
-        originalSwitchTab(tabName, element);
-    } else {
-        // Fallback implementation
-        const tabs = document.querySelectorAll('.tab-content');
-        tabs.forEach(tab => tab.classList.remove('active'));
-        
-        const buttons = document.querySelectorAll('.tab-btn');
-        buttons.forEach(btn => btn.classList.remove('active'));
-        
-        const selectedTab = document.getElementById(tabName + '-tab');
-        if (selectedTab) {
-            selectedTab.classList.add('active');
-        }
-        
-        if (element) {
-            element.classList.add('active');
-        }
+    // Proceed with tab switching
+    // Hide all tabs
+    const tabs = document.querySelectorAll('.tab-content');
+    tabs.forEach(tab => tab.classList.remove('active'));
+    
+    // Remove active class from all buttons
+    const buttons = document.querySelectorAll('.tab-btn');
+    buttons.forEach(btn => btn.classList.remove('active'));
+    
+    // Show selected tab
+    const selectedTab = document.getElementById(tabName + '-tab');
+    if (selectedTab) {
+        selectedTab.classList.add('active');
+    }
+    
+    // Activate button
+    if (element) {
+        element.classList.add('active');
     }
 }
 
