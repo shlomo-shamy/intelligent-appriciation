@@ -242,10 +242,11 @@
             ⚙️ System
         </button>
         
-        <!-- Devices - Available to ALL users -->
-        <button class="nav-btn" onclick="navigateTo('/devices')" data-page="devices">
-            📱 Devices
-        </button>
+<!-- NEW VERSION - Admin+ only -->
+<button class="nav-btn" onclick="navigateTo('/devices')" data-page="devices"
+        style="display: {{showAdminFeatures}}">
+    📱 Devices
+</button>
         
         <!-- Manufacturing DB - SuperAdmin ONLY -->
         <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing" 
