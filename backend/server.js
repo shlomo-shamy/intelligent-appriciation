@@ -2008,6 +2008,18 @@ if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
   // System page
 if (req.url === '/system') {
   requireAuth((session) => {
+    const userRole = getUserHighestRole(session.email);
+    
+    if (userRole !== 'superadmin') {
+      res.writeHead(403);
+      res.end(renderTemplate('access-denied', {
+        userName: session.name,
+        message: 'System page requires SuperAdmin access'
+      }));
+      return;
+    }  
+if (req.url === '/system') {
+  requireAuth((session) => {
     const systemData = {
       userName: session.name,
       userEmail: session.email,
