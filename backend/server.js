@@ -1546,6 +1546,7 @@ if (req.url === '/dashboard') {
     const userOrgs = getUserOrganizations(session.email);
     const userRole = getUserHighestRole(session.email);
     const isSuperAdmin = (userRole === 'superadmin');
+    const isAdminPlus = isAdminOrHigher(userRole);  // ✅ ADD THIS LINE
     
     // Get gates based on role
     const userGates = getUserGates(session.email, userRole);
@@ -1576,13 +1577,15 @@ if (req.url === '/dashboard') {
       devicesData: JSON.stringify(userDevices),
       registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
       showActivationPanel: session.userLevel >= 2 ? 'block' : 'none',
-      showSuperAdminFeatures: isSuperAdmin ? 'block' : 'none'
+      showSuperAdminFeatures: isSuperAdmin ? 'block' : 'none',
+      showAdminFeatures: isAdminPlus ? 'block' : 'none'  // ✅ ADD THIS LINE
     };
-
+    
     console.log("Dashboard access:", {
       user: session.email,
       role: userRole,
       isSuperAdmin: isSuperAdmin,
+      isAdminPlus: isAdminPlus,  // ✅ ADD THIS LINE
       gatesVisible: userDevices.length,
       totalGates: connectedDevices.size
     });
