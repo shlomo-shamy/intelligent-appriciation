@@ -817,15 +817,85 @@ label:has(input[type="checkbox"]:checked) {
             .catch(e => alert('❌ Error: ' + e.message));
         }
         
-        function openSettings(deviceId) {
-            currentDeviceId = deviceId;
-            document.getElementById('modalTitle').textContent = '⚙️ Settings - ' + deviceId;
-            document.getElementById('settingsModal').style.display = 'block';
-            
-            // Switch to users tab and load data
-            switchTab('users');
-            loadUsers();
+// ==================== ROLE-BASED ACCESS CONTROL ====================
+
+// Get user role from server template
+const userRole = '{{userRole}}';
+const canAccessDeviceModal = (userRole === 'admin' || userRole === 'superadmin');
+const canAccessSettings = (userRole === 'admin' || userRole === 'superadmin');
+
+console.log('🔒 Access Control Initialized - User Role:', userRole);
+
+// 🔒 PROTECTED: openSettings function
+function openSettings(deviceId) {
+    // Block access for regular users and managers
+    if (!canAccessDeviceModal) {
+        alert('⚠️ Access Denied\n\nDevice management requires Admin or SuperAdmin access.\n\nYour current role: ' + userRole);
+        console.log('❌ Access denied to openSettings() for user role:', userRole);
+        return;
+    }
+    
+    // ✅ User has permission - proceed with opening modal
+    currentDeviceId = deviceId;
+    document.getElementById('modalTitle').textContent = '⚙️ Settings - ' + deviceId;
+    document.getElementById('settingsModal').style.display = 'block';
+    
+    // Switch to users tab and load data
+    switchTab('users');
+    loadUsers();
+    
+    console.log('✅ Settings modal opened for device:', deviceId, 'by user role:', userRole);
+}
+
+// 🔒 PROTECTED: switchTab function
+const originalSwitchTab = typeof switchTab !== 'undefined' ? switchTab : null;
+function switchTab(tabName, element) {
+    // Block Settings tab for non-admin users
+    if (tabName === 'settings' && !canAccessSettings) {
+        alert('⚠️ Access Denied: Device Settings require Admin or SuperAdmin access');
+        console.log('❌ Access denied to settings tab for user role:', userRole);
+        return;
+    }
+    
+    // Call original function if it exists
+    if (originalSwitchTab) {
+        originalSwitchTab(tabName, element);
+    } else {
+        // Fallback implementation
+        const tabs = document.querySelectorAll('.tab-content');
+        tabs.forEach(tab => tab.classList.remove('active'));
+        
+        const buttons = document.querySelectorAll('.tab-btn');
+        buttons.forEach(btn => btn.classList.remove('active'));
+        
+        const selectedTab = document.getElementById(tabName + '-tab');
+        if (selectedTab) {
+            selectedTab.classList.add('active');
         }
+        
+        if (element) {
+            element.classList.add('active');
+        }
+    }
+}
+
+// 🔒 Additional protection on page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (!canAccessSettings) {
+        // Force hide settings tab and button
+        const settingsTab = document.getElementById('settings-tab');
+        const settingsBtn = document.querySelector('[onclick*="settings"]');
+        
+        if (settingsTab) {
+            settingsTab.style.display = 'none';
+        }
+        if (settingsBtn) {
+            settingsBtn.style.display = 'none';
+        }
+        
+        console.log('✅ Settings tab hidden for user role:', userRole);
+    }
+});
 
 async function loadSettings() {
     if (!currentDeviceId) return;
