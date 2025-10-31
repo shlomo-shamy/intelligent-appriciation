@@ -1969,12 +1969,25 @@ if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
   return;
 }  
 
-  // Devices page
 // Devices page
 if (req.url === '/devices') {
   requireAuth((session) => {
-    // 🔒 ADD RBAC VARIABLES - SAME AS DASHBOARD
+    // 🔒 ACCESS CONTROL CHECK - Admin+ only
     const userRole = getUserHighestRole(session.email);
+    const isAdminPlus = isAdminOrHigher(userRole);
+    
+    // Regular users and managers cannot access Devices page
+    if (!isAdminPlus) {
+      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(renderTemplate('access-denied', {
+        userName: session.name,
+        userRole: userRole,
+        message: 'Devices page requires Admin or SuperAdmin access'
+      }));
+      return;
+    }
+    // ✅ END OF ACCESS CONTROL CHECK
+    
     const isSuperAdmin = (userRole === 'superadmin');
     const userOrgs = getUserOrganizations(session.email);
     const primaryOrg = userOrgs.length > 0 ? userOrgs[0] : { name: 'No Organization' };
@@ -1982,12 +1995,13 @@ if (req.url === '/devices') {
     const devicesData = {
       userName: session.name,
       userEmail: session.email,
-      userPhone: session.phone,  // ✅ ADD THIS
+      userPhone: session.phone,
       userLevel: session.userLevel,
-      userRole: userRole,  // ✅ ADD THIS
-      isSuperAdmin: isSuperAdmin ? 'true' : 'false',  // ✅ ADD THIS
-      showSuperAdminFeatures: isSuperAdmin ? 'block' : 'none',  // ✅ ADD THIS
-      organizationName: primaryOrg.name,  // ✅ ADD THIS
+      userRole: userRole,
+      isSuperAdmin: isSuperAdmin ? 'true' : 'false',
+      showSuperAdminFeatures: isSuperAdmin ? 'block' : 'none',
+      showAdminFeatures: isAdminPlus ? 'block' : 'none',  // ✅ NEW
+      organizationName: primaryOrg.name,
       devicesData: JSON.stringify(Array.from(connectedDevices.entries())),
       registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
       showActivationPanel: session.userLevel >= 2 ? 'block' : 'none'
@@ -2021,6 +2035,7 @@ if (req.url === '/manufacturing') {
     const manufacturingData = {
       userName: session.name,
       userEmail: session.email,
+      showAdminFeatures: 'block',  // ✅ ADD THIS LINE
       manufacturingDevicesData: JSON.stringify(Array.from(manufacturingDevices.entries()))
     };
     
@@ -2058,6 +2073,7 @@ if (req.url === '/system') {
       uptime: process.uptime(),
       connectedDevices: connectedDevices.size,
       activeSessions: activeSessions.size,
+      showAdminFeatures: 'block',  // ✅ ADD THIS LINE
       firebaseStatus: firebaseInitialized ? 'Connected' : 'Not Connected'
     };
     
