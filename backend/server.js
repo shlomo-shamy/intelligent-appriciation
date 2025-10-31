@@ -2005,21 +2005,24 @@ if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
     return;
   }
 
-  // System page
+// System page
 if (req.url === '/system') {
   requireAuth((session) => {
+    // 🔒 ACCESS CONTROL CHECK - ADD THIS BLOCK FIRST
     const userRole = getUserHighestRole(session.email);
     
     if (userRole !== 'superadmin') {
-      res.writeHead(403);
+      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(renderTemplate('access-denied', {
         userName: session.name,
+        userRole: userRole,
         message: 'System page requires SuperAdmin access'
       }));
       return;
-    }  
-if (req.url === '/system') {
-  requireAuth((session) => {
+    }
+    // ✅ END OF ACCESS CONTROL CHECK
+    
+    // Your existing code continues below (unchanged)
     const systemData = {
       userName: session.name,
       userEmail: session.email,
