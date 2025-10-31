@@ -225,7 +225,6 @@ function getUserOrganizations(userEmail) {
 }
 
 // Helper function to get user's highest role
-// Helper function to get user's highest role
 function getUserHighestRole(userEmail) {
   // First check dashboard users for explicit organizationRole
   const dashboardUser = DASHBOARD_USERS.get(userEmail);
@@ -259,6 +258,11 @@ function getUserHighestRole(userEmail) {
   }
   
   return 'user';
+}
+
+// Helper function to check if user is Admin or higher
+function isAdminOrHigher(userRole) {
+  return userRole === 'superadmin' || userRole === 'admin';
 }
 
 // Helper function to get gates for user's organizations
