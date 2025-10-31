@@ -231,30 +231,80 @@
 </head>
 <body>
     <div class="container">
-        <!-- Navigation Header -->
-        <div class="nav-header">
-            <div class="nav-brand">
-                <h1>📱 Device Management</h1>
-                <div class="user-info">{{userName}} ({{userEmail}})</div>
-            </div>
-            
-            <nav class="nav-buttons">
-                <button class="nav-btn" onclick="navigateTo('/dashboard')">
-                    🏠 Home
-                </button>
-                <button class="nav-btn" onclick="navigateTo('/system')">
-                    ⚙️ System
-                </button>
-                <button class="nav-btn active" onclick="navigateTo('/devices')">
-                    📱 Devices
-                </button>
-                <button class="nav-btn" onclick="navigateTo('/manufacturing')">
-                    🏭 Manufacturing DB
-                </button>
-            </nav>
-            
-            <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+<!-- ==================== UNIFIED NAVIGATION COMPONENT ==================== -->
+<!-- This navigation should be IDENTICAL across all screens -->
+<!-- Copy this entire block to: dashboard.html, system.html, devices.html, manufacturing.html -->
+
+<div class="nav-header">
+    <div class="nav-brand">
+        <h1 id="pageTitle">🚪 Gate Controller</h1>
+        <div class="user-info">
+            {{userName}} ({{userEmail}})<br>
+            <span class="org-badge">{{organizationName}}</span>
+            <span class="role-badge {{#if isSuperAdmin}}superadmin-badge{{/if}}">{{userRole}}</span>
         </div>
+    </div>
+    
+    <nav class="nav-buttons">
+        <!-- Home - Available to ALL users -->
+        <button class="nav-btn" onclick="navigateTo('/dashboard')" data-page="dashboard">
+            🏠 Home
+        </button>
+        
+        <!-- System - SuperAdmin ONLY -->
+        <button class="nav-btn" onclick="navigateTo('/system')" data-page="system" 
+                style="display: {{showSuperAdminFeatures}}">
+            ⚙️ System
+        </button>
+        
+        <!-- Devices - Available to ALL users -->
+        <button class="nav-btn" onclick="navigateTo('/devices')" data-page="devices">
+            📱 Devices
+        </button>
+        
+        <!-- Manufacturing DB - SuperAdmin ONLY -->
+        <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing" 
+                style="display: {{showSuperAdminFeatures}}">
+            🏭 Manufacturing DB
+        </button>
+        
+        <!-- Organizations - SuperAdmin ONLY (Modal on Dashboard, Page on others) -->
+        <button class="nav-btn" onclick="handleOrganizationsClick()" data-page="organizations" 
+                style="display: {{showSuperAdminFeatures}}">
+            🏢 Organizations
+        </button>
+    </nav>
+    
+    <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+</div>
+
+<script>
+// Handle Organizations button click - Modal on Dashboard, navigation on other pages
+function handleOrganizationsClick() {
+    const currentPage = window.location.pathname.replace('/', '') || 'dashboard';
+    
+    if (currentPage === 'dashboard') {
+        // On dashboard, open modal
+        showOrganizationsModal();
+    } else {
+        // On other pages, navigate to dashboard and open modal
+        window.location.href = '/dashboard?openOrganizations=true';
+    }
+}
+
+// Set active navigation button based on current page
+document.addEventListener('DOMContentLoaded', function() {
+    const currentPage = window.location.pathname.replace('/', '') || 'dashboard';
+    const navButtons = document.querySelectorAll('.nav-btn[data-page]');
+    
+    navButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.page === currentPage) {
+            btn.classList.add('active');
+        }
+    });
+});
+</script>
 
         <!-- Device Activation Panel -->
         <div class="activation-panel" style="display: {{showActivationPanel}};">
