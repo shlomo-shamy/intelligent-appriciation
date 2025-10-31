@@ -1984,26 +1984,35 @@ if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
   }
 
   // Manufacturing page
-  if (req.url === '/manufacturing') {
-    requireAuth((session) => {
-      if (session.userLevel < 2) {
-        res.writeHead(403);
-        res.end(JSON.stringify({ error: 'Admin access required for Manufacturing DB' }));
-        return;
-      }
-      
-      const manufacturingData = {
+if (req.url === '/manufacturing') {
+  requireAuth((session) => {
+    // 🔒 UPDATED ACCESS CONTROL - Using role-based check
+    const userRole = getUserHighestRole(session.email);
+    
+    if (userRole !== 'superadmin') {
+      res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(renderTemplate('access-denied', {
         userName: session.name,
-        userEmail: session.email,
-        manufacturingDevicesData: JSON.stringify(Array.from(manufacturingDevices.entries()))
-      };
-      
-      const manufacturingHtml = renderTemplate('manufacturing', manufacturingData);
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(manufacturingHtml);
-    });
-    return;
-  }
+        userRole: userRole,
+        message: 'Manufacturing DB requires SuperAdmin access'
+      }));
+      return;
+    }
+    // ✅ END OF ACCESS CONTROL CHECK
+    
+    // Your existing code continues below (unchanged)
+    const manufacturingData = {
+      userName: session.name,
+      userEmail: session.email,
+      manufacturingDevicesData: JSON.stringify(Array.from(manufacturingDevices.entries()))
+    };
+    
+    const manufacturingHtml = renderTemplate('manufacturing', manufacturingData);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(manufacturingHtml);
+  });
+  return;
+}
 
 // System page
 if (req.url === '/system') {
