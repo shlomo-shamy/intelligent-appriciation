@@ -355,6 +355,9 @@ function handleOrganizationsClick() {
 document.addEventListener('DOMContentLoaded', function() {
     const currentPage = window.location.pathname.replace('/', '') || 'dashboard';
     const navButtons = document.querySelectorAll('.nav-btn[data-page]');
+
+// Add to each page's DOMContentLoaded
+document.getElementById('pageTitle').textContent = '📊 System Status'; // Example
     
     navButtons.forEach(btn => {
         btn.classList.remove('active');
