@@ -1966,22 +1966,35 @@ if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
 }  
 
   // Devices page
-  if (req.url === '/devices') {
-    requireAuth((session) => {
-      const devicesData = {
-        userName: session.name,
-        userEmail: session.email,
-        devicesData: JSON.stringify(Array.from(connectedDevices.entries())),
-        registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
-        showActivationPanel: session.userLevel >= 2 ? 'block' : 'none'
-      };
-      
-      const devicesHtml = renderTemplate('devices', devicesData);
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      res.end(devicesHtml);
-    });
-    return;
-  }
+// Devices page
+if (req.url === '/devices') {
+  requireAuth((session) => {
+    // 🔒 ADD RBAC VARIABLES - SAME AS DASHBOARD
+    const userRole = getUserHighestRole(session.email);
+    const isSuperAdmin = (userRole === 'superadmin');
+    const userOrgs = getUserOrganizations(session.email);
+    const primaryOrg = userOrgs.length > 0 ? userOrgs[0] : { name: 'No Organization' };
+    
+    const devicesData = {
+      userName: session.name,
+      userEmail: session.email,
+      userPhone: session.phone,  // ✅ ADD THIS
+      userLevel: session.userLevel,
+      userRole: userRole,  // ✅ ADD THIS
+      isSuperAdmin: isSuperAdmin ? 'true' : 'false',  // ✅ ADD THIS
+      showSuperAdminFeatures: isSuperAdmin ? 'block' : 'none',  // ✅ ADD THIS
+      organizationName: primaryOrg.name,  // ✅ ADD THIS
+      devicesData: JSON.stringify(Array.from(connectedDevices.entries())),
+      registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
+      showActivationPanel: session.userLevel >= 2 ? 'block' : 'none'
+    };
+    
+    const devicesHtml = renderTemplate('devices', devicesData);
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end(devicesHtml);
+  });
+  return;
+}
 
   // Manufacturing page
 if (req.url === '/manufacturing') {
