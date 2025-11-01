@@ -1576,7 +1576,7 @@ if (req.url === '/dashboard') {
       firebase: firebaseInitialized ? 'Connected' : 'Not Connected',
       devicesData: JSON.stringify(userDevices),
       registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
-      showActivationPanel: session.userLevel >= 2 ? 'block' : 'none',
+      showActivationPanel: isAdminPlus ? 'block' : 'none'
       showSuperAdminFeatures: isSuperAdmin ? 'block' : 'none',
       showAdminFeatures: isAdminPlus ? 'block' : 'none'  // ✅ ADD THIS LINE
     };
