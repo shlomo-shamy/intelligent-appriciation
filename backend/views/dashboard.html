@@ -785,7 +785,7 @@ label:has(input[type="checkbox"]:checked) {
             }
         }
         
-        // UPDATED: No popup, use system user
+/*        // UPDATED: No popup, use system user
         function sendCommand(deviceId, relay, action) {
             const systemUserId = "999999999";  // Dashboard system user
             
@@ -823,6 +823,51 @@ label:has(input[type="checkbox"]:checked) {
             })
             .catch(e => alert('❌ Error: ' + e.message));
         }
+ */
+
+// ==================== FIXED sendCommand FUNCTION ====================
+// Replace the existing sendCommand function in dashboard.html with this:
+
+// ✅ FIXED: Use logged-in user's phone for ESP32 validation
+function sendCommand(deviceId, relay, action) {
+    const userPhone = '{{userPhone}}';  // Logged-in user's phone
+    
+    if (!confirm('Send ' + action + ' command?')) {
+        return;
+    }
+    
+    fetch('/api/device/' + deviceId + '/send-command', {
+        method: 'POST',
+        headers: { 
+            'Content-Type': 'application/json; charset=utf-8',
+            'X-Command-Source': 'dashboard'
+        },
+        body: JSON.stringify({
+            id: 'web_' + Date.now(),
+            action: 'relay_activate',
+            relay: relay,
+            duration: 2000,
+            user: 'dashboard',
+            user_id: userPhone,  // ✅ ESP32 validates this against its user list
+            dashboard_user: {
+                email: '{{userEmail}}',
+                name: '{{userName}}',
+                phone: userPhone
+            }
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            alert('✅ Command sent: ' + action);
+        } else {
+            // Show ESP32's response (might be "unauthorized")
+            const message = d.message || 'Command failed';
+            alert('❌ ' + message);
+        }
+    })
+    .catch(e => alert('❌ Error: ' + e.message));
+}
         
 // ==================== ROLE-BASED ACCESS CONTROL ====================
 // Get user role from server template (DECLARE ONCE)
