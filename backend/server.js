@@ -2007,7 +2007,7 @@ if (req.url === '/devices') {
       organizationName: primaryOrg.name,
       devicesData: JSON.stringify(Array.from(connectedDevices.entries())),
       registeredUsersData: JSON.stringify(Array.from(registeredUsers.entries())),
-      showActivationPanel: session.userLevel >= 2 ? 'block' : 'none'
+      showActivationPanel: isAdminPlus ? 'block' : 'none'
     };
     
     const devicesHtml = renderTemplate('devices', devicesData);
