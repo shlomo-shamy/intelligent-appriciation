@@ -45,19 +45,15 @@ function validatePhoneNumber(phone) {
     };
 }
 
-// Device command functions
 function sendCommand(deviceId, relay, action) {
-    const userId = prompt("Enter your registered phone number (10-14 digits, numbers only):");
-    if (!userId) return;
+    const userPhone = window.USER_PHONE;
     
-    const cleanUserId = userId.replace(/\D/g, '');
-    
-    if (!/^\d{10,14}$/.test(cleanUserId)) {
-        alert('Please enter a valid phone number (10-14 digits, numbers only)\n\nExamples:\n• US: 1234567890\n• International: 972501234567');
+    if (!userPhone) {
+        alert('❌ Error: User not logged in properly');
         return;
     }
     
-    if (!confirm('Send ' + action + ' command with user ID: ' + cleanUserId + '?')) {
+    if (!confirm('Send ' + action + ' command?')) {
         return;
     }
     
@@ -70,7 +66,7 @@ function sendCommand(deviceId, relay, action) {
             relay: relay,
             duration: 2000,
             user: 'dashboard',
-            user_id: cleanUserId
+            user_id: userPhone  // ✅ Use logged-in user's phone
         })
     })
     .then(r => r.json())
@@ -78,7 +74,7 @@ function sendCommand(deviceId, relay, action) {
         if (d.success) {
             showNotification('Command sent: ' + action, 'success');
         } else {
-            showNotification('Command failed', 'error');
+            showNotification(d.message || 'Command failed', 'error');
         }
     })
     .catch(e => showNotification('Error: ' + e.message, 'error'));
