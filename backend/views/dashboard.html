@@ -822,25 +822,21 @@ label:has(input[type="checkbox"]:checked) {
         }
         
 // ==================== ROLE-BASED ACCESS CONTROL ====================
-
-// Get user role from server template
+// Get user role from server template (DECLARE ONCE)
 const userRole = '{{userRole}}';
-const canAccessDeviceModal = (userRole === 'admin' || userRole === 'superadmin');
+const canAccessDeviceModal = (userRole === 'manager' || userRole === 'admin' || userRole === 'superadmin');
 const canAccessSettings = (userRole === 'admin' || userRole === 'superadmin');
+const canManageDevice = (userRole === 'manager' || userRole === 'admin' || userRole === 'superadmin');
 
 console.log('🔒 Access Control Initialized - User Role:', userRole);
+console.log('  - Can access modal:', canAccessDeviceModal);
+console.log('  - Can access settings:', canAccessSettings);
+console.log('  - Can manage device:', canManageDevice);
 
 // 🔒 PROTECTED: openSettings function
 function openSettings(deviceId) {
-    // 🔒 ROLE-BASED ACCESS CONTROL
-    const userRole = '{{userRole}}';
-    
-    // Allow: manager, admin, superadmin
-    // Block: only regular users
-    const canAccessModal = (userRole === 'manager' || userRole === 'admin' || userRole === 'superadmin');
-    
     // Block access ONLY for regular users
-    if (!canAccessModal) {
+    if (!canAccessDeviceModal) {
         alert('⚠️ Access Denied\n\nDevice management requires Manager, Admin, or SuperAdmin access.\n\nYour current role: ' + userRole);
         console.log('❌ Access denied to openSettings() for user role:', userRole);
         return;
@@ -859,12 +855,37 @@ function openSettings(deviceId) {
 }
 
 const originalSwitchTab = typeof switchTab !== 'undefined' ? switchTab : null;
+
 // 🔒 PROTECTED: switchTab function
 function switchTab(tabName, element) {
-    const userRole = '{{userRole}}';
+    // Block Settings tab for managers and regular users
+    if (tabName === 'settings' && !canAccessSettings) {
+        alert('⚠️ Access Denied: Device Settings require Admin or SuperAdmin access');
+        console.log('❌ Access denied to settings tab for user role:', userRole);
+        return;
+    }
     
-    // Settings tab requires Admin or SuperAdmin
-    const canAccessSettings = (userRole === 'admin' || userRole === 'superadmin');
+    // Call original function if it exists
+    if (originalSwitchTab) {
+        originalSwitchTab(tabName, element);
+    } else {
+        // Fallback implementation
+        const tabs = document.querySelectorAll('.tab-content');
+        tabs.forEach(tab => tab.classList.remove('active'));
+        
+        const buttons = document.querySelectorAll('.tab-btn');
+        buttons.forEach(btn => btn.classList.remove('active'));
+        
+        const selectedTab = document.getElementById(tabName + '-tab');
+        if (selectedTab) {
+            selectedTab.classList.add('active');
+        }
+        
+        if (element) {
+            element.classList.add('active');
+        }
+    }
+}
     
     // Block Settings tab for managers and regular users
     if (tabName === 'settings' && !canAccessSettings) {
@@ -1602,7 +1623,7 @@ function renderDevices() {
                     <button class="control-btn stop" onclick="sendCommand('${deviceId}', 2, 'STOP')">⏸️ STOP</button>
                     <button class="control-btn close" onclick="sendCommand('${deviceId}', 3, 'CLOSE')">🔒 CLOSE</button>
                     <button class="control-btn partial" onclick="sendCommand('${deviceId}', 4, 'PARTIAL')">↗️ PARTIAL</button>
-                    <button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>
+                    ${canManageDevice ? `<button class="settings-btn" onclick="openSettings('${deviceId}')" title="Device Settings">⚙️</button>` : ''}
                 </div>
             </div>
         `;
