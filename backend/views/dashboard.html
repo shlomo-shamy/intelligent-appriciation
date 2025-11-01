@@ -2166,7 +2166,14 @@ window.onclick = function(event) {
 };
         
     </script>
+<script>
+    // Make user data available globally for common.js
+    window.USER_PHONE = '{{userPhone}}';
+    window.USER_EMAIL = '{{userEmail}}';
+    window.USER_NAME = '{{userName}}';
+</script>
 <script src="/public/common.js"></script>
+    
 <!-- Remove Member Modal -->
 <div id="removeMemberModal" class="modal" style="display: none;">
     <div class="modal-content" style="max-width: 600px;">
