@@ -1952,6 +1952,99 @@ if (req.url === '/api/organizations/remove-member' && req.method === 'POST') {
   });
   return;
 }
+
+// Update organization member role (Admin or SuperAdmin)
+if (req.url === '/api/organizations/update-member-role' && req.method === 'POST') {
+  requireAuth((session) => {
+    readBody(async (data) => {
+      const { organizationId, userEmail, newRole } = data;
+      
+      if (!organizationId || !userEmail || !newRole) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Organization ID, email, and new role required' }));
+        return;
+      }
+      
+      // Validate role
+      const validRoles = ['superadmin', 'admin', 'manager', 'user'];
+      if (!validRoles.includes(newRole)) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Invalid role. Must be: superadmin, admin, manager, or user' }));
+        return;
+      }
+      
+      const org = organizations.get(organizationId);
+      if (!org) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'Organization not found' }));
+        return;
+      }
+      
+      // Check if target user is a member
+      if (!org.members[userEmail]) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'User is not a member of this organization' }));
+        return;
+      }
+      
+      // Check if session user has permission to change roles
+      const sessionRole = getUserHighestRole(session.email);
+      const sessionMember = org.members[session.email];
+      
+      // SuperAdmin can always change roles
+      if (sessionRole === 'superadmin') {
+        // Allow
+      } else if (!sessionMember) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'You are not a member of this organization' }));
+        return;
+      } else if (sessionMember.role !== 'admin' && sessionMember.role !== 'superadmin') {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'Admin or SuperAdmin access required' }));
+        return;
+      }
+      
+      // Prevent changing your own role
+      if (userEmail === session.email) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Cannot change your own role' }));
+        return;
+      }
+      
+      // Special protection for platform_org superadmins
+      if (organizationId === 'platform_org' && org.members[userEmail].role === 'superadmin') {
+        const superadminCount = Object.values(org.members).filter(m => m.role === 'superadmin').length;
+        if (superadminCount <= 1) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'Cannot change the last superadmin role in platform organization' }));
+          return;
+        }
+      }
+      
+      // Update the role
+      const oldRole = org.members[userEmail].role;
+      org.members[userEmail].role = newRole;
+      org.members[userEmail].roleUpdatedAt = new Date().toISOString();
+      org.members[userEmail].roleUpdatedBy = session.email;
+      
+      organizations.set(organizationId, org);
+      
+      // ✅ Save to Firebase
+      const firebaseResult = await saveOrganizationToFirebase(organizationId, org);
+      
+      console.log(`✅ Member ${userEmail} role updated in org ${organizationId}: ${oldRole} → ${newRole} (Firebase: ${firebaseResult.success ? 'synced' : 'local_only'})`);
+      
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        success: true,
+        message: `Role updated from ${oldRole} to ${newRole}`,
+        firebase_status: firebaseResult.success ? 'synced' : 'local_only'
+      }));
+    });
+  });
+  return;
+}
+  
   
 // Get organization details (Members can view their own org)
 if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
