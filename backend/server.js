@@ -1214,7 +1214,7 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+\/password$/) && req.method ==
       return;
     }
     
-    readBody((data) => {
+    readBody(async (data) => {  // ✅ ADD async
       const { password } = data;
       
       if (!password || password.length < 6) {
@@ -1226,12 +1226,16 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+\/password$/) && req.method ==
       user.password = password;
       DASHBOARD_USERS.set(email, user);
       
-      console.log(`✅ Password changed for: ${email}`);
+      // ✅ ADD: Save to Firebase
+      const firebaseResult = await saveDashboardUserToFirebase(email, user);
+      
+      console.log(`✅ Password changed for: ${email} (Firebase: ${firebaseResult.success ? 'synced' : 'local_only'})`);
       
       res.writeHead(200);
       res.end(JSON.stringify({
         success: true,
-        message: 'Password changed successfully'
+        message: 'Password changed successfully',
+        firebase_status: firebaseResult.success ? 'synced' : 'local_only'  // ✅ ADD
       }));
     });
   });
