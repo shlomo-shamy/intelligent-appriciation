@@ -1145,7 +1145,7 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'PUT') {
       return;
     }
     
-    readBody((data) => {
+    readBody(async (data) => {  // ✅ ADD async
       const { name, phone, password, organizationRole, userLevel } = data;
       
       // Validate phone if provided
@@ -1174,14 +1174,19 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'PUT') {
       if (organizationRole) user.organizationRole = organizationRole;
       if (userLevel !== undefined) user.userLevel = userLevel;
       
+      // Save to memory
       DASHBOARD_USERS.set(email, user);
       
-      console.log(`✅ Dashboard user updated: ${email}`);
+      // ✅ ADD: Save to Firebase
+      const firebaseResult = await saveDashboardUserToFirebase(email, user);
+      
+      console.log(`✅ Dashboard user updated: ${email} (Firebase: ${firebaseResult.success ? 'synced' : 'local_only'})`);
       
       res.writeHead(200);
       res.end(JSON.stringify({
         success: true,
-        message: 'User updated successfully'
+        message: 'User updated successfully',
+        firebase_status: firebaseResult.success ? 'synced' : 'local_only'  // ✅ ADD
       }));
     });
   });
