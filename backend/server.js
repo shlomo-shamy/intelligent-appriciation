@@ -1382,15 +1382,18 @@ if (req.url.match(/^\/api\/device\/[^\/]+\/update-info$/) && req.method === 'POS
       connectedDevices.set(deviceId, device);
       
       // Save to Firebase
-      if (firebaseInitialized && firestore) {
-        try {
-          await firestore.collection('gates').doc(deviceId).set({
-            name: name,
-            location: location,
-            serial: deviceId,
-            updatedAt: new Date().toISOString(),
-            updatedBy: session.email
-          }, { merge: true });  // merge: true preserves other fields
+// Save to Firebase
+if (firebaseInitialized && admin) {
+  const db = admin.firestore();  // ✅ FIX: Get firestore instance from admin
+  
+  try {
+    await db.collection('gates').doc(deviceId).set({  // ✅ Use db
+      name: name,
+      location: location,
+      serial: deviceId,
+      updatedAt: new Date().toISOString(),
+      updatedBy: session.email
+    }, { merge: true }); // merge: true preserves other fields
           
           console.log(`✅ Device info updated: ${deviceId} - ${name} (${location})`);
           
@@ -1643,30 +1646,33 @@ if (req.url === '/dashboard') {
     const userGates = getUserGates(session.email, userRole);
     
     // ✅ NEW: Load device info from Firebase for each gate
-    if (firebaseInitialized && firestore) {
-      for (const deviceId of userGates) {
-        if (connectedDevices.has(deviceId)) {
-          try {
-            const gateDoc = await firestore.collection('gates').doc(deviceId).get();
-            if (gateDoc.exists) {
-              const gateData = gateDoc.data();
-              const existingDevice = connectedDevices.get(deviceId);
-              
-              // Update ONLY name and location from Firebase, keep realtime data
-              connectedDevices.set(deviceId, {
-                ...existingDevice,
-                name: gateData.name || deviceId,
-                location: gateData.location || 'Unknown location'
-              });
-              
-              console.log(`📝 Loaded device info from Firebase: ${deviceId}`);
-            }
-          } catch (error) {
-            console.error(`❌ Error loading device ${deviceId} from Firebase:`, error);
-          }
+// ✅ NEW: Load device info from Firebase for each gate
+if (firebaseInitialized && admin) {
+  const db = admin.firestore();  // ✅ FIX: Get firestore instance from admin
+  
+  for (const deviceId of userGates) {
+    if (connectedDevices.has(deviceId)) {
+      try {
+        const gateDoc = await db.collection('gates').doc(deviceId).get();  // ✅ Use db
+        if (gateDoc.exists) {
+          const gateData = gateDoc.data();
+          const existingDevice = connectedDevices.get(deviceId);
+          
+          // Update ONLY name and location from Firebase, keep realtime data
+          connectedDevices.set(deviceId, {
+            ...existingDevice,
+            name: gateData.name || deviceId,
+            location: gateData.location || 'Unknown location'
+          });
+          
+          console.log(`📝 Loaded device info from Firebase: ${deviceId}`);
         }
+      } catch (error) {
+        console.error(`❌ Error loading device ${deviceId} from Firebase:`, error);
       }
     }
+  }
+}
     
     const userDevices = Array.from(connectedDevices.entries())
       .filter(([deviceId]) => userGates.includes(deviceId));
