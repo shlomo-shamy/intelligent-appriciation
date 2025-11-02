@@ -1289,17 +1289,22 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'DELETE'
 if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
   console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
   
-  readBody((data) => {
+  readBody((data) => {  // ✅ NOT async anymore - no Firebase queries!
     const deviceId = data.deviceId || 'unknown';
     const timestamp = new Date().toISOString();
     
     const mfgDevice = manufacturingDevices.get(deviceId);
     const existingDevice = connectedDevices.get(deviceId) || {};
-
+    
+    // ✅ NEW: Use existing name/location if already loaded, else use defaults
+    const deviceName = existingDevice.name || (mfgDevice ? mfgDevice.name : deviceId);
+    const deviceLocation = existingDevice.location || (mfgDevice ? mfgDevice.location : 'Unknown location');
+    
     connectedDevices.set(deviceId, {
-      ...existingDevice,  // Preserve ALL existing fields including settings
+      ...existingDevice,  // Preserve ALL existing fields
+      // ✅ Realtime data (updated on every heartbeat)
       lastHeartbeat: timestamp,
-      status: data.status || 'online',  // FIXED: was missing 'status'
+      status: data.status || 'online',
       signalStrength: data.signalStrength || 0,
       batteryLevel: data.batteryLevel || 0,
       firmwareVersion: data.firmwareVersion || '1.0.0',
@@ -1307,25 +1312,24 @@ if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
       freeHeap: data.freeHeap || 0,
       connectionType: data.connectionType || 'wifi',
       macAddress: data.macAddress || 'Unknown',
-      name: mfgDevice ? mfgDevice.name : deviceId,
-      location: mfgDevice ? mfgDevice.location : 'Unknown location'
+      // ✅ Static data (only updated on dashboard load or edit)
+      name: deviceName,
+      location: deviceLocation
     });
 
-// Auto-assign to platform_org if not already assigned
-const platformOrg = organizations.get('platform_org');
-if (platformOrg && !platformOrg.devices.includes(deviceId)) {
-  platformOrg.devices.push(deviceId);
-  organizations.set('platform_org', platformOrg);
-  
-  // Save to Firebase (async, don't block heartbeat)
-  saveOrganizationToFirebase('platform_org', platformOrg).catch(err => {
-    console.error('Failed to save org on heartbeat:', err);
-  });
-  
-  console.log(`✅ Auto-assigned ${deviceId} to platform_org on heartbeat`);
-}
-    
-    addDeviceLog(deviceId, 'heartbeat', 'system', `Signal: ${data.signalStrength}dBm`);
+    // Auto-assign to platform_org if not already assigned
+    const platformOrg = organizations.get('platform_org');
+    if (platformOrg && !platformOrg.devices.includes(deviceId)) {
+      platformOrg.devices.push(deviceId);
+      organizations.set('platform_org', platformOrg);
+      
+      // Save to Firebase (async, don't block heartbeat)
+      saveOrganizationToFirebase('platform_org', platformOrg).catch(err => {
+        console.error('Failed to save org on heartbeat:', err);
+      });
+      
+      console.log(`✅ Auto-assigned ${deviceId} to platform_org on heartbeat`);
+    }
     
     addDeviceLog(deviceId, 'heartbeat', 'system', `Signal: ${data.signalStrength}dBm`);
     
@@ -1342,6 +1346,86 @@ if (platformOrg && !platformOrg.devices.includes(deviceId)) {
   return;
 }
 
+// Update device info (name, location) - Admin+ only
+if (req.url.match(/^\/api\/device\/[^\/]+\/update-info$/) && req.method === 'POST') {
+  requireAuth(async (session) => {
+    const userRole = getUserHighestRole(session.email);
+    const isAdminPlus = isAdminOrHigher(userRole);
+    
+    if (!isAdminPlus) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'Admin or SuperAdmin access required' }));
+      return;
+    }
+    
+    const deviceId = req.url.split('/')[3];
+    
+    if (!connectedDevices.has(deviceId)) {
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'Device not found' }));
+      return;
+    }
+    
+    readBody(async (data) => {
+      const { name, location } = data;
+      
+      if (!name || !location) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'Name and location are required' }));
+        return;
+      }
+      
+      // Update in memory
+      const device = connectedDevices.get(deviceId);
+      device.name = name;
+      device.location = location;
+      connectedDevices.set(deviceId, device);
+      
+      // Save to Firebase
+      if (firebaseInitialized && firestore) {
+        try {
+          await firestore.collection('gates').doc(deviceId).set({
+            name: name,
+            location: location,
+            serial: deviceId,
+            updatedAt: new Date().toISOString(),
+            updatedBy: session.email
+          }, { merge: true });  // merge: true preserves other fields
+          
+          console.log(`✅ Device info updated: ${deviceId} - ${name} (${location})`);
+          
+          res.writeHead(200);
+          res.end(JSON.stringify({
+            success: true,
+            message: 'Device info updated successfully',
+            deviceId: deviceId,
+            name: name,
+            location: location
+          }));
+        } catch (error) {
+          console.error('Firebase update error:', error);
+          res.writeHead(500);
+          res.end(JSON.stringify({
+            success: false,
+            error: 'Failed to save to Firebase',
+            details: error.message
+          }));
+        }
+      } else {
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: 'Device info updated (local only - Firebase not available)',
+          deviceId: deviceId,
+          name: name,
+          location: location
+        }));
+      }
+    });
+  });
+  return;
+}
+  
 // ESP32 Command check endpoint - GET /api/device/{deviceId}/commands (no auth required)
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
   const urlParts = req.url.split('/');
@@ -1550,21 +1634,42 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.m
 
 // Protected dashboard - require auth (UPDATED with organization context)
 if (req.url === '/dashboard') {
-  requireAuth((session) => {
-    // Get user's organizations and role
+  requireAuth(async (session) => {  // ✅ ADD async
     const userOrgs = getUserOrganizations(session.email);
     const userRole = getUserHighestRole(session.email);
     const isSuperAdmin = (userRole === 'superadmin');
-    const isAdminPlus = isAdminOrHigher(userRole);  // ✅ ADD THIS LINE
+    const isAdminPlus = isAdminOrHigher(userRole);
     
-    // Get gates based on role
     const userGates = getUserGates(session.email, userRole);
     
-    // Filter connected devices to only show user's gates
+    // ✅ NEW: Load device info from Firebase for each gate
+    if (firebaseInitialized && firestore) {
+      for (const deviceId of userGates) {
+        if (connectedDevices.has(deviceId)) {
+          try {
+            const gateDoc = await firestore.collection('gates').doc(deviceId).get();
+            if (gateDoc.exists) {
+              const gateData = gateDoc.data();
+              const existingDevice = connectedDevices.get(deviceId);
+              
+              // Update ONLY name and location from Firebase, keep realtime data
+              connectedDevices.set(deviceId, {
+                ...existingDevice,
+                name: gateData.name || deviceId,
+                location: gateData.location || 'Unknown location'
+              });
+              
+              console.log(`📝 Loaded device info from Firebase: ${deviceId}`);
+            }
+          } catch (error) {
+            console.error(`❌ Error loading device ${deviceId} from Firebase:`, error);
+          }
+        }
+      }
+    }
+    
     const userDevices = Array.from(connectedDevices.entries())
       .filter(([deviceId]) => userGates.includes(deviceId));
-    
-    // Get user's primary organization (first one or platform)
     const primaryOrg = userOrgs.length > 0 ? userOrgs[0] : null;
     
     const dashboardData = {
