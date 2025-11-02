@@ -562,7 +562,26 @@ console.log('showSuperAdminFeatures:', '{{showSuperAdminFeatures}}');
 
 <!-- Settings Tab -->
 <div id="settings-tab" class="tab-content">
-    <h3>⚙️ Device Settings</h3>
+    <!-- Device Info Section -->
+    <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #667eea;">
+        <h3 style="margin: 0 0 15px 0;">📝 Device Information</h3>
+        <div style="display: grid; gap: 15px;">
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Device Name</label>
+                <input type="text" id="editDeviceName" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 4px; font-size: 14px;" placeholder="e.g., Front Gate - Building A">
+            </div>
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 5px;">Location / Address</label>
+                <input type="text" id="editDeviceLocation" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 4px; font-size: 14px;" placeholder="e.g., Main Entrance, 123 Main St">
+            </div>
+            <button onclick="saveDeviceInfo()" style="background: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px;">
+                💾 Save Device Info
+            </button>
+        </div>
+    </div>
+    
+    <!-- Gate Settings Section -->
+    <h3>⚙️ Gate Operation Settings</h3>
     <div id="deviceSettings">
         <p>Loading settings...</p>
     </div>
@@ -983,6 +1002,15 @@ document.addEventListener('DOMContentLoaded', function() {
 */
 async function loadSettings() {
     if (!currentDeviceId) return;
+
+    
+    // ✅ NEW: Load device info for the edit form
+    const device = devices.find(([id]) => id === currentDeviceId);
+    if (device) {
+        const [deviceId, info] = device;
+        document.getElementById('editDeviceName').value = info.name || deviceId;
+        document.getElementById('editDeviceLocation').value = info.location || 'Unknown location';
+    }
     
     try {
         const response = await fetch('/api/device/' + currentDeviceId + '/settings');
