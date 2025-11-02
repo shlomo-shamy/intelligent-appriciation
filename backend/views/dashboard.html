@@ -1177,6 +1177,41 @@ async function loadSettings() {
     }
 }
 
+// Save device info (name, location)
+async function saveDeviceInfo() {
+    if (!currentDeviceId) {
+        alert('❌ Error: No device selected');
+        return;
+    }
+    
+    const name = document.getElementById('editDeviceName').value.trim();
+    const location = document.getElementById('editDeviceLocation').value.trim();
+    
+    if (!name || !location) {
+        alert('⚠️ Please fill in both name and location');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/device/' + currentDeviceId + '/update-info', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, location })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('✅ Device info updated!\n\nThe page will refresh.');
+            setTimeout(() => window.location.reload(), 1000);
+        } else {
+            alert('❌ Failed: ' + (result.error || 'Unknown error'));
+        }
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+    }
+}
+
 async function loadUsers() {
     if (!currentDeviceId) return;
     
