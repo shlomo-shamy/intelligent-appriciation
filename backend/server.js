@@ -1428,6 +1428,49 @@ if (firebaseInitialized && admin) {
   });
   return;
 }
+
+// Receive device settings from ESP32 (no auth - device communication)
+if (req.url === '/api/device/settings' && req.method === 'POST') {
+  console.log(`⚙️ Device settings report: ${req.method} ${req.url}`);
+  
+  readBody((data) => {
+    const deviceId = data.deviceId || 'unknown';
+    
+    if (!connectedDevices.has(deviceId)) {
+      // Device not connected yet, create entry
+      connectedDevices.set(deviceId, {
+        deviceId: deviceId,
+        lastHeartbeat: new Date().toISOString()
+      });
+    }
+    
+    const device = connectedDevices.get(deviceId);
+    
+    // ✅ Cache all settings from ESP32
+    device.commandDuration = data.commandDuration || 2000;
+    device.motorReverseDelay = data.motorReverseDelay || 500;
+    device.partialTime = data.partialTime || 5000;
+    device.gateMode = data.gateMode || 0;
+    device.magneticLoopMode = data.magneticLoopMode || 0;
+    device.emergencyLock = data.emergencyLock || 0;
+    device.autoCloseEnabled = data.autoCloseEnabled || false;
+    device.autoCloseDelay = data.autoCloseDelay || 30000;
+    device.openTimeLearned = data.openTimeLearned || 0;
+    device.closeTimeLearned = data.closeTimeLearned || 0;
+    device.manualModeEnabled = data.manualModeEnabled || false;
+    
+    connectedDevices.set(deviceId, device);
+    
+    console.log(`✅ Cached settings for device ${deviceId}`);
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      success: true,
+      message: "Settings received and cached"
+    }));
+  });
+  return;
+}
   
 // ESP32 Command check endpoint - GET /api/device/{deviceId}/commands (no auth required)
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
@@ -2572,6 +2615,7 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.m
 }
 // ESP32 reports settings (no auth - direct from device)
 // ESP32 reports settings - MUST come BEFORE  endpoint
+  
 if (req.url.match(/^\/api\/device\/[^\/]+\/settings$/) && req.method === 'POST') {
   readBody((data) => {
     const deviceId = data.deviceId;
@@ -2639,6 +2683,61 @@ deviceCommands.get(deviceId).push(settingsCommand);
       res.writeHead(200);
       res.end(JSON.stringify({ success: true }));
     });
+  });
+  return;
+}
+
+// Receive detailed status from ESP32 (no auth - device communication)
+if (req.url.match(/^\/api\/device\/[^\/]+\/status$/) && req.method === 'POST') {
+  console.log(`📊 Device status report: ${req.method} ${req.url}`);
+  
+  readBody((data) => {
+    const deviceId = data.deviceId || req.url.split('/')[3];
+    
+    if (!connectedDevices.has(deviceId)) {
+      connectedDevices.set(deviceId, {
+        deviceId: deviceId,
+        lastHeartbeat: new Date().toISOString()
+      });
+    }
+    
+    const device = connectedDevices.get(deviceId);
+    
+    // ✅ Cache all status fields from ESP32
+    device.gateState = data.gateState || 'UNKNOWN';
+    device.lastCommand = data.lastCommand || 'NONE';
+    device.relay1 = data.relay1 || false;
+    device.relay2 = data.relay2 || false;
+    device.relay3 = data.relay3 || false;
+    device.relay4 = data.relay4 || false;
+    device.photoIntBlocked = data.photoIntBlocked || false;
+    device.photoExtBlocked = data.photoExtBlocked || false;
+    device.photoBlocked = data.photoBlocked || false;
+    device.edgeIntContact = data.edgeIntContact || false;
+    device.edgeExtContact = data.edgeExtContact || false;
+    device.edgeContact = data.edgeContact || false;
+    device.fccPosition = data.fccPosition || false;
+    device.fcaPosition = data.fcaPosition || false;
+    device.learningMode = data.learningMode || false;
+    device.remoteOpen = data.remoteOpen || false;
+    device.remoteStop = data.remoteStop || false;
+    device.modeSwitch = data.modeSwitch || 'AUTO';
+    device.autoCloseEnabled = data.autoCloseEnabled || false;
+    device.autoCloseTimer = data.autoCloseTimer || false;
+    device.autoCloseRemaining = data.autoCloseRemaining || 0;
+    device.partialActive = data.partialActive || false;
+    device.emergencyLock = data.emergencyLock || 'NORMAL';
+    device.userCount = data.userCount || 0;
+    
+    connectedDevices.set(deviceId, device);
+    
+    console.log(`✅ Cached status for device ${deviceId}`);
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      success: true,
+      message: "Status received and cached"
+    }));
   });
   return;
 }
