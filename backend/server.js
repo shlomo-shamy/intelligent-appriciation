@@ -2616,6 +2616,9 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.m
 // ESP32 reports settings (no auth - direct from device)
 // ESP32 reports settings - MUST match ESP32's URL pattern
 if (req.url.match(/^\/api\/device\/[^\/]+\/settings$/) && req.method === 'POST') {
+  console.log(`🟢🟢🟢 POST SETTINGS ENDPOINT HIT! 🟢🟢🟢`);
+  console.log(`📍 Full URL: ${req.url}`);
+  console.log(`📍 Method: ${req.method}`);  
   console.log(`🔵 POST SETTINGS ENDPOINT HIT!`);
   console.log(`📍 URL: ${req.url}`);
   
