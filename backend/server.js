@@ -2582,38 +2582,204 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/info') && req.metho
     return;
   }
 
-// Get device settings - TEMPORARY: No auth for debugging
+// Get device settings - Request from ESP32 on-demand
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.method === 'GET') {
-  const urlParts = req.url.split('/');
-  const deviceId = urlParts[3];
-  
-  console.log(`🔍 GET settings request for device: ${deviceId}`);
-  console.log(`🔍 URL was: ${req.url}`);
-  console.log(`🔍 Connected devices:`, Array.from(connectedDevices.keys()));
-  
-  const device = connectedDevices.get(deviceId);
-  
-  if (!device) {
-    console.log(`❌ Device ${deviceId} not in connectedDevices`);
-    res.writeHead(404);
-    res.end(JSON.stringify({ error: 'Device not found' }));
-    return;
-  }
-  
-  if (!device.settings) {
-    console.log(`❌ Device ${deviceId} has no settings property`);
-    console.log(`📋 Device object keys:`, Object.keys(device));
-    res.writeHead(404);
-    res.end(JSON.stringify({ error: 'Settings not found' }));
-    return;
-  }
-  
-  console.log(`✅ Returning settings for ${deviceId}`);
-  res.writeHead(200);
-  res.end(JSON.stringify(device.settings));
+  requireAuth(async (session) => {
+    const urlParts = req.url.split('/');
+    const deviceId = urlParts[3];
+    
+    console.log(`🔍 GET settings request for device: ${deviceId}`);
+    
+    const device = connectedDevices.get(deviceId);
+    
+    if (!device) {
+      console.log(`❌ Device ${deviceId} not found or offline`);
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'Device not found or offline' }));
+      return;
+    }
+    
+    // ✅ Request settings from ESP32
+    const requestId = 'get_settings_' + Date.now();
+    
+    // Queue command to ESP32 to send settings
+    const getSettingsCommand = {
+      id: requestId,
+      action: 'get_settings',
+      timestamp: Date.now()
+    };
+    
+    if (!deviceCommands.has(deviceId)) {
+      deviceCommands.set(deviceId, []);
+    }
+    deviceCommands.get(deviceId).push(getSettingsCommand);
+    
+    console.log(`📤 Requested settings from ESP32: ${deviceId} (command queued)`);
+    
+    // Wait for response (polling with timeout)
+    const maxWaitTime = 10000; // 10 seconds
+    const pollInterval = 500; // Check every 500ms
+    let waited = 0;
+    
+    const checkForResponse = () => {
+      return new Promise((resolve) => {
+        const interval = setInterval(() => {
+          waited += pollInterval;
+          
+          // Check if device has responded with settings
+          const updatedDevice = connectedDevices.get(deviceId);
+          if (updatedDevice && updatedDevice.pendingSettings) {
+            clearInterval(interval);
+            
+            // Get settings and clear pending flag
+            const settings = updatedDevice.pendingSettings;
+            delete updatedDevice.pendingSettings;
+            connectedDevices.set(deviceId, updatedDevice);
+            
+            console.log(`✅ Received settings from ESP32 after ${waited}ms`);
+            resolve({ success: true, settings });
+            return;
+          }
+          
+          // Timeout
+          if (waited >= maxWaitTime) {
+            clearInterval(interval);
+            console.log(`❌ Timeout: ESP32 did not respond after ${waited}ms`);
+            resolve({ success: false, error: 'Timeout waiting for ESP32 response' });
+          }
+        }, pollInterval);
+      });
+    };
+    
+    const result = await checkForResponse();
+    
+    if (result.success) {
+      console.log(`✅ Returning settings to dashboard`);
+      res.writeHead(200);
+      res.end(JSON.stringify(result.settings));
+    } else {
+      console.log(`⚠️ Returning default values (ESP32 timeout)`);
+      
+      // Return defaults as fallback
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        commandDuration: 2000,
+        motorReverseDelay: 500,
+        partialTime: 5000,
+        gateMode: 0,
+        magneticLoopMode: 0,
+        emergencyLock: 0,
+        autoCloseEnabled: false,
+        autoCloseDelay: 30000,
+        openTimeLearned: 0,
+        closeTimeLearned: 0,
+        manualModeEnabled: false,
+        _note: 'Default values - ESP32 did not respond in time'
+      }));
+    }
+  });
   return;
 }
-// ESP32 reports settings (no auth - direct from device)
+
+ // Get device settings - Request from ESP32 on-demand
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.method === 'GET') {
+  requireAuth(async (session) => {
+    const urlParts = req.url.split('/');
+    const deviceId = urlParts[3];
+    
+    console.log(`🔍 GET settings request for device: ${deviceId}`);
+    
+    const device = connectedDevices.get(deviceId);
+    
+    if (!device) {
+      console.log(`❌ Device ${deviceId} not found or offline`);
+      res.writeHead(404);
+      res.end(JSON.stringify({ error: 'Device not found or offline' }));
+      return;
+    }
+    
+    // ✅ Request settings from ESP32
+    const requestId = 'get_settings_' + Date.now();
+    
+    // Queue command to ESP32 to send settings
+    const getSettingsCommand = {
+      id: requestId,
+      action: 'get_settings',
+      timestamp: Date.now()
+    };
+    
+    if (!deviceCommands.has(deviceId)) {
+      deviceCommands.set(deviceId, []);
+    }
+    deviceCommands.get(deviceId).push(getSettingsCommand);
+    
+    console.log(`📤 Requested settings from ESP32: ${deviceId} (command queued)`);
+    
+    // Wait for response (polling with timeout)
+    const maxWaitTime = 10000; // 10 seconds
+    const pollInterval = 500; // Check every 500ms
+    let waited = 0;
+    
+    const checkForResponse = () => {
+      return new Promise((resolve) => {
+        const interval = setInterval(() => {
+          waited += pollInterval;
+          
+          // Check if device has responded with settings
+          const updatedDevice = connectedDevices.get(deviceId);
+          if (updatedDevice && updatedDevice.pendingSettings) {
+            clearInterval(interval);
+            
+            // Get settings and clear pending flag
+            const settings = updatedDevice.pendingSettings;
+            delete updatedDevice.pendingSettings;
+            connectedDevices.set(deviceId, updatedDevice);
+            
+            console.log(`✅ Received settings from ESP32 after ${waited}ms`);
+            resolve({ success: true, settings });
+            return;
+          }
+          
+          // Timeout
+          if (waited >= maxWaitTime) {
+            clearInterval(interval);
+            console.log(`❌ Timeout: ESP32 did not respond after ${waited}ms`);
+            resolve({ success: false, error: 'Timeout waiting for ESP32 response' });
+          }
+        }, pollInterval);
+      });
+    };
+    
+    const result = await checkForResponse();
+    
+    if (result.success) {
+      console.log(`✅ Returning settings to dashboard`);
+      res.writeHead(200);
+      res.end(JSON.stringify(result.settings));
+    } else {
+      console.log(`⚠️ Returning default values (ESP32 timeout)`);
+      
+      // Return defaults as fallback
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        commandDuration: 2000,
+        motorReverseDelay: 500,
+        partialTime: 5000,
+        gateMode: 0,
+        magneticLoopMode: 0,
+        emergencyLock: 0,
+        autoCloseEnabled: false,
+        autoCloseDelay: 30000,
+        openTimeLearned: 0,
+        closeTimeLearned: 0,
+        manualModeEnabled: false,
+        _note: 'Default values - ESP32 did not respond in time'
+      }));
+    }
+  });
+  return;
+} 
+  
 // ESP32 reports settings - MUST match ESP32's URL pattern
 if (req.url.match(/^\/api\/device\/[^\/]+\/settings$/) && req.method === 'POST') {
   console.log(`🟢🟢🟢 POST SETTINGS ENDPOINT HIT! 🟢🟢🟢`);
