@@ -2614,11 +2614,14 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/settings') && req.m
   return;
 }
 // ESP32 reports settings (no auth - direct from device)
-// ESP32 reports settings - MUST come BEFORE  endpoint
-  
+// ESP32 reports settings - MUST match ESP32's URL pattern
 if (req.url.match(/^\/api\/device\/[^\/]+\/settings$/) && req.method === 'POST') {
+  console.log(`🔵 POST SETTINGS ENDPOINT HIT!`);
+  console.log(`📍 URL: ${req.url}`);
+  
   readBody((data) => {
-    const deviceId = data.deviceId;
+    console.log(`📦 Received settings data:`, JSON.stringify(data));
+    const deviceId = data.deviceId || req.url.split('/')[3];
     
     const settings = {
       commandDuration: data.commandDuration,
@@ -2638,7 +2641,7 @@ if (req.url.match(/^\/api\/device\/[^\/]+\/settings$/) && req.method === 'POST')
       const device = connectedDevices.get(deviceId);
       device.settings = settings;
       connectedDevices.set(deviceId, device);
-      console.log(`📊 Settings updated for ${deviceId}`);
+      console.log(`✅ Cached settings for device ${deviceId}`);
     } else {
       const mfgDevice = manufacturingDevices.get(deviceId);
       connectedDevices.set(deviceId, {
@@ -2647,7 +2650,7 @@ if (req.url.match(/^\/api\/device\/[^\/]+\/settings$/) && req.method === 'POST')
         name: mfgDevice ? mfgDevice.name : deviceId,
         location: mfgDevice ? mfgDevice.location : 'Unknown'
       });
-      console.log(`📊 Settings created for new device ${deviceId}`);
+      console.log(`✅ Cached settings for new device ${deviceId}`);
     }
     
     res.writeHead(200);
