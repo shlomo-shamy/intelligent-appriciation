@@ -442,11 +442,14 @@ input:focus, select:focus, textarea:focus {
     background: #667eea;
     color: white;
     border: none;
-    padding: 12px 16px;
+    padding: 10px 15px;  /* CHANGED: Made it more compact */
     border-radius: 6px;
     cursor: pointer;
-    font-size: 20px;
+    font-size: 24px;  /* CHANGED: Bigger icon */
     font-weight: bold;
+    line-height: 1;  /* ADDED: Prevents extra height */
+    width: auto;  /* ADDED: Prevent stretching */
+    min-width: auto;  /* ADDED: Override any min-width */
     transition: all 0.3s ease;
 }
 
