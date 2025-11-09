@@ -403,7 +403,8 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.classList.add('active');
         }
     });
-    
+    initMobileMenu();
+
     // Close modals when clicking outside
     window.onclick = function(event) {
         if (event.target.classList.contains('modal')) {
@@ -913,3 +914,144 @@ window.GateController = {
     editSchedule,
     deleteSchedule
 };
+// ==================== MOBILE MENU FUNCTIONS ====================
+
+/**
+ * Toggle mobile menu drawer open/close
+ */
+function toggleMobileMenu() {
+    const overlay = document.getElementById('mobileMenuOverlay');
+    const drawer = document.getElementById('mobileMenuDrawer');
+    const body = document.body;
+    
+    if (!overlay || !drawer) {
+        console.error('Mobile menu elements not found');
+        return;
+    }
+    
+    const isOpen = overlay.classList.contains('open');
+    
+    if (isOpen) {
+        // Close menu
+        overlay.classList.remove('open');
+        drawer.classList.remove('open');
+        body.classList.remove('mobile-menu-open');
+    } else {
+        // Open menu
+        overlay.classList.add('open');
+        drawer.classList.add('open');
+        body.classList.add('mobile-menu-open');
+    }
+}
+
+/**
+ * Navigate to a page and close mobile menu
+ * @param {string} path - The path to navigate to
+ */
+function navigateToMobile(path) {
+    toggleMobileMenu();
+    setTimeout(() => {
+        navigateTo(path);
+    }, 100); // Small delay for smooth animation
+}
+
+/**
+ * Handle Organizations click from mobile menu
+ */
+function handleOrganizationsClickMobile() {
+    toggleMobileMenu();
+    setTimeout(() => {
+        handleOrganizationsClick();
+    }, 100);
+}
+
+/**
+ * Handle Organizations click (desktop or mobile)
+ */
+function handleOrganizationsClick() {
+    const currentPage = window.location.pathname.replace('/', '') || 'dashboard';
+    
+    if (currentPage === 'dashboard') {
+        // If on dashboard, open modal (if function exists)
+        if (typeof showOrganizationsModal === 'function') {
+            showOrganizationsModal();
+        }
+    } else {
+        // On other pages, navigate to dashboard
+        window.location.href = '/dashboard?openOrganizations=true';
+    }
+}
+
+/**
+ * Set active menu item based on current page
+ */
+function setActiveMobileMenuItem() {
+    const currentPage = window.location.pathname.replace('/', '') || 'dashboard';
+    
+    // Desktop buttons
+    const navButtons = document.querySelectorAll('.nav-btn[data-page]');
+    navButtons.forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.page === currentPage) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Mobile menu items
+    const mobileItems = document.querySelectorAll('.mobile-menu-item[data-mobile-page]');
+    mobileItems.forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.mobilePage === currentPage) {
+            item.classList.add('active');
+        }
+    });
+}
+
+/**
+ * Initialize mobile menu (called on DOMContentLoaded)
+ */
+function initMobileMenu() {
+    setActiveMobileMenuItem();
+    
+    // Close mobile menu on Escape key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const drawer = document.getElementById('mobileMenuDrawer');
+            if (drawer && drawer.classList.contains('open')) {
+                toggleMobileMenu();
+            }
+        }
+    });
+}
+/*
+// ==================== UPDATE EXISTING DOMContentLoaded ====================
+// Find your existing DOMContentLoaded listener and ADD initMobileMenu() to it
+// Or add this new listener if needed:
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize mobile menu
+    initMobileMenu();
+    
+    // Check if Organizations should auto-open (from URL parameter)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('openOrganizations') === 'true') {
+        if (typeof showOrganizationsModal === 'function') {
+            showOrganizationsModal();
+        }
+        // Clean URL
+        window.history.replaceState({}, '', window.location.pathname);
+    }
+});
+
+// Add mobile menu functions to global GateController object
+window.GateController = {
+    ...window.GateController,
+    // Mobile menu functions
+    toggleMobileMenu,
+    navigateToMobile,
+    handleOrganizationsClick,
+    handleOrganizationsClickMobile,
+    setActiveMobileMenuItem,
+    initMobileMenu
+};
+*/
