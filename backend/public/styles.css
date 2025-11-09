@@ -434,3 +434,199 @@ input:focus, select:focus, textarea:focus {
 .access-denied .return-btn:hover {
     background: #5568d3;
 }
+/* ==================== MOBILE MENU STYLES ==================== */
+
+/* Mobile hamburger toggle button (hidden on desktop) */
+.mobile-menu-toggle {
+    display: none; /* Hidden on desktop */
+    background: #667eea;
+    color: white;
+    border: none;
+    padding: 12px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: bold;
+    transition: all 0.3s ease;
+}
+
+.mobile-menu-toggle:hover {
+    background: #5568d3;
+}
+
+/* Mobile menu overlay (dark background) */
+.mobile-menu-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+}
+
+/* Mobile menu drawer (slides in from right) */
+.mobile-menu-drawer {
+    display: none;
+    position: fixed;
+    top: 0;
+    right: -300px;
+    width: 280px;
+    height: 100%;
+    background: white;
+    z-index: 1000;
+    box-shadow: -2px 0 10px rgba(0,0,0,0.2);
+    transition: right 0.3s ease;
+    overflow-y: auto;
+}
+
+.mobile-menu-drawer.open {
+    right: 0;
+}
+
+/* Mobile menu header */
+.mobile-menu-header {
+    background: #667eea;
+    color: white;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mobile-menu-header h2 {
+    margin: 0;
+    font-size: 18px;
+}
+
+/* Close button */
+.mobile-menu-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 28px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    line-height: 1;
+}
+
+.mobile-menu-close:hover {
+    opacity: 0.8;
+}
+
+/* Mobile menu content area */
+.mobile-menu-content {
+    padding: 15px;
+}
+
+/* User info in mobile drawer */
+.mobile-user-info {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 6px;
+    margin-bottom: 20px;
+    font-size: 12px;
+    color: #666;
+    line-height: 1.6;
+}
+
+.mobile-user-info strong {
+    color: #333;
+}
+
+/* Organization badge (for mobile menu) */
+.org-badge {
+    display: inline-block;
+    background: #667eea;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 11px;
+    margin-right: 5px;
+}
+
+/* Mobile menu items */
+.mobile-menu-item {
+    display: block;
+    width: 100%;
+    background: #f8f9fa;
+    color: #333;
+    border: none;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 16px;
+    text-align: left;
+    transition: all 0.2s ease;
+}
+
+.mobile-menu-item:hover {
+    background: #e9ecef;
+    transform: translateX(-2px);
+}
+
+.mobile-menu-item.active {
+    background: #667eea;
+    color: white;
+}
+
+.mobile-menu-logout {
+    background: #dc3545;
+    color: white;
+    margin-top: 20px;
+}
+
+.mobile-menu-logout:hover {
+    background: #c82333;
+}
+
+/* ==================== MOBILE RESPONSIVE OVERRIDES ==================== */
+@media (max-width: 768px) {
+    /* HIDE desktop menu elements */
+    .nav-buttons,
+    .logout-btn {
+        display: none !important;
+    }
+    
+    /* SHOW mobile hamburger */
+    .mobile-menu-toggle {
+        display: block;
+    }
+    
+    /* Show mobile menu when open */
+    .mobile-menu-overlay.open,
+    .mobile-menu-drawer.open {
+        display: block;
+    }
+    
+    /* Compact header for mobile */
+    .nav-header {
+        padding: 15px !important;
+        gap: 10px !important;
+    }
+    
+    .nav-brand h1 {
+        font-size: 18px !important;
+    }
+    
+    /* Hide user info in header (shows in drawer instead) */
+    .user-info {
+        display: none !important;
+    }
+    
+    /* Hide refresh button on mobile (swipe-to-refresh works) */
+    .refresh {
+        display: none !important;
+    }
+}
+
+/* Prevent body scroll when mobile menu is open */
+body.mobile-menu-open {
+    overflow: hidden;
+}
