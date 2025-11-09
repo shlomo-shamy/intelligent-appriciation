@@ -228,6 +228,8 @@
             .device-controls { grid-template-columns: 1fr 1fr; gap: 5px; }
         }
     </style>
+    <link rel="stylesheet" href="/public/styles.css">
+
 </head>
 <body>
     <div class="container">
@@ -277,8 +279,58 @@
     </nav>
     
     <button class="logout-btn" onclick="logout()">🚪 Logout</button>
+    <!-- MOBILE Hamburger Button (ADD THIS) -->
+    <button class="mobile-menu-toggle" onclick="toggleMobileMenu()">☰</button>
 </div>
+<!-- ==================== MOBILE MENU DRAWER ==================== -->
+<div class="mobile-menu-overlay" id="mobileMenuOverlay" onclick="toggleMobileMenu()"></div>
 
+<div class="mobile-menu-drawer" id="mobileMenuDrawer">
+    <div class="mobile-menu-header">
+        <h2>🚪 Menu</h2>
+        <button class="mobile-menu-close" onclick="toggleMobileMenu()">×</button>
+    </div>
+    
+    <div class="mobile-menu-content">
+        <!-- User Info -->
+        <div class="mobile-user-info">
+            <strong>{{userName}}</strong><br>
+            {{userEmail}}<br>
+            <span class="org-badge">{{organizationName}}</span>
+            <span class="role-badge">{{userRole}}</span>
+        </div>
+        
+        <!-- Menu Items -->
+        <button class="mobile-menu-item" onclick="navigateToMobile('/dashboard')" data-mobile-page="dashboard">
+            🏠 Home
+        </button>
+        
+        <button class="mobile-menu-item" onclick="navigateToMobile('/system')" data-mobile-page="system"
+                style="display: {{showSuperAdminFeatures}}">
+            ⚙️ System
+        </button>
+        
+         <button class="mobile-menu-item active" onclick="navigateToMobile('/devices')" data-mobile-page="devices"
+                style="display: {{showAdminFeatures}}">
+            📱 Devices
+        </button>
+        
+        <button class="mobile-menu-item" onclick="navigateToMobile('/manufacturing')" data-mobile-page="manufacturing"
+                style="display: {{showSuperAdminFeatures}}">
+            🏭 Manufacturing DB
+        </button>
+        
+        <button class="mobile-menu-item" onclick="handleOrganizationsClickMobile()" data-mobile-page="organizations"
+                style="display: {{showSuperAdminFeatures}}">
+            🏢 Organizations
+        </button>
+        
+        <button class="mobile-menu-item mobile-menu-logout" onclick="logout()">
+            🚪 Logout
+        </button>
+    </div>
+</div>
+        
 <script>
 // Handle Organizations button click - Modal on Dashboard, navigation on other pages
 function handleOrganizationsClick() {
@@ -506,5 +558,7 @@ document.getElementById('pageTitle').textContent = '📱 Devices'; // Example
         // Initialize on page load
         renderDevices();
     </script>
+    <script src="/public/common.js"></script>
+
 </body>
 </html>
