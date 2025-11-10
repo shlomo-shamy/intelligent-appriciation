@@ -975,9 +975,12 @@ function handleOrganizationsClick() {
         // If on dashboard, open modal (if function exists)
         if (typeof showOrganizationsModal === 'function') {
             showOrganizationsModal();
+        } else {
+            console.error('showOrganizationsModal function not found');
+            alert('Organizations modal not available. Please refresh the page.');
         }
     } else {
-        // On other pages, navigate to dashboard
+        // On other pages, navigate to dashboard with parameter
         window.location.href = '/dashboard?openOrganizations=true';
     }
 }
