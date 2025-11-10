@@ -329,11 +329,17 @@
             🏭 Manufacturing DB
         </button>
         
-        <!-- Organizations - SuperAdmin ONLY (Modal on Dashboard, Page on others) -->
-        <button class="nav-btn" onclick="handleOrganizationsClick()" data-page="organizations" 
-                style="display: {{showSuperAdminFeatures}}">
-            🏢 Organizations
-        </button>
+<!-- Desktop menu -->
+<button class="nav-btn" onclick="handleOrganizationsClick()" data-page="organizations" 
+        style="display: {{showSuperAdminFeatures}}">
+    🏢 Organizations
+</button>
+
+<!-- Mobile menu -->
+<button class="mobile-menu-item" onclick="handleOrganizationsClickMobile()" data-mobile-page="organizations"
+        style="display: {{showSuperAdminFeatures}}">
+    🏢 Organizations
+</button>
     </nav>
     
     <button class="logout-btn" onclick="logout()">🚪 Logout</button>
