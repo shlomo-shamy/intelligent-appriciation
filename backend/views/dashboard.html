@@ -450,20 +450,25 @@ document.addEventListener('DOMContentLoaded', function() {
 // Add to each page's DOMContentLoaded
 document.getElementById('pageTitle').textContent = '🏠 Home'; // Example
     
-    navButtons.forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.page === currentPage) {
-            btn.classList.add('active');
-        }
-            // Check if Organizations should auto-open
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('openOrganizations') === 'true') {
-        showOrganizationsModal();
-        // Clean URL
-        window.history.replaceState({}, '', '/dashboard');
+navButtons.forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.dataset.page === currentPage) {
+        btn.classList.add('active');
     }
-    });
-});
+}); // CLOSED THE LOOP HERE
+
+// Check if Organizations should auto-open (OUTSIDE THE LOOP)
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('openOrganizations') === 'true') {
+    // Add small delay to ensure page is fully loaded
+    setTimeout(() => {
+        if (typeof showOrganizationsModal === 'function') {
+            showOrganizationsModal();
+        }
+    }, 300);
+    // Clean URL
+    window.history.replaceState({}, '', '/dashboard');
+}
 </script>
         
         <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
