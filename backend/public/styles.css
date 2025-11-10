@@ -442,24 +442,25 @@ input:focus, select:focus, textarea:focus {
     background: #667eea;
     color: white;
     border: none;
-    padding: 10px 15px;  /* CHANGED: Made it more compact */
+    padding: 12px 16px;
     border-radius: 6px;
     cursor: pointer;
-    font-size: 24px;  /* CHANGED: Bigger icon */
+    font-size: 20px;
     font-weight: bold;
-    line-height: 1;  /* ADDED: Prevents extra height */
-    width: auto;  /* ADDED: Prevent stretching */
-    min-width: auto;  /* ADDED: Override any min-width */
     transition: all 0.3s ease;
 }
 
 /* Fix hamburger button width on mobile */
 @media (max-width: 768px) {
     .mobile-menu-toggle {
-        padding: 10px 15px !important;
-        width: auto !important;
-        min-width: auto !important;
+        display: flex !important;
         flex: none !important;
+        width: 48px !important;
+        height: 48px !important;
+        padding: 0 !important;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
     }
 }
 
@@ -618,10 +619,11 @@ input:focus, select:focus, textarea:focus {
         display: block;
     }
     
-    /* Compact header for mobile */
+    /* CRITICAL: Override nav-header alignment for hamburger */
     .nav-header {
         padding: 15px !important;
         gap: 10px !important;
+        align-items: center !important; /* CHANGED from stretch to center */
     }
     
     .nav-brand h1 {
