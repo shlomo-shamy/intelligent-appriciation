@@ -461,6 +461,7 @@ input:focus, select:focus, textarea:focus {
         align-items: center;
         justify-content: center;
         font-size: 24px;
+        margin-left: auto;  /* ADDED: Push to right */
     }
 }
 
@@ -623,11 +624,17 @@ input:focus, select:focus, textarea:focus {
     .nav-header {
         padding: 15px !important;
         gap: 10px !important;
-        align-items: center !important; /* CHANGED from stretch to center */
+        flex-direction: row !important;  /* ADDED: Keep horizontal layout */
+        align-items: center !important;
+        justify-content: space-between !important;  /* ADDED: Space between title and hamburger */
     }
     
     .nav-brand h1 {
         font-size: 18px !important;
+    }
+        .nav-brand {
+        flex: 1;
+        text-align: left;
     }
     
     /* Hide user info in header (shows in drawer instead) */
