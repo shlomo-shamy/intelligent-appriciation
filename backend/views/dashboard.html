@@ -459,16 +459,27 @@ navButtons.forEach(btn => {
 
 // Check if Organizations should auto-open (OUTSIDE THE LOOP)
 const urlParams = new URLSearchParams(window.location.search);
+console.log('🔍 URL parameters:', window.location.search);
+console.log('🔍 openOrganizations parameter:', urlParams.get('openOrganizations'));
+
 if (urlParams.get('openOrganizations') === 'true') {
+    console.log('✅ openOrganizations is true, checking function...');
+    console.log('🔍 showOrganizationsModal exists?', typeof showOrganizationsModal);
+    
     // Add small delay to ensure page is fully loaded
     setTimeout(() => {
         if (typeof showOrganizationsModal === 'function') {
+            console.log('✅ Opening Organizations modal NOW...');
             showOrganizationsModal();
+        } else {
+            console.error('❌ showOrganizationsModal function NOT FOUND');
+            console.error('Available functions:', Object.keys(window).filter(k => k.includes('Organization')));
         }
     }, 300);
     // Clean URL
     window.history.replaceState({}, '', '/dashboard');
 }
+});  // CLOSE THE DOMContentLoaded
 </script>
         
         <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
@@ -2288,7 +2299,6 @@ window.onclick = function(event) {
     window.USER_EMAIL = '{{userEmail}}';
     window.USER_NAME = '{{userName}}';
 </script>
-<script src="/public/common.js"></script>
     
 <!-- Remove Member Modal -->
 <div id="removeMemberModal" class="modal" style="display: none;">
