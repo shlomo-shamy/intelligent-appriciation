@@ -426,18 +426,22 @@
     </div>
 </div>
 <script>
+
 // Define variables from server template
 const userRole = '{{userRole}}';
+const canManageDevice = {{canManageDevice}};
 
-console.log('User role:', userRole);
+console.log('User role:', userRole, '| Can manage devices:', canManageDevice);
     
 // Handle Organizations button click - Modal on Dashboard, navigation on other pages
 function handleOrganizationsClick() {
     const currentPage = window.location.pathname.replace('/', '') || 'dashboard';
     
     if (currentPage === 'dashboard') {
+        // On dashboard, open modal
         showOrganizationsModal();
     } else {
+        // On other pages, navigate to dashboard and open modal
         window.location.href = '/dashboard?openOrganizations=true';
     }
 }
@@ -447,6 +451,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentPage = window.location.pathname.replace('/', '') || 'dashboard';
     const navButtons = document.querySelectorAll('.nav-btn[data-page]');
     
+    // Add to each page's DOMContentLoaded
     document.getElementById('pageTitle').textContent = '🏠 Home';
     
     navButtons.forEach(btn => {
@@ -454,29 +459,31 @@ document.addEventListener('DOMContentLoaded', function() {
         if (btn.dataset.page === currentPage) {
             btn.classList.add('active');
         }
-    });
+    }); // CLOSED THE LOOP HERE
     
-    // Check if Organizations should auto-open
+    // Check if Organizations should auto-open (OUTSIDE THE LOOP)
     const urlParams = new URLSearchParams(window.location.search);
+    console.log('🔍 URL parameters:', window.location.search);
+    console.log('🔍 openOrganizations parameter:', urlParams.get('openOrganizations'));
+
     if (urlParams.get('openOrganizations') === 'true') {
-        console.log('✅ Will open Organizations modal after full page load...');
+        console.log('✅ openOrganizations is true, checking function...');
+        console.log('🔍 showOrganizationsModal exists?', typeof showOrganizationsModal);
         
-        // Wait for FULL page load
-        window.addEventListener('load', function() {
-            setTimeout(() => {
-                if (typeof showOrganizationsModal === 'function') {
-                    console.log('✅ Opening Organizations modal...');
-                    showOrganizationsModal();
-                } else {
-                    console.error('❌ showOrganizationsModal not found');
-                }
-            }, 500);
-        });
-        
+        // Add small delay to ensure page is fully loaded
+        setTimeout(() => {
+            if (typeof showOrganizationsModal === 'function') {
+                console.log('✅ Opening Organizations modal NOW...');
+                showOrganizationsModal();
+            } else {
+                console.error('❌ showOrganizationsModal function NOT FOUND');
+            }
+        }, 300);
         // Clean URL
         window.history.replaceState({}, '', '/dashboard');
     }
 });
+    
 </script>
         
         <button class="refresh" onclick="location.reload()">🔄 Refresh</button>
