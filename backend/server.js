@@ -1519,8 +1519,8 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.m
     const sessionToken = getSessionFromCookie(req.headers.cookie);
     if (!sessionToken || !validateSession(sessionToken)) {
       // Return login page for dashboard access
-      if (req.url === '/dashboard' || req.url === '/') {
-        const loginHtml = `
+            if (req.url.startsWith('/dashboard') || req.url === '/') {
+              const loginHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -1679,8 +1679,8 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.m
   }
 
 // Protected dashboard - require auth (UPDATED with organization context)
-if (req.url === '/dashboard') {
-  requireAuth(async (session) => {  // ✅ ADD async
+if (req.url.startsWith('/dashboard')) {
+    requireAuth(async (session) => {  // ✅ ADD async
     const userOrgs = getUserOrganizations(session.email);
     const userRole = getUserHighestRole(session.email);
     const isSuperAdmin = (userRole === 'superadmin');
