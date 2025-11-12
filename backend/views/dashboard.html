@@ -461,27 +461,26 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }); // CLOSED THE LOOP HERE
     
-    // Check if Organizations should auto-open (OUTSIDE THE LOOP)
-    const urlParams = new URLSearchParams(window.location.search);
-    console.log('🔍 URL parameters:', window.location.search);
-    console.log('🔍 openOrganizations parameter:', urlParams.get('openOrganizations'));
-
-    if (urlParams.get('openOrganizations') === 'true') {
-        console.log('✅ openOrganizations is true, checking function...');
-        console.log('🔍 showOrganizationsModal exists?', typeof showOrganizationsModal);
-        
-        // Add small delay to ensure page is fully loaded
+// Check if Organizations should auto-open
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('openOrganizations') === 'true') {
+    console.log('✅ Will open Organizations modal after full page load...');
+    
+    // Wait for FULL page load (not just DOM)
+    window.addEventListener('load', function() {
         setTimeout(() => {
             if (typeof showOrganizationsModal === 'function') {
-                console.log('✅ Opening Organizations modal NOW...');
+                console.log('✅ Opening Organizations modal...');
                 showOrganizationsModal();
             } else {
-                console.error('❌ showOrganizationsModal function NOT FOUND');
+                console.error('❌ showOrganizationsModal not found');
             }
-        }, 300);
-        // Clean URL
-        window.history.replaceState({}, '', '/dashboard');
-    }
+        }, 500);
+    });
+    
+    // Clean URL
+    window.history.replaceState({}, '', '/dashboard');
+}
 });
     
 </script>
