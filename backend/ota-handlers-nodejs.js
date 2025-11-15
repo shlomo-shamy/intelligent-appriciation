@@ -6,6 +6,8 @@
 const multer = require('multer');
 const crypto = require('crypto');
 const { getStorage } = require('firebase-admin/storage');
+const Busboy = require('busboy');
+
 
 // Configure multer for memory storage
 const upload = multer({
@@ -35,130 +37,178 @@ function getRealtimeDB(admin) {
 }
 
 /**
+ * UPDATED handleFirmwareUpload function
+ * Replace the existing handleFirmwareUpload in ota-handlers-nodejs.js with this
+ */
+
+const Busboy = require('busboy');
+const crypto = require('crypto');
+const { getStorage } = require('firebase-admin/storage');
+
+// Calculate SHA256 checksum
+function calculateChecksum(buffer) {
+  const hashSum = crypto.createHash('sha256');
+  hashSum.update(buffer);
+  return hashSum.digest('hex');
+}
+
+// Helper to get Realtime Database reference
+function getRealtimeDB(admin) {
+  return admin.database();
+}
+
+/**
  * POST /api/firmware/upload
  * Upload firmware to Firebase Storage
  */
 async function handleFirmwareUpload(req, res, body, session, admin) {
   try {
     // Check admin access
-    if (session.userLevel < 2) { // Require admin (level 2)
+    if (session.userLevel < 2) {
       res.writeHead(403);
       res.end(JSON.stringify({ error: 'Admin access required' }));
       return;
     }
 
-    // This is tricky with vanilla Node.js - multer expects Express
-    // We'll handle file upload manually
-    const boundary = req.headers['content-type']?.split('boundary=')[1];
-    if (!boundary) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ error: 'Invalid multipart request' }));
-      return;
-    }
+    console.log('📤 Starting firmware upload...');
 
-    // Parse multipart data (simplified - in production use a proper parser)
-    const parts = body.toString().split(`--${boundary}`);
+    // Use busboy to parse multipart form data
+    const busboy = Busboy({ headers: req.headers });
+    
     let firmwareBuffer = null;
     let version = null;
     let changelog = '';
     let hardwareVersion = 'all';
     let required = false;
+    let filename = '';
 
-    for (const part of parts) {
-      if (part.includes('name="firmware"')) {
-        // Extract binary data
-        const binaryStart = part.indexOf('\r\n\r\n') + 4;
-        const binaryEnd = part.lastIndexOf('\r\n');
-        firmwareBuffer = Buffer.from(part.substring(binaryStart, binaryEnd), 'binary');
-      } else if (part.includes('name="version"')) {
-        version = part.split('\r\n\r\n')[1]?.trim();
-      } else if (part.includes('name="changelog"')) {
-        changelog = part.split('\r\n\r\n')[1]?.trim() || '';
-      } else if (part.includes('name="hardware_version"')) {
-        hardwareVersion = part.split('\r\n\r\n')[1]?.trim() || 'all';
-      } else if (part.includes('name="required"')) {
-        const reqValue = part.split('\r\n\r\n')[1]?.trim();
-        required = reqValue === 'true' || reqValue === 'on';
-      }
-    }
+    busboy.on('file', (fieldname, file, info) => {
+      console.log(`📁 Receiving file: ${info.filename}`);
+      filename = info.filename;
+      
+      const chunks = [];
+      
+      file.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+      
+      file.on('end', () => {
+        firmwareBuffer = Buffer.concat(chunks);
+        console.log(`✅ File received: ${firmwareBuffer.length} bytes`);
+      });
+    });
 
-    if (!firmwareBuffer || !version) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ error: 'Firmware file and version required' }));
-      return;
-    }
+    busboy.on('field', (fieldname, value) => {
+      console.log(`📝 Field: ${fieldname} = ${value}`);
+      
+      if (fieldname === 'version') version = value;
+      else if (fieldname === 'changelog') changelog = value;
+      else if (fieldname === 'hardware_version') hardwareVersion = value;
+      else if (fieldname === 'required') required = value === 'true' || value === 'on';
+    });
 
-    // Check if version exists
-    const db = getRealtimeDB(admin);
-    const firmwareRef = db.ref(`firmware/versions/${version}`);
-    const snapshot = await firmwareRef.once('value');
-    
-    if (snapshot.exists()) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ error: 'Firmware version already exists' }));
-      return;
-    }
+    busboy.on('finish', async () => {
+      try {
+        console.log('🔍 Processing upload...');
+        console.log(`Version: ${version}, Size: ${firmwareBuffer?.length} bytes`);
 
-    // Calculate checksum
-    const checksum = calculateChecksum(firmwareBuffer);
-    const fileSize = firmwareBuffer.length;
-
-    // Upload to Firebase Storage
-    const timestamp = Date.now();
-    const filename = `firmware_v${version}_${timestamp}.bin`;
-    const storagePath = `firmware/${filename}`;
-
-    const bucket = getStorage().bucket();
-    const file = bucket.file(storagePath);
-
-    await file.save(firmwareBuffer, {
-      metadata: {
-        contentType: 'application/octet-stream',
-        metadata: {
-          version: version,
-          checksum: checksum,
-          uploadedBy: session.email,
-          uploadedAt: new Date().toISOString()
+        if (!firmwareBuffer || !version) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'Firmware file and version required' }));
+          return;
         }
+
+        // Check if version exists
+        const db = getRealtimeDB(admin);
+        const firmwareRef = db.ref(`firmware/versions/${version}`);
+        const snapshot = await firmwareRef.once('value');
+        
+        if (snapshot.exists()) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'Firmware version already exists' }));
+          return;
+        }
+
+        console.log('🔐 Calculating checksum...');
+        const checksum = calculateChecksum(firmwareBuffer);
+        const fileSize = firmwareBuffer.length;
+
+        console.log(`✅ Checksum: ${checksum.substring(0, 16)}...`);
+
+        // Upload to Firebase Storage
+        console.log('☁️ Uploading to Firebase Storage...');
+        const timestamp = Date.now();
+        const storagePath = `firmware/firmware_v${version}_${timestamp}.bin`;
+
+        const bucket = getStorage().bucket();
+        const file = bucket.file(storagePath);
+
+        await file.save(firmwareBuffer, {
+          metadata: {
+            contentType: 'application/octet-stream',
+            metadata: {
+              version: version,
+              checksum: checksum,
+              uploadedBy: session.email,
+              uploadedAt: new Date().toISOString()
+            }
+          }
+        });
+
+        console.log('🌐 Making file public...');
+        await file.makePublic();
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+
+        console.log('💾 Saving metadata to database...');
+        const firmwareData = {
+          version: version,
+          filename: `firmware_v${version}_${timestamp}.bin`,
+          storage_path: storagePath,
+          size: fileSize,
+          checksum: checksum,
+          uploaded_at: Date.now(),
+          uploaded_by: session.email,
+          changelog: changelog,
+          hardware_version: hardwareVersion,
+          required: required,
+          download_url: publicUrl,
+          active: true
+        };
+
+        await firmwareRef.set(firmwareData);
+
+        console.log('✅ Firmware upload complete!');
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: 'Firmware uploaded successfully',
+          firmware: firmwareData
+        }));
+
+      } catch (error) {
+        console.error('❌ Upload processing error:', error);
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: 'Upload failed', details: error.message }));
       }
     });
 
-    // Make file publicly accessible
-    await file.makePublic();
-    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${storagePath}`;
+    busboy.on('error', (error) => {
+      console.error('❌ Busboy error:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: 'Upload failed', details: error.message }));
+    });
 
-    // Store metadata in Realtime Database
-    const firmwareData = {
-      version: version,
-      filename: filename,
-      storage_path: storagePath,
-      size: fileSize,
-      checksum: checksum,
-      uploaded_at: Date.now(),
-      uploaded_by: session.email,
-      changelog: changelog,
-      hardware_version: hardwareVersion,
-      required: required,
-      download_url: publicUrl,
-      active: true
-    };
-
-    await firmwareRef.set(firmwareData);
-
-    res.writeHead(200);
-    res.end(JSON.stringify({
-      success: true,
-      message: 'Firmware uploaded successfully',
-      firmware: firmwareData
-    }));
+    // Pipe the request to busboy
+    req.pipe(busboy);
 
   } catch (error) {
-    console.error('Firmware upload error:', error);
+    console.error('❌ Firmware upload error:', error);
     res.writeHead(500);
     res.end(JSON.stringify({ error: 'Upload failed', details: error.message }));
   }
 }
 
+module.exports = handleFirmwareUpload;
 /**
  * GET /api/firmware/versions
  * List all firmware versions
