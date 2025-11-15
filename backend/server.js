@@ -77,7 +77,6 @@ function renderTemplate(templateName, data = {}) {
 
 // Firebase Admin SDK (optional - falls back gracefully)
 let admin, db, auth, firebaseInitialized = false;
-
 try {
   console.log('Firebase environment check:');
   console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING');
@@ -93,15 +92,22 @@ try {
       private_key: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       client_email: process.env.FIREBASE_CLIENT_EMAIL,
     };
-
+    
     admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount)
+      credential: admin.credential.cert(serviceAccount),
+      databaseURL: 'https://gate-controller-c68de-default-rtdb.firebaseio.com',
+      storageBucket: 'gate-controller-c68de.firebasestorage.app'
     });
     
     db = admin.firestore();
     auth = admin.auth();
     firebaseInitialized = true;
     console.log('Firebase initialized successfully');
+    
+    // Verify Storage is accessible
+    const { getStorage } = require('firebase-admin/storage');
+    const bucket = getStorage().bucket();
+    console.log('Firebase Storage bucket:', bucket.name);
   } else {
     console.log('Firebase environment variables missing - running in local mode');
   }
