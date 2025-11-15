@@ -2229,7 +2229,7 @@ const otaHandlers = require('./ota-handlers-nodejs');
 // POST /api/firmware/upload
 if (req.url === '/api/firmware/upload' && req.method === 'POST') {
   requireAuth(async (session) => {
-    await otaHandlers.handleFirmwareUpload(req, res, body, session, admin);
+    await otaHandlers.handleFirmwareUpload(req, res, null, session, admin); // ← Changed body to null
   });
   return;
 }
