@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firmware Management - Gate Controller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+
+        h2 {
+            color: #555;
+            margin: 30px 0 15px 0;
+            font-size: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .upload-section {
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            padding: 30px;
+            text-align: center;
+            background: #fafafa;
+            margin-bottom: 20px;
+        }
+
+        .upload-section.dragover {
+            border-color: #4CAF50;
+            background: #f0f8f0;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .file-label {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #4CAF50;
+            color: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+
+        .file-label:hover {
+            background: #45a049;
+        }
+
+        .form-group {
+            margin: 15px 0;
+            text-align: left;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 5px;
+        }
+
+        .btn-primary {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1976D2;
+        }
+
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .versions-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .versions-table th,
+        .versions-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        .versions-table th {
+            background: #f9f9f9;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .versions-table tr:hover {
+            background: #f9f9f9;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-info {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .device-selector {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 15px 0;
+            background: #fafafa;
+        }
+
+        .device-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+
+        .device-item {
+            padding: 8px;
+            margin: 5px 0;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .device-item input[type="checkbox"] {
+            width: auto;
+        }
+
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+
+        .status-online {
+            background: #4CAF50;
+        }
+
+        .status-offline {
+            background: #f44336;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .rollout-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .status-card {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .status-card .number {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        .status-card .label {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .maintenance-window {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Firmware Management & OTA Updates</h1>
+
+        <!-- Upload Firmware Section -->
+        <div class="card">
+            <h2>Upload New Firmware</h2>
+            <div class="upload-section" id="uploadZone">
+                <input type="file" id="firmwareFile" accept=".bin">
+                <label for="firmwareFile" class="file-label">Choose Firmware File (.bin)</label>
+                <p style="margin-top: 15px; color: #666;">or drag and drop here</p>
+                <p id="selectedFile" style="margin-top: 10px; color: #2196F3; font-weight: 500;"></p>
+            </div>
+
+            <div class="form-group">
+                <label for="version">Version *</label>
+                <input type="text" id="version" placeholder="e.g., 1.0.0" required>
+            </div>
+
+            <div class="form-group">
+                <label for="changelog">Changelog</label>
+                <textarea id="changelog" placeholder="What's new in this version..."></textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="hardwareVersion">Hardware Version</label>
+                <input type="text" id="hardwareVersion" placeholder="e.g., esp32s3 or 'all'" value="all">
+            </div>
+
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="required" style="width: auto; margin-right: 5px;">
+                    Required Update (forces update on all devices)
+                </label>
+            </div>
+
+            <button class="btn btn-success" onclick="uploadFirmware()">
+                📤 Upload Firmware
+            </button>
+
+            <div id="uploadMessage"></div>
+        </div>
+
+        <!-- Available Firmware Versions -->
+        <div class="card">
+            <h2>Available Firmware Versions</h2>
+            <div id="versionsLoading" class="loading">Loading versions...</div>
+            <div id="versionsContainer"></div>
+        </div>
+
+        <!-- Trigger OTA Update -->
+        <div class="card">
+            <h2>Trigger OTA Update</h2>
+            
+            <div class="form-group">
+                <label for="targetVersion">Select Firmware Version *</label>
+                <select id="targetVersion">
+                    <option value="">-- Select Version --</option>
+                </select>
+            </div>
+
+            <div class="device-selector">
+                <h3 style="margin-bottom: 10px;">Target Devices</h3>
+                
+                <div style="margin-bottom: 15px;">
+                    <label>
+                        <input type="radio" name="deviceSelection" value="specific" checked>
+                        Specific Devices
+                    </label>
+                    <label style="margin-left: 20px;">
+                        <input type="radio" name="deviceSelection" value="organization">
+                        All Devices in Organization
+                    </label>
+                </div>
+
+                <div id="specificDevices">
+                    <button class="btn btn-primary" onclick="loadDevices()">🔄 Load Devices</button>
+                    <div class="device-list" id="deviceList"></div>
+                </div>
+
+                <div id="organizationSelector" style="display: none;">
+                    <select id="organizationId" class="form-control">
+                        <option value="">-- Select Organization --</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="maintenance-window">
+                <div class="form-group">
+                    <label for="windowStart">Start Time (HH:MM)</label>
+                    <input type="time" id="windowStart" value="02:00">
+                </div>
+                <div class="form-group">
+                    <label for="windowEnd">End Time (HH:MM)</label>
+                    <input type="time" id="windowEnd" value="06:00">
+                </div>
+                <div class="form-group">
+                    <label for="windowTimezone">Timezone</label>
+                    <select id="windowTimezone">
+                        <option value="UTC">UTC</option>
+                        <option value="America/New_York">Eastern Time</option>
+                        <option value="America/Chicago">Central Time</option>
+                        <option value="America/Denver">Mountain Time</option>
+                        <option value="America/Los_Angeles">Pacific Time</option>
+                    </select>
+                </div>
+            </div>
+
+            <button class="btn btn-success" onclick="triggerOTA()">
+                🚀 Trigger OTA Update
+            </button>
+
+            <div id="otaMessage"></div>
+        </div>
+
+        <!-- Active Rollouts -->
+        <div class="card">
+            <h2>Recent Rollouts</h2>
+            <div id="rolloutsLoading" class="loading">Loading rollouts...</div>
+            <div id="rolloutsContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let availableVersions = [];
+        let availableDevices = [];
+        let selectedDevices = new Set();
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadVersions();
+            loadRollouts();
+            setupDragDrop();
+            setupDeviceSelection();
+        });
+
+        // File selection
+        document.getElementById('firmwareFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('selectedFile').textContent = `Selected: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB)`;
+            }
+        });
+
+        // Drag and drop
+        function setupDragDrop() {
+            const zone = document.getElementById('uploadZone');
+            
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                zone.addEventListener(eventName, preventDefaults, false);
+            });
+
+            function preventDefaults(e) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+
+            ['dragenter', 'dragover'].forEach(eventName => {
+                zone.addEventListener(eventName, () => zone.classList.add('dragover'), false);
+            });
+
+            ['dragleave', 'drop'].forEach(eventName => {
+                zone.addEventListener(eventName, () => zone.classList.remove('dragover'), false);
+            });
+
+            zone.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    document.getElementById('firmwareFile').files = files;
+                    document.getElementById('selectedFile').textContent = `Selected: ${files[0].name} (${(files[0].size / 1024 / 1024).toFixed(2)} MB)`;
+                }
+            });
+        }
+
+        // Device selection mode
+        function setupDeviceSelection() {
+            document.querySelectorAll('input[name="deviceSelection"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    if (e.target.value === 'specific') {
+                        document.getElementById('specificDevices').style.display = 'block';
+                        document.getElementById('organizationSelector').style.display = 'none';
+                    } else {
+                        document.getElementById('specificDevices').style.display = 'none';
+                        document.getElementById('organizationSelector').style.display = 'block';
+                    }
+                });
+            });
+        }
+
+        // Upload firmware
+        async function uploadFirmware() {
+            const fileInput = document.getElementById('firmwareFile');
+            const version = document.getElementById('version').value.trim();
+            const changelog = document.getElementById('changelog').value.trim();
+            const hardwareVersion = document.getElementById('hardwareVersion').value.trim();
+            const required = document.getElementById('required').checked;
+
+            if (!fileInput.files[0]) {
+                showMessage('uploadMessage', 'Please select a firmware file', 'error');
+                return;
+            }
+
+            if (!version) {
+                showMessage('uploadMessage', 'Please enter a version', 'error');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('firmware', fileInput.files[0]);
+            formData.append('version', version);
+            formData.append('changelog', changelog);
+            formData.append('hardware_version', hardwareVersion);
+            formData.append('required', required);
+
+            try {
+                showMessage('uploadMessage', 'Uploading firmware...', 'info');
+                
+                const response = await fetch('/api/firmware/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('uploadMessage', 'Firmware uploaded successfully!', 'success');
+                    // Reset form
+                    document.getElementById('firmwareFile').value = '';
+                    document.getElementById('selectedFile').textContent = '';
+                    document.getElementById('version').value = '';
+                    document.getElementById('changelog').value = '';
+                    document.getElementById('required').checked = false;
+                    // Reload versions
+                    loadVersions();
+                } else {
+                    showMessage('uploadMessage', `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage('uploadMessage', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Load firmware versions
+        async function loadVersions() {
+            try {
+                const response = await fetch('/api/firmware/versions', {
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`
+                    }
+                });
+
+                const data = await response.json();
+                availableVersions = data.versions || [];
+
+                displayVersions(availableVersions);
+                populateVersionSelect(availableVersions);
+            } catch (error) {
+                document.getElementById('versionsContainer').innerHTML = 
+                    `<div class="alert alert-error">Error loading versions: ${error.message}</div>`;
+            }
+        }
+
+        // Display versions table
+        function displayVersions(versions) {
+            document.getElementById('versionsLoading').style.display = 'none';
+            
+            if (versions.length === 0) {
+                document.getElementById('versionsContainer').innerHTML = 
+                    '<p style="color: #666;">No firmware versions uploaded yet.</p>';
+                return;
+            }
+
+            let html = '<table class="versions-table"><thead><tr>';
+            html += '<th>Version</th>';
+            html += '<th>Size</th>';
+            html += '<th>Hardware</th>';
+            html += '<th>Uploaded</th>';
+            html += '<th>Required</th>';
+            html += '<th>Actions</th>';
+            html += '</tr></thead><tbody>';
+
+            versions.forEach(v => {
+                const date = new Date(v.uploaded_at).toLocaleString();
+                const size = (v.size / 1024 / 1024).toFixed(2);
+                
+                html += '<tr>';
+                html += `<td><strong>${v.version}</strong><br><small style="color: #666;">${v.changelog || 'No changelog'}</small></td>`;
+                html += `<td>${size} MB</td>`;
+                html += `<td><span class="badge badge-info">${v.hardware_version}</span></td>`;
+                html += `<td><small>${date}</small></td>`;
+                html += `<td>${v.required ? '<span class="badge badge-warning">Required</span>' : '<span class="badge badge-success">Optional</span>'}</td>`;
+                html += `<td>
+                    <button class="btn btn-primary" onclick="downloadFirmware('${v.version}')">Download</button>
+                    <button class="btn btn-danger" onclick="deleteFirmware('${v.version}')">Delete</button>
+                </td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('versionsContainer').innerHTML = html;
+        }
+
+        // Populate version select
+        function populateVersionSelect(versions) {
+            const select = document.getElementById('targetVersion');
+            select.innerHTML = '<option value="">-- Select Version --</option>';
+            
+            versions.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.version;
+                option.textContent = `${v.version} - ${v.changelog || 'No description'}`;
+                select.appendChild(option);
+            });
+        }
+
+        // Download firmware
+        function downloadFirmware(version) {
+            window.open(`/api/firmware/download/${version}`, '_blank');
+        }
+
+        // Delete firmware
+        async function deleteFirmware(version) {
+            if (!confirm(`Are you sure you want to delete firmware version ${version}?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/firmware/${version}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`
+                    }
+                });
+
+                if (response.ok) {
+                    alert('Firmware deleted successfully');
+                    loadVersions();
+                } else {
+                    const data = await response.json();
+                    alert(`Error: ${data.error}`);
+                }
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Load devices
+        async function loadDevices() {
+            try {
+                // TODO: Implement your device loading logic
+                // For now, using mock data
+                availableDevices = [
+                    { serial: 'GATE001', name: 'Main Gate', status: 'online', current_version: '0.9.0' },
+                    { serial: 'GATE002', name: 'Side Gate', status: 'online', current_version: '0.9.0' },
+                    { serial: 'GATE003', name: 'Back Gate', status: 'offline', current_version: '0.8.5' }
+                ];
+
+                displayDevices(availableDevices);
+            } catch (error) {
+                console.error('Error loading devices:', error);
+            }
+        }
+
+        // Display devices
+        function displayDevices(devices) {
+            const container = document.getElementById('deviceList');
+            container.innerHTML = '';
+
+            devices.forEach(device => {
+                const div = document.createElement('div');
+                div.className = 'device-item';
+                div.innerHTML = `
+                    <input type="checkbox" id="device-${device.serial}" value="${device.serial}" 
+                           onchange="toggleDevice('${device.serial}')">
+                    <span class="status-indicator ${device.status === 'online' ? 'status-online' : 'status-offline'}"></span>
+                    <label for="device-${device.serial}" style="flex: 1; cursor: pointer;">
+                        <strong>${device.name}</strong> (${device.serial})<br>
+                        <small>Current: v${device.current_version} | ${device.status}</small>
+                    </label>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // Toggle device selection
+        function toggleDevice(serial) {
+            const checkbox = document.getElementById(`device-${serial}`);
+            if (checkbox.checked) {
+                selectedDevices.add(serial);
+            } else {
+                selectedDevices.delete(serial);
+            }
+        }
+
+        // Trigger OTA
+        async function triggerOTA() {
+            const version = document.getElementById('targetVersion').value;
+            const selectionMode = document.querySelector('input[name="deviceSelection"]:checked').value;
+
+            if (!version) {
+                showMessage('otaMessage', 'Please select a firmware version', 'error');
+                return;
+            }
+
+            let payload = {
+                target_version: version,
+                maintenance_window: {
+                    start: document.getElementById('windowStart').value,
+                    end: document.getElementById('windowEnd').value,
+                    timezone: document.getElementById('windowTimezone').value
+                }
+            };
+
+            if (selectionMode === 'specific') {
+                if (selectedDevices.size === 0) {
+                    showMessage('otaMessage', 'Please select at least one device', 'error');
+                    return;
+                }
+                payload.device_serials = Array.from(selectedDevices);
+            } else {
+                const orgId = document.getElementById('organizationId').value;
+                if (!orgId) {
+                    showMessage('otaMessage', 'Please select an organization', 'error');
+                    return;
+                }
+                payload.organization_id = orgId;
+            }
+
+            try {
+                showMessage('otaMessage', 'Triggering OTA update...', 'info');
+
+                const response = await fetch('/api/ota/trigger', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    showMessage('otaMessage', `OTA update triggered for ${data.device_count} device(s)! Rollout ID: ${data.rollout_id}`, 'success');
+                    loadRollouts();
+                } else {
+                    showMessage('otaMessage', `Error: ${data.error}`, 'error');
+                }
+            } catch (error) {
+                showMessage('otaMessage', `Error: ${error.message}`, 'error');
+            }
+        }
+
+        // Load rollouts
+        async function loadRollouts() {
+            try {
+                const response = await fetch('/api/ota/rollouts', {
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`
+                    }
+                });
+
+                const data = await response.json();
+                displayRollouts(data.rollouts || []);
+            } catch (error) {
+                document.getElementById('rolloutsContainer').innerHTML = 
+                    `<div class="alert alert-error">Error loading rollouts: ${error.message}</div>`;
+            }
+        }
+
+        // Display rollouts
+        function displayRollouts(rollouts) {
+            document.getElementById('rolloutsLoading').style.display = 'none';
+            
+            if (rollouts.length === 0) {
+                document.getElementById('rolloutsContainer').innerHTML = 
+                    '<p style="color: #666;">No rollouts yet.</p>';
+                return;
+            }
+
+            let html = '<table class="versions-table"><thead><tr>';
+            html += '<th>Rollout ID</th>';
+            html += '<th>Version</th>';
+            html += '<th>Devices</th>';
+            html += '<th>Triggered</th>';
+            html += '<th>Status</th>';
+            html += '<th>Actions</th>';
+            html += '</tr></thead><tbody>';
+
+            rollouts.forEach(r => {
+                const date = new Date(r.triggered_at).toLocaleString();
+                
+                html += '<tr>';
+                html += `<td><small>${r.rollout_id}</small></td>`;
+                html += `<td><strong>${r.version}</strong></td>`;
+                html += `<td>${r.device_count} devices</td>`;
+                html += `<td><small>${date}</small><br><small>by ${r.triggered_by}</small></td>`;
+                html += `<td><span class="badge ${r.status === 'completed' ? 'badge-success' : 'badge-warning'}">${r.status}</span></td>`;
+                html += `<td>
+                    <button class="btn btn-primary" onclick="viewRolloutStatus('${r.rollout_id}')">View Status</button>
+                </td>`;
+                html += '</tr>';
+            });
+
+            html += '</tbody></table>';
+            document.getElementById('rolloutsContainer').innerHTML = html;
+        }
+
+        // View rollout status
+        async function viewRolloutStatus(rolloutId) {
+            try {
+                const response = await fetch(`/api/ota/status/${rolloutId}`, {
+                    headers: {
+                        'Authorization': `Bearer ${getAuthToken()}`
+                    }
+                });
+
+                const data = await response.json();
+                
+                // Display status in a modal or alert (simplified for now)
+                let message = `Rollout Status: ${data.status}\n\n`;
+                message += `Summary:\n`;
+                message += `Total: ${data.summary.total}\n`;
+                message += `Success: ${data.summary.success}\n`;
+                message += `Failed: ${data.summary.failed}\n`;
+                message += `Pending: ${data.summary.pending}\n`;
+                message += `Downloading: ${data.summary.downloading}\n`;
+                
+                alert(message);
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
+        }
+
+        // Helper functions
+        function showMessage(elementId, message, type) {
+            const element = document.getElementById(elementId);
+            element.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    element.innerHTML = '';
+                }, 5000);
+            }
+        }
+
+        function getAuthToken() {
+            // TODO: Implement your auth token retrieval
+            // For now, returning a placeholder
+            return localStorage.getItem('authToken') || 'YOUR_AUTH_TOKEN';
+        }
+    </script>
+</body>
+</html>
