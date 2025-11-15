@@ -76,7 +76,7 @@ function renderTemplate(templateName, data = {}) {
 }
 
 // Firebase Admin SDK (optional - falls back gracefully)
-let admin, db, auth, firebaseInitialized = false;
+let admin, db, realtimeDB, auth, firebaseInitialized = false;
 try {
   console.log('Firebase environment check:');
   console.log('FIREBASE_PROJECT_ID:', process.env.FIREBASE_PROJECT_ID ? 'SET' : 'MISSING');
@@ -99,7 +99,8 @@ admin.initializeApp({
   storageBucket: 'gate-controller-c68de.firebasestorage.app'
 });
     
-    db = admin.firestore();
+    db = admin.firestore();  // Keep this for your existing data
+    realtimeDB = admin.database();  // ADD THIS for OTA
     auth = admin.auth();
     firebaseInitialized = true;
     console.log('Firebase initialized successfully');
