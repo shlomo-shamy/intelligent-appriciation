@@ -3,44 +3,8 @@
  * Adapted for your existing server.js structure
  */
 
-const multer = require('multer');
-const crypto = require('crypto');
-const { getStorage } = require('firebase-admin/storage');
 const Busboy = require('busboy');
-
-
-// Configure multer for memory storage
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: {
-    fileSize: 10 * 1024 * 1024 // 10MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.originalname.endsWith('.bin')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only .bin firmware files are allowed'));
-    }
-  }
-});
-
-// Calculate SHA256 checksum
-function calculateChecksum(buffer) {
-  const hashSum = crypto.createHash('sha256');
-  hashSum.update(buffer);
-  return hashSum.digest('hex');
-}
-
-// Helper to get Realtime Database reference
-function getRealtimeDB(admin) {
-  return admin.database();
-}
-
-/**
- * UPDATED handleFirmwareUpload function
- * Replace the existing handleFirmwareUpload in ota-handlers-nodejs.js with this
- */
-
+const crypto = require('crypto');
 const { getStorage } = require('firebase-admin/storage');
 
 // Calculate SHA256 checksum
@@ -206,7 +170,6 @@ async function handleFirmwareUpload(req, res, body, session, admin) {
   }
 }
 
-module.exports = handleFirmwareUpload;
 /**
  * GET /api/firmware/versions
  * List all firmware versions
