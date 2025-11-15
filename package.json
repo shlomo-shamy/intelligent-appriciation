@@ -1,16 +1,14 @@
 {
-  "name": "gate-controller-api",
-  "version": "2.1.0",
-  "description": "ESP32 Gate Controller API with Device Integration",
-"main": "backend/server.js",
-  "scripts": {
-"start": "node backend/server.js",
-    "dev": "node server.js"
+  "name": "gate-controller-system",
+  "version": "1.0.0",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "firebase-admin": "^12.0.0",
+    "cors": "^2.8.5"
   },
-  "keywords": ["esp32", "gate-controller", "iot", "api"],
-  "author": "Your Name",
-  "license": "MIT",
-  "engines": {
-    "node": "18.x"
+  "scripts": {
+    "start": "node server.js"
   }
 }
