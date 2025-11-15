@@ -93,11 +93,11 @@ try {
       client_email: process.env.FIREBASE_CLIENT_EMAIL,
     };
     
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-      databaseURL: 'https://gate-controller-c68de-default-rtdb.firebaseio.com',
-      storageBucket: 'gate-controller-c68de.firebasestorage.app'
-    });
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: 'https://gate-controller-c68de-default-rtdb.firebaseio.com',  // ← Add "-default-rtdb"
+  storageBucket: 'gate-controller-c68de.firebasestorage.app'
+});
     
     db = admin.firestore();
     auth = admin.auth();
