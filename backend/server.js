@@ -115,6 +115,7 @@ try {
   console.log('Firebase initialization error:', error.message);
   console.log('Full error:', error);
 }
+const otaHandlers = require('./ota-handlers-nodejs');
 
 // ==================== DASHBOARD USERS FIREBASE SYNC ====================
 
@@ -2205,6 +2206,162 @@ if (req.url === '/api/organizations/update-member-role' && req.method === 'POST'
   return;
 }
   
+
+/**
+ * ADD THIS TO YOUR server.js FILE
+ * 
+ * Add near the top of the file (after Firebase initialization)
+ */
+
+// ============================================================================
+// STEP 1: Require the OTA handlers (add this near the top with other requires)
+// ============================================================================
+const otaHandlers = require('./ota-handlers-nodejs');
+
+
+// ============================================================================
+// STEP 2: Add OTA routes to your HTTP server request handler
+// Add these BEFORE your existing routes (around line 500-600 in your server.js)
+// ============================================================================
+
+// OTA Routes - Firmware Management
+
+// POST /api/firmware/upload
+if (req.url === '/api/firmware/upload' && req.method === 'POST') {
+  requireAuth(async (session) => {
+    await otaHandlers.handleFirmwareUpload(req, res, body, session, admin);
+  });
+  return;
+}
+
+// GET /api/firmware/versions
+if (req.url === '/api/firmware/versions' && req.method === 'GET') {
+  requireAuth(async (session) => {
+    await otaHandlers.handleFirmwareVersionsList(req, res, session, admin);
+  });
+  return;
+}
+
+// GET /api/firmware/latest (no auth - for ESP32)
+if (req.url.startsWith('/api/firmware/latest') && req.method === 'GET') {
+  otaHandlers.handleFirmwareLatest(req, res, admin);
+  return;
+}
+
+// GET /api/firmware/download/:version
+if (req.url.startsWith('/api/firmware/download/') && req.method === 'GET') {
+  const version = req.url.split('/').pop().split('?')[0];
+  otaHandlers.handleFirmwareDownload(req, res, version, admin);
+  return;
+}
+
+// DELETE /api/firmware/:version (extract version from URL)
+if (req.url.match(/^\/api\/firmware\/[^\/]+$/) && req.method === 'DELETE') {
+  requireAuth(async (session) => {
+    const version = req.url.split('/').pop();
+    await otaHandlers.handleFirmwareDelete(req, res, version, session, admin);
+  });
+  return;
+}
+
+// POST /api/ota/trigger
+if (req.url === '/api/ota/trigger' && req.method === 'POST') {
+  readBody(async (bodyData) => {
+    requireAuth(async (session) => {
+      await otaHandlers.handleOTATrigger(req, res, bodyData, session, admin);
+    });
+  });
+  return;
+}
+
+
+// ============================================================================
+// STEP 3: Add static file serving for dashboard (if not already there)
+// Add this AFTER your existing routes
+// ============================================================================
+
+// Serve firmware management dashboard
+if (req.url === '/firmware-management' || req.url === '/firmware-management.html') {
+  requireAuth((session) => {
+    if (session.userLevel < 2) {
+      res.writeHead(403);
+      res.end('Admin access required');
+      return;
+    }
+    
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(__dirname, 'public', 'firmware-management.html');
+    
+    fs.readFile(filePath, 'utf8', (err, data) => {
+      if (err) {
+        res.writeHead(404);
+        res.end('File not found');
+        return;
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(data);
+    });
+  });
+  return;
+}
+
+
+// ============================================================================
+// NOTES ON IMPLEMENTATION
+// ============================================================================
+
+/*
+IMPORTANT NOTES:
+
+1. File Upload Handling:
+   - The handleFirmwareUpload function includes basic multipart parsing
+   - For production, consider using a proper multipart parser library
+   - Current implementation works but is simplified
+
+2. Firebase Realtime Database:
+   - The OTA system uses Firebase Realtime Database (not Firestore)
+   - Your Firebase initialization already has databaseURL set
+   - Data will be stored in /firmware/versions/ and /ota/rollouts/
+
+3. Authentication:
+   - Uses your existing requireAuth() middleware
+   - Requires userLevel >= 2 (admin) for firmware management
+   - ESP32 endpoints (/api/firmware/latest, /download) are public
+
+4. File Organization:
+   - Save ota-handlers-nodejs.js in same directory as server.js
+   - Save firmware-management.html in your public/ directory
+   - Create public/ directory if it doesn't exist
+
+5. Testing:
+   - Start with /api/firmware/versions to test (should return empty array)
+   - Then test upload through the dashboard
+   - Finally test OTA trigger
+
+6. ESP32 Integration:
+   - ESP32 will poll /api/firmware/latest for updates
+   - Downloads from Firebase Storage URLs directly
+   - No authentication needed for ESP32 downloads
+*/
+
+
+// ============================================================================
+// INTEGRATION CHECKLIST
+// ============================================================================
+
+/*
+✅ Step 1: Firebase Storage bucket created and configured
+✅ Step 2: Updated package.json with multer dependency
+✅ Step 3: Updated Firebase init with storageBucket
+✅ Step 4: Save ota-handlers-nodejs.js file
+✅ Step 5: Add routes to server.js (this file)
+✅ Step 6: Copy firmware-management.html to public/
+✅ Step 7: Create public/ directory if needed
+✅ Step 8: Test with npm start
+*/
+
   
 // Get organization details (Members can view their own org)
 if (req.url.match(/^\/api\/organizations\/[^\/]+$/) && req.method === 'GET') {
