@@ -73,6 +73,27 @@ async function handleFirmwareUpload(req, res, body, session, admin) {
       try {
         console.log('🔍 Processing upload...');
         console.log(`Version: ${version}, Size: ${firmwareBuffer?.length} bytes`);
+        console.log('📊 Buffer check:', {
+      hasBuffer: !!firmwareBuffer,
+      bufferLength: firmwareBuffer?.length,
+      version: version
+    });
+
+    if (!firmwareBuffer) {
+      console.log('❌ No buffer!');
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: 'No firmware data received' }));
+      return;
+    }
+
+    if (!version) {
+      console.log('❌ No version!');
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: 'No version provided' }));
+      return;
+    }
+
+    console.log('✅ Starting database check...');
 
         if (!firmwareBuffer || !version) {
           res.writeHead(400);
