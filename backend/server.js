@@ -2208,9 +2208,9 @@ if (req.url === '/api/organizations/update-member-role' && req.method === 'POST'
   
 
 /**
- * ADD THIS TO YOUR server.js FILE
+ * COMPLETE OTA ROUTES FOR server.js
  * 
- * Add near the top of the file (after Firebase initialization)
+ * Add ALL of these routes to your server.js
  */
 
 // ============================================================================
@@ -2220,7 +2220,7 @@ const otaHandlers = require('./ota-handlers-nodejs');
 
 
 // ============================================================================
-// STEP 2: Add OTA routes to your HTTP server request handler
+// STEP 2: Add ALL OTA routes to your HTTP server request handler
 // Add these BEFORE your existing routes (around line 500-600 in your server.js)
 // ============================================================================
 
@@ -2255,7 +2255,7 @@ if (req.url.startsWith('/api/firmware/download/') && req.method === 'GET') {
   return;
 }
 
-// DELETE /api/firmware/:version (extract version from URL)
+// DELETE /api/firmware/:version
 if (req.url.match(/^\/api\/firmware\/[^\/]+$/) && req.method === 'DELETE') {
   requireAuth(async (session) => {
     const version = req.url.split('/').pop();
@@ -2274,10 +2274,253 @@ if (req.url === '/api/ota/trigger' && req.method === 'POST') {
   return;
 }
 
+// ============================================================================
+// MISSING ROUTES - ADD THESE TOO!
+// ============================================================================
+
+// GET /api/ota/rollouts - List all rollouts
+if (req.url === '/api/ota/rollouts' && req.method === 'GET') {
+  requireAuth(async (session) => {
+    if (session.userLevel < 2) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'Admin access required' }));
+      return;
+    }
+
+    try {
+      const db = admin.database();
+      const rolloutsRef = db.ref('ota/rollouts');
+      const snapshot = await rolloutsRef
+        .orderByChild('triggered_at')
+        .limitToLast(50)
+        .once('value');
+
+      const rollouts = [];
+      snapshot.forEach((childSnapshot) => {
+        rollouts.push({
+          rollout_id: childSnapshot.key,
+          ...childSnapshot.val()
+        });
+      });
+
+      rollouts.sort((a, b) => (b.triggered_at || 0) - (a.triggered_at || 0));
+
+      res.writeHead(200);
+      res.end(JSON.stringify({ rollouts }));
+    } catch (error) {
+      console.error('Error fetching rollouts:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: 'Failed to fetch rollouts' }));
+    }
+  });
+  return;
+}
+
+// GET /api/ota/status/:rollout_id - Get rollout status
+if (req.url.startsWith('/api/ota/status/') && req.method === 'GET') {
+  requireAuth(async (session) => {
+    if (session.userLevel < 2) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'Admin access required' }));
+      return;
+    }
+
+    try {
+      const rolloutId = req.url.split('/').pop();
+      const db = admin.database();
+      const rolloutRef = db.ref(`ota/rollouts/${rolloutId}`);
+      const rolloutSnapshot = await rolloutRef.once('value');
+
+      if (!rolloutSnapshot.exists()) {
+        res.writeHead(404);
+        res.end(JSON.stringify({ error: 'Rollout not found' }));
+        return;
+      }
+
+      const rolloutData = rolloutSnapshot.val();
+      const devices = rolloutData.devices || [];
+
+      const deviceStatuses = [];
+      for (const serial of devices) {
+        const deviceOtaRef = db.ref(`devices/${serial}/ota`);
+        const deviceSnapshot = await deviceOtaRef.once('value');
+        
+        if (deviceSnapshot.exists()) {
+          const otaData = deviceSnapshot.val();
+          deviceStatuses.push({
+            serial: serial,
+            status: otaData.status,
+            progress: otaData.progress || 0,
+            current_version: otaData.current_version,
+            target_version: otaData.target_version,
+            error: otaData.error || null
+          });
+        }
+      }
+
+      const summary = {
+        total: devices.length,
+        pending: 0,
+        downloading: 0,
+        flashing: 0,
+        success: 0,
+        failed: 0,
+        cancelled: 0
+      };
+
+      deviceStatuses.forEach(device => {
+        if (device.status) {
+          summary[device.status] = (summary[device.status] || 0) + 1;
+        }
+      });
+
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        rollout_id: rolloutId,
+        ...rolloutData,
+        summary: summary,
+        devices: deviceStatuses
+      }));
+    } catch (error) {
+      console.error('Error fetching OTA status:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: 'Failed to fetch status' }));
+    }
+  });
+  return;
+}
+
+// POST /api/ota/cancel - Cancel OTA update
+if (req.url === '/api/ota/cancel' && req.method === 'POST') {
+  readBody(async (bodyData) => {
+    requireAuth(async (session) => {
+      if (session.userLevel < 2) {
+        res.writeHead(403);
+        res.end(JSON.stringify({ error: 'Admin access required' }));
+        return;
+      }
+
+      try {
+        const data = JSON.parse(bodyData);
+        const { device_serials, rollout_id } = data;
+
+        if (!device_serials && !rollout_id) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'Must specify device_serials or rollout_id' }));
+          return;
+        }
+
+        const db = admin.database();
+        let targetDevices = [];
+
+        if (rollout_id) {
+          const rolloutRef = db.ref(`ota/rollouts/${rollout_id}`);
+          const rolloutSnapshot = await rolloutRef.once('value');
+          
+          if (!rolloutSnapshot.exists()) {
+            res.writeHead(404);
+            res.end(JSON.stringify({ error: 'Rollout not found' }));
+            return;
+          }
+          
+          targetDevices = rolloutSnapshot.val().devices || [];
+        } else {
+          targetDevices = device_serials;
+        }
+
+        const updates = {};
+        let cancelledCount = 0;
+
+        for (const serial of targetDevices) {
+          const deviceOtaRef = db.ref(`devices/${serial}/ota`);
+          const snapshot = await deviceOtaRef.once('value');
+          
+          if (snapshot.exists()) {
+            const otaData = snapshot.val();
+            
+            if (otaData.status === 'pending' || otaData.status === 'downloading') {
+              updates[`devices/${serial}/ota/command`] = null;
+              updates[`devices/${serial}/ota/status`] = 'cancelled';
+              updates[`devices/${serial}/ota/cancelled_at`] = Date.now();
+              updates[`devices/${serial}/ota/cancelled_by`] = session.email;
+              cancelledCount++;
+            }
+          }
+        }
+
+        if (cancelledCount === 0) {
+          res.writeHead(400);
+          res.end(JSON.stringify({ error: 'No devices with pending updates' }));
+          return;
+        }
+
+        if (rollout_id) {
+          updates[`ota/rollouts/${rollout_id}/status`] = 'cancelled';
+          updates[`ota/rollouts/${rollout_id}/cancelled_at`] = Date.now();
+        }
+
+        await db.ref().update(updates);
+
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: `OTA cancelled for ${cancelledCount} device(s)`,
+          cancelled_count: cancelledCount
+        }));
+      } catch (error) {
+        console.error('Cancel error:', error);
+        res.writeHead(500);
+        res.end(JSON.stringify({ error: 'Failed to cancel OTA' }));
+      }
+    });
+  });
+  return;
+}
+
+// GET /api/ota/device/:serial - Get device OTA status
+if (req.url.startsWith('/api/ota/device/') && req.method === 'GET') {
+  requireAuth(async (session) => {
+    if (session.userLevel < 2) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'Admin access required' }));
+      return;
+    }
+
+    try {
+      const serial = req.url.split('/').pop();
+      const db = admin.database();
+      const deviceOtaRef = db.ref(`devices/${serial}/ota`);
+      const snapshot = await deviceOtaRef.once('value');
+
+      if (!snapshot.exists()) {
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          serial: serial,
+          status: 'idle',
+          message: 'No OTA activity'
+        }));
+        return;
+      }
+
+      const otaData = snapshot.val();
+
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        serial: serial,
+        ...otaData
+      }));
+    } catch (error) {
+      console.error('Error fetching device OTA status:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: 'Failed to fetch status' }));
+    }
+  });
+  return;
+}
+
 
 // ============================================================================
-// STEP 3: Add static file serving for dashboard (if not already there)
-// Add this AFTER your existing routes
+// STEP 3: Add static file serving for dashboard
 // ============================================================================
 
 // Serve firmware management dashboard
@@ -2309,57 +2552,28 @@ if (req.url === '/firmware-management' || req.url === '/firmware-management.html
 
 
 // ============================================================================
-// NOTES ON IMPLEMENTATION
+// COMPLETE ROUTE SUMMARY
 // ============================================================================
 
 /*
-IMPORTANT NOTES:
+OTA ROUTES ADDED:
 
-1. File Upload Handling:
-   - The handleFirmwareUpload function includes basic multipart parsing
-   - For production, consider using a proper multipart parser library
-   - Current implementation works but is simplified
+Firmware Management:
+✅ POST   /api/firmware/upload
+✅ GET    /api/firmware/versions
+✅ GET    /api/firmware/latest
+✅ GET    /api/firmware/download/:version
+✅ DELETE /api/firmware/:version
 
-2. Firebase Realtime Database:
-   - The OTA system uses Firebase Realtime Database (not Firestore)
-   - Your Firebase initialization already has databaseURL set
-   - Data will be stored in /firmware/versions/ and /ota/rollouts/
+OTA Management:
+✅ POST   /api/ota/trigger
+✅ GET    /api/ota/rollouts          ← WAS MISSING!
+✅ GET    /api/ota/status/:rollout_id ← WAS MISSING!
+✅ POST   /api/ota/cancel             ← WAS MISSING!
+✅ GET    /api/ota/device/:serial     ← WAS MISSING!
 
-3. Authentication:
-   - Uses your existing requireAuth() middleware
-   - Requires userLevel >= 2 (admin) for firmware management
-   - ESP32 endpoints (/api/firmware/latest, /download) are public
-
-4. File Organization:
-   - Save ota-handlers-nodejs.js in same directory as server.js
-   - Save firmware-management.html in your public/ directory
-   - Create public/ directory if it doesn't exist
-
-5. Testing:
-   - Start with /api/firmware/versions to test (should return empty array)
-   - Then test upload through the dashboard
-   - Finally test OTA trigger
-
-6. ESP32 Integration:
-   - ESP32 will poll /api/firmware/latest for updates
-   - Downloads from Firebase Storage URLs directly
-   - No authentication needed for ESP32 downloads
-*/
-
-
-// ============================================================================
-// INTEGRATION CHECKLIST
-// ============================================================================
-
-/*
-✅ Step 1: Firebase Storage bucket created and configured
-✅ Step 2: Updated package.json with multer dependency
-✅ Step 3: Updated Firebase init with storageBucket
-✅ Step 4: Save ota-handlers-nodejs.js file
-✅ Step 5: Add routes to server.js (this file)
-✅ Step 6: Copy firmware-management.html to public/
-✅ Step 7: Create public/ directory if needed
-✅ Step 8: Test with npm start
+Dashboard:
+✅ GET    /firmware-management
 */
 
   
