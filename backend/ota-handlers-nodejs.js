@@ -41,8 +41,6 @@ function getRealtimeDB(admin) {
  * Replace the existing handleFirmwareUpload in ota-handlers-nodejs.js with this
  */
 
-const Busboy = require('busboy');
-const crypto = require('crypto');
 const { getStorage } = require('firebase-admin/storage');
 
 // Calculate SHA256 checksum
