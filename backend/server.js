@@ -2276,6 +2276,52 @@ if (req.url === '/api/ota/trigger' && req.method === 'POST') {
 }
 
 // ============================================================================
+// GET /api/devices/list - Get connected ESP32 devices for OTA
+// ============================================================================
+if (req.url === '/api/devices/list' && req.method === 'GET') {
+  requireAuth((session) => {
+    if (session.userLevel < 2) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'Admin access required' }));
+      return;
+    }
+    
+    console.log('📋 Fetching device list for OTA...');
+    
+    // Helper to check if device is online (< 5 min old heartbeat)
+    const isDeviceOnline = (lastHeartbeat) => {
+      if (!lastHeartbeat) return false;
+      const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+      return new Date(lastHeartbeat).getTime() > fiveMinutesAgo;
+    };
+    
+    // Get devices from connectedDevices Map
+    const devices = [];
+    
+    for (const [serial, device] of connectedDevices.entries()) {
+      devices.push({
+        serial: serial,
+        name: device.name || serial,
+        location: device.location || 'Unknown',
+        status: device.status || 'online',
+        lastHeartbeat: device.lastHeartbeat,
+        firmwareVersion: device.firmwareVersion || 'Unknown',
+        current_version: device.firmwareVersion || 'Unknown',  // Alias for compatibility
+        signalStrength: device.signalStrength || 0,
+        uptime: device.uptime || 0,
+        online: isDeviceOnline(device.lastHeartbeat)
+      });
+    }
+    
+    console.log(`✅ Found ${devices.length} devices (${devices.filter(d => d.online).length} online)`);
+    
+    res.writeHead(200);
+    res.end(JSON.stringify({ devices }));
+  });
+  return;
+}
+  
+// ============================================================================
 // MISSING ROUTES - ADD THESE TOO!
 // ============================================================================
 
