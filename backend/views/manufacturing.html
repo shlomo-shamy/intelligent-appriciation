@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>🏭 Manufacturing DB - Gate Controller</title>
+    <title>🏭 Setup - Gate Controller</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
@@ -252,7 +252,7 @@
         <!-- Manufacturing DB - SuperAdmin ONLY -->
         <button class="nav-btn" onclick="navigateTo('/manufacturing')" data-page="manufacturing" 
                 style="display: {{showSuperAdminFeatures}}">
-            🏭 Manufacturing DB
+            🏭 Setup
         </button>
         
         <!-- Organizations - SuperAdmin ONLY (Modal on Dashboard, Page on others) -->
@@ -301,7 +301,7 @@
         
 <button class="mobile-menu-item active" onclick="navigateToMobile('/manufacturing')" data-mobile-page="manufacturing"
         style="display: {{showSuperAdminFeatures}}">
-    🏭 Manufacturing DB
+    🏭 Setup
 </button>
         
         <button class="mobile-menu-item" onclick="handleOrganizationsClickMobile()" data-mobile-page="organizations"
@@ -333,7 +333,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const currentPage = window.location.pathname.replace('/', '') || 'dashboard';
     const navButtons = document.querySelectorAll('.nav-btn[data-page]');
 // Add to each page's DOMContentLoaded
-document.getElementById('pageTitle').textContent = '🏭 Manufacturing DB'; // Example
+document.getElementById('pageTitle').textContent = '🏭 Setup'; // Example
 
     navButtons.forEach(btn => {
         btn.classList.remove('active');
