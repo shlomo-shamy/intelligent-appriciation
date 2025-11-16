@@ -2269,7 +2269,7 @@ if (req.url.match(/^\/api\/firmware\/[^\/]+$/) && req.method === 'DELETE') {
 if (req.url === '/api/ota/trigger' && req.method === 'POST') {
   readBody(async (bodyData) => {
     requireAuth(async (session) => {
-      await otaHandlers.handleOTATrigger(req, res, bodyData, session, admin);
+      await otaHandlers.handleOTATrigger(req, res, JSON.stringify(bodyData), session, admin);
     });
   });
   return;
