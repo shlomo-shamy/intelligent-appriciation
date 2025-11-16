@@ -519,9 +519,10 @@
                 
                 const response = await fetch('/api/firmware/upload', {
                     method: 'POST',
-                    headers: {
+/*                 headers: {
                         'Authorization': `Bearer ${getAuthToken()}`
                     },
+*/                    
                     body: formData
                 });
 
@@ -549,9 +550,10 @@
         async function loadVersions() {
             try {
                 const response = await fetch('/api/firmware/versions', {
-                    headers: {
+/*                    headers: {
                         'Authorization': `Bearer ${getAuthToken()}`
                     }
+*/                    
                 });
 
                 const data = await response.json();
@@ -632,9 +634,10 @@
             try {
                 const response = await fetch(`/api/firmware/${version}`, {
                     method: 'DELETE',
-                    headers: {
+/*                    headers: {
                         'Authorization': `Bearer ${getAuthToken()}`
                     }
+*/                    
                 });
 
                 if (response.ok) {
@@ -649,22 +652,40 @@
             }
         }
 
-        // Load devices
-        async function loadDevices() {
-            try {
-                // TODO: Implement your device loading logic
-                // For now, using mock data
-                availableDevices = [
-                    { serial: 'GATE001', name: 'Main Gate', status: 'online', current_version: '0.9.0' },
-                    { serial: 'GATE002', name: 'Side Gate', status: 'online', current_version: '0.9.0' },
-                    { serial: 'GATE003', name: 'Back Gate', status: 'offline', current_version: '0.8.5' }
-                ];
-
-                displayDevices(availableDevices);
-            } catch (error) {
-                console.error('Error loading devices:', error);
-            }
+// Load devices - UPDATED to use real API
+async function loadDevices() {
+    try {
+        console.log('📡 Loading devices from server...');
+        
+        const response = await fetch('/api/devices/list');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        
+        const data = await response.json();
+        
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        availableDevices = data.devices || [];
+        
+        console.log(`✅ Loaded ${availableDevices.length} devices`);
+        
+        if (availableDevices.length === 0) {
+            document.getElementById('deviceList').innerHTML = 
+                '<div style="padding: 20px; text-align: center; color: #666;">No devices connected. Make sure ESP32 devices are sending heartbeats.</div>';
+        } else {
+            displayDevices(availableDevices);
+        }
+        
+    } catch (error) {
+        console.error('❌ Error loading devices:', error);
+        document.getElementById('deviceList').innerHTML = 
+            `<div class="alert alert-error">Error loading devices: ${error.message}</div>`;
+    }
+}
 
         // Display devices
         function displayDevices(devices) {
@@ -737,9 +758,10 @@
                 const response = await fetch('/api/ota/trigger', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${getAuthToken()}`,
+ //                       'Authorization': `Bearer ${getAuthToken()}`,
                         'Content-Type': 'application/json'
                     },
+                    
                     body: JSON.stringify(payload)
                 });
 
@@ -760,9 +782,10 @@
         async function loadRollouts() {
             try {
                 const response = await fetch('/api/ota/rollouts', {
-                    headers: {
+/*                    headers: {
                         'Authorization': `Bearer ${getAuthToken()}`
                     }
+*/                    
                 });
 
                 const data = await response.json();
@@ -815,9 +838,10 @@
         async function viewRolloutStatus(rolloutId) {
             try {
                 const response = await fetch(`/api/ota/status/${rolloutId}`, {
-                    headers: {
+/*                    headers: {
                         'Authorization': `Bearer ${getAuthToken()}`
                     }
+*/                    
                 });
 
                 const data = await response.json();
@@ -849,11 +873,10 @@
             }
         }
 
-        function getAuthToken() {
-            // TODO: Implement your auth token retrieval
-            // For now, returning a placeholder
-            return localStorage.getItem('authToken') || 'YOUR_AUTH_TOKEN';
-        }
+function getAuthToken() {
+    // Session-based auth (no token needed, cookies handle it)
+    return '';
+}
     </script>
 </body>
 </html>
