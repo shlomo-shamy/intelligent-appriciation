@@ -471,6 +471,8 @@ async function handleOTATrigger(req, res, body, session, admin) {
 
     await db.ref().update(updates);
 
+    console.log('✅ Firebase update complete');  // ADD THIS TOO
+
     res.writeHead(200);
     res.end(JSON.stringify({
       success: true,
