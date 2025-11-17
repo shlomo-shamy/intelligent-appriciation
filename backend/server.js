@@ -2524,14 +2524,90 @@ if (req.url === '/api/ota/cancel' && req.method === 'POST') {
   return;
 }
 
-// GET /api/ota/device/:serial - Get device OTA status
-if (req.url.startsWith('/api/ota/device/') && req.method === 'GET') {
+// GET /api/ota/device/:serial/dashboard - For dashboard (with auth)
+if (req.url.match(/^\/api\/ota\/device\/[^\/]+\/dashboard$/) && req.method === 'GET') {
   requireAuth(async (session) => {
     if (session.userLevel < 2) {
       res.writeHead(403);
       res.end(JSON.stringify({ error: 'Admin access required' }));
       return;
     }
+
+    try {
+      const serial = req.url.split('/')[4];
+      const db = admin.database();
+      const deviceOtaRef = db.ref(`devices/${serial}/ota`);
+      const snapshot = await deviceOtaRef.once('value');
+
+      if (!snapshot.exists()) {
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          serial: serial,
+          status: 'idle',
+          message: 'No OTA activity'
+        }));
+        return;
+      }
+
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        serial: serial,
+        ...snapshot.val()
+      }));
+    } catch (error) {
+      console.error('Error:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: 'Failed to fetch status' }));
+    }
+  });
+  return;
+}
+  
+// GET /api/ota/device/:serial - ESP32 polls for OTA commands (NO AUTH!)
+if (req.url.startsWith('/api/ota/device/') && !req.url.includes('/status') && req.method === 'GET') {
+  const serial = req.url.split('/')[4].split('?')[0];
+  
+  console.log(`📡 ESP32 polling for OTA: ${serial}`);
+  
+  if (!firebaseInitialized || !admin) {
+    console.log('⚠️ Firebase not initialized');
+    res.writeHead(200);
+    res.end(JSON.stringify({ command: null }));
+    return;
+  }
+  
+  (async () => {
+    try {
+      const db = admin.database();
+      const deviceOtaRef = db.ref(`devices/${serial}/ota`);
+      const snapshot = await deviceOtaRef.once('value');
+
+      if (!snapshot.exists()) {
+        console.log(`ℹ️ No OTA command for ${serial}`);
+        res.writeHead(200);
+        res.end(JSON.stringify({ command: null }));
+        return;
+      }
+
+      const otaData = snapshot.val();
+      
+      console.log(`✅ Returning OTA command to ESP32 ${serial}:`, {
+        command: otaData.command,
+        target_version: otaData.target_version,
+        status: otaData.status
+      });
+
+      res.writeHead(200);
+      res.end(JSON.stringify(otaData));
+      
+    } catch (error) {
+      console.error('❌ Error fetching OTA for ESP32:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: error.message }));
+    }
+  })();
+  return;
+}
 
     try {
       const serial = req.url.split('/').pop();
@@ -2564,7 +2640,6 @@ if (req.url.startsWith('/api/ota/device/') && req.method === 'GET') {
   });
   return;
 }
-
 
 // ============================================================================
 // STEP 3: Add static file serving for dashboard
