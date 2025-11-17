@@ -2524,6 +2524,7 @@ if (req.url === '/api/ota/cancel' && req.method === 'POST') {
   return;
 }
 
+/*
 // GET /api/ota/device/:serial/dashboard - For dashboard (with auth)
 if (req.url.match(/^\/api\/ota\/device\/[^\/]+\/dashboard$/) && req.method === 'GET') {
   requireAuth(async (session) => {
@@ -2562,6 +2563,7 @@ if (req.url.match(/^\/api\/ota\/device\/[^\/]+\/dashboard$/) && req.method === '
   });
   return;
 }
+*/  
   
 // GET /api/ota/device/:serial - ESP32 polls for OTA commands (NO AUTH!)
 if (req.url.startsWith('/api/ota/device/') && !req.url.includes('/status') && req.method === 'GET') {
