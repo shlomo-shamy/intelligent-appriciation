@@ -2524,7 +2524,6 @@ if (req.url === '/api/ota/cancel' && req.method === 'POST') {
   return;
 }
 
-/*
 // GET /api/ota/device/:serial/dashboard - For dashboard (with auth)
 if (req.url.match(/^\/api\/ota\/device\/[^\/]+\/dashboard$/) && req.method === 'GET') {
   requireAuth(async (session) => {
@@ -2563,7 +2562,7 @@ if (req.url.match(/^\/api\/ota\/device\/[^\/]+\/dashboard$/) && req.method === '
   });
   return;
 }
-*/  
+
   
 // GET /api/ota/device/:serial - ESP32 polls for OTA commands (NO AUTH!)
 if (req.url.startsWith('/api/ota/device/') && !req.url.includes('/status') && req.method === 'GET') {
@@ -2608,38 +2607,6 @@ if (req.url.startsWith('/api/ota/device/') && !req.url.includes('/status') && re
       res.end(JSON.stringify({ error: error.message }));
     }
   })();
-  return;
-}
-
-    try {
-      const serial = req.url.split('/').pop();
-      const db = admin.database();
-      const deviceOtaRef = db.ref(`devices/${serial}/ota`);
-      const snapshot = await deviceOtaRef.once('value');
-
-      if (!snapshot.exists()) {
-        res.writeHead(200);
-        res.end(JSON.stringify({
-          serial: serial,
-          status: 'idle',
-          message: 'No OTA activity'
-        }));
-        return;
-      }
-
-      const otaData = snapshot.val();
-
-      res.writeHead(200);
-      res.end(JSON.stringify({
-        serial: serial,
-        ...otaData
-      }));
-    } catch (error) {
-      console.error('Error fetching device OTA status:', error);
-      res.writeHead(500);
-      res.end(JSON.stringify({ error: 'Failed to fetch status' }));
-    }
-  });
   return;
 }
 
