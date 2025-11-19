@@ -308,6 +308,57 @@ function userCanAccessGate(userEmail, userRole, gateSerial) {
   return userGates.includes(gateSerial);
 }
 
+// Find dashboard user by phone number
+function getDashboardUserByPhone(phone) {
+    for (const [email, userData] of DASHBOARD_USERS.entries()) {
+        if (userData.phone === phone) {
+            return { email, ...userData };
+        }
+    }
+    return null;
+}
+
+// Get accessible controllers for a user
+function getUserAccessibleControllers(userEmail, userRole) {
+    const controllers = [];
+    
+    // SuperAdmin sees ALL connected devices
+    if (userRole === 'superadmin') {
+        for (const [deviceId, deviceData] of connectedDevices.entries()) {
+            controllers.push({
+                deviceId: deviceId,
+                name: deviceData.name || deviceId,
+                location: deviceData.location || 'Unknown',
+                online: true
+            });
+        }
+        return controllers;
+    }
+    
+    // Other users see only their organization's devices
+    const userOrgs = getUserOrganizations(userEmail);
+    const deviceSet = new Set();
+    
+    for (const org of userOrgs) {
+        const orgData = organizations.get(org.id);
+        if (orgData && orgData.devices) {
+            orgData.devices.forEach(deviceId => {
+                const deviceData = connectedDevices.get(deviceId);
+                if (deviceData || deviceId) {
+                    controllers.push({
+                        deviceId: deviceId,
+                        name: deviceData?.name || deviceId,
+                        location: deviceData?.location || 'Unknown',
+                        online: connectedDevices.has(deviceId)
+                    });
+                }
+            });
+        }
+    }
+    
+    return controllers;
+}
+
 // ==================== ORGANIZATIONS FIREBASE SYNC ====================
 
 // Load organizations from Firebase on startup
@@ -486,8 +537,18 @@ function getUserOrgRole(userEmail) {
 // Store active sessions (in production, use Redis or database)
 const activeSessions = new Map();
 
+// Store mobile sessions (phone-based authentication)
+const mobileSessions = new Map();
+
 function generateSessionToken() {
   return 'session_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+}
+
+// Generate mobile JWT-like token
+function generateMobileToken(phone) {
+    const timestamp = Date.now();
+    const randomPart = Math.random().toString(36).substring(2);
+    return `mobile_${phone}_${timestamp}_${randomPart}`;
 }
 
 function validateSession(sessionToken) {
@@ -958,6 +1019,166 @@ res.end(JSON.stringify({
     return;
   }
 
+// Mobile Login Endpoint
+if (req.url === '/api/mobile/login' && req.method === 'POST') {
+    res.setHeader('Content-Type', 'application/json');
+    
+    readBody((data) => {
+        const { phone, password } = data;
+        
+        console.log(`📱 Mobile login attempt: ${phone}`);
+        
+        // Validate input
+        if (!phone || !password) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ 
+                success: false, 
+                message: 'Phone and password are required' 
+            }));
+            return;
+        }
+        
+        // Validate phone number format
+        const phoneValidation = validatePhoneNumber(phone);
+        if (!phoneValidation.valid) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ 
+                success: false, 
+                message: phoneValidation.message 
+            }));
+            return;
+        }
+        
+        const cleanPhone = phoneValidation.cleanPhone;
+        
+        // Find user by phone number
+        const user = getDashboardUserByPhone(cleanPhone);
+        
+        if (!user || user.password !== password) {
+            console.log(`❌ Mobile login failed: Invalid credentials for ${cleanPhone}`);
+            res.writeHead(401);
+            res.end(JSON.stringify({ 
+                success: false, 
+                message: 'Invalid phone number or password' 
+            }));
+            return;
+        }
+        
+        // Get user role
+        const userRole = getUserHighestRole(user.email);
+        
+        // Generate mobile token
+        const token = generateMobileToken(cleanPhone);
+        
+        // Store mobile session
+        mobileSessions.set(token, {
+            phone: cleanPhone,
+            email: user.email,
+            name: user.name,
+            userLevel: user.userLevel,
+            organizationRole: userRole,
+            loginTime: new Date().toISOString()
+        });
+        
+        // Get user's accessible controllers
+        const accessibleControllers = getUserAccessibleControllers(user.email, userRole);
+        
+        // Get relay mask (default to 15 = full access if not specified)
+        const relayMask = user.relayMask || user.relay_mask || 15;
+        
+        console.log(`✅ Mobile login successful: ${user.name} (${cleanPhone})`);
+        console.log(`   Accessible controllers: ${accessibleControllers.length}`);
+        
+        // Return success response
+        res.writeHead(200);
+        res.end(JSON.stringify({
+            success: true,
+            token: token,
+            user: {
+                name: user.name,
+                phone: cleanPhone,
+                email: user.email,
+                relay_mask: relayMask,
+                accessible_controllers: accessibleControllers
+            }
+        }));
+    });
+    return;
+}
+
+// Mobile Command Endpoint
+if (req.url === '/api/command' && req.method === 'POST') {
+    res.setHeader('Content-Type', 'application/json');
+    
+    // Check authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.writeHead(401);
+        res.end(JSON.stringify({ 
+            success: false, 
+            message: 'Authorization token required' 
+        }));
+        return;
+    }
+    
+    const token = authHeader.substring(7); // Remove 'Bearer '
+    
+    // Validate mobile session
+    if (!mobileSessions.has(token)) {
+        res.writeHead(401);
+        res.end(JSON.stringify({ 
+            success: false, 
+            message: 'Invalid or expired token' 
+        }));
+        return;
+    }
+    
+    const session = mobileSessions.get(token);
+    
+    readBody((data) => {
+        const { controllerId, relay, buttonName } = data;
+        
+        console.log(`🎮 Mobile command: ${buttonName} for ${controllerId} by ${session.name}`);
+        
+        // Validate input
+        if (!controllerId || !relay) {
+            res.writeHead(400);
+            res.end(JSON.stringify({ 
+                success: false, 
+                message: 'Controller ID and relay number required' 
+            }));
+            return;
+        }
+        
+        // Create command for the device
+        const command = {
+            id: `mobile_${Date.now()}`,
+            action: 'relay_activate',
+            relay: relay,
+            duration: 2000,
+            source: 'mobile',
+            user: session.name,
+            timestamp: new Date().toISOString()
+        };
+        
+        // Queue command for device (existing logic)
+        if (!commandQueue.has(controllerId)) {
+            commandQueue.set(controllerId, []);
+        }
+        commandQueue.get(controllerId).push(command);
+        
+        console.log(`✅ Command queued for ${controllerId}: ${buttonName} (relay ${relay})`);
+        
+        res.writeHead(200);
+        res.end(JSON.stringify({
+            success: true,
+            message: 'Command sent successfully',
+            commandId: command.id
+        }));
+    });
+    return;
+}
+  
   // Dashboard logout endpoint
   if (req.url === '/dashboard/logout' && req.method === 'POST') {
     const sessionToken = getSessionFromCookie(req.headers.cookie);
