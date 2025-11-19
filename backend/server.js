@@ -539,6 +539,7 @@ const activeSessions = new Map();
 
 // Store mobile sessions (phone-based authentication)
 const mobileSessions = new Map();
+const commandQueue = new Map();  // ← ADD THIS LINE
 
 function generateSessionToken() {
   return 'session_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
