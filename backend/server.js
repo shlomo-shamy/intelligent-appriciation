@@ -1162,11 +1162,16 @@ if (req.url === '/api/command' && req.method === 'POST') {
             timestamp: new Date().toISOString()
         };
         
-        // Queue command for device (existing logic)
-        if (!commandQueue.has(controllerId)) {
-            commandQueue.set(controllerId, []);
-        }
-        commandQueue.get(controllerId).push(command);
+// Queue command for device
+let deviceCommands = commandQueue.get(controllerId);
+if (!deviceCommands) {
+    deviceCommands = [];
+    commandQueue.set(controllerId, deviceCommands);
+}
+deviceCommands.push(command);
+
+console.log(`📋 Command queued. Queue now has ${deviceCommands.length} command(s) for ${controllerId}`);
+console.log(`📦 Command details:`, command);
         
         console.log(`✅ Command queued for ${controllerId}: ${buttonName} (relay ${relay})`);
         
