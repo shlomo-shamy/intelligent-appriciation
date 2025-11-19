@@ -1163,12 +1163,12 @@ if (req.url === '/api/command' && req.method === 'POST') {
         };
         
 // Queue command for device
-let deviceCommands = commandQueue.get(controllerId);
-if (!deviceCommands) {
-    deviceCommands = [];
-    commandQueue.set(controllerId, deviceCommands);
+let queuedCommands = deviceCommands.get(controllerId);
+if (!queuedCommands) {
+    queuedCommands = [];
+    deviceCommands.set(controllerId, queuedCommands);
 }
-deviceCommands.push(command);
+queuedCommands.push(command);
 
 console.log(`📋 Command queued. Queue now has ${deviceCommands.length} command(s) for ${controllerId}`);
 console.log(`📦 Command details:`, command);
