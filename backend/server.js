@@ -1122,8 +1122,8 @@ if (req.url === '/api/mobile/login' && req.method === 'POST') {
                     }
                     
                     // Check if device is online
-                    if (registeredDevices.has(deviceId)) {
-                        const device = registeredDevices.get(deviceId);
+                    if (connectedDevices.has(deviceId)) {
+                        const device = connectedDevices.get(deviceId);
                         const timeSinceHeartbeat = Date.now() - (device.lastHeartbeat || 0);
                         online = timeSinceHeartbeat < 60000; // Online if heartbeat within 60 seconds
                     }
