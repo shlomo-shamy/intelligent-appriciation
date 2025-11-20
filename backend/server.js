@@ -1024,7 +1024,7 @@ res.end(JSON.stringify({
 if (req.url === '/api/mobile/login' && req.method === 'POST') {
     res.setHeader('Content-Type', 'application/json');
     
-    readBody((data) => {
+    readBody(async (data) => {
         const { phone, password } = data;
         
         console.log(`📱 Mobile login attempt: ${phone}`);
@@ -1052,59 +1052,120 @@ if (req.url === '/api/mobile/login' && req.method === 'POST') {
         
         const cleanPhone = phoneValidation.cleanPhone;
         
-        // Find user by phone number
-        const user = getDashboardUserByPhone(cleanPhone);
-        
-        if (!user || user.password !== password) {
-            console.log(`❌ Mobile login failed: Invalid credentials for ${cleanPhone}`);
-            res.writeHead(401);
+        try {
+            // CHANGED: Search Firebase userPermissions collection instead of DASHBOARD_USERS
+            if (!firebaseInitialized) {
+                console.error('❌ Firebase not initialized');
+                res.writeHead(500);
+                res.end(JSON.stringify({ 
+                    success: false, 
+                    message: 'Server error: Database not available' 
+                }));
+                return;
+            }
+            
+            // Get user from userPermissions collection
+            const userDoc = await db.collection('userPermissions').doc(cleanPhone).get();
+            
+            if (!userDoc.exists) {
+                console.log(`❌ Mobile login failed: User not found ${cleanPhone}`);
+                res.writeHead(401);
+                res.end(JSON.stringify({ 
+                    success: false, 
+                    message: 'Invalid phone number or password' 
+                }));
+                return;
+            }
+            
+            const userData = userDoc.data();
+            
+            // Verify password
+            if (userData.password !== password) {
+                console.log(`❌ Mobile login failed: Invalid password for ${cleanPhone}`);
+                res.writeHead(401);
+                res.end(JSON.stringify({ 
+                    success: false, 
+                    message: 'Invalid phone number or password' 
+                }));
+                return;
+            }
+            
+            // Generate mobile token
+            const token = generateMobileToken(cleanPhone);
+            
+            // Store mobile session
+            mobileSessions.set(token, {
+                phone: cleanPhone,
+                email: userData.email,
+                name: userData.name,
+                loginTime: new Date().toISOString()
+            });
+            
+            // Build accessible controllers list from user's gates
+            const accessibleControllers = [];
+            
+            if (userData.gates) {
+                // Get gate details for each gate the user has access to
+                for (const deviceId of Object.keys(userData.gates)) {
+                    const gatePermissions = userData.gates[deviceId];
+                    
+                    // Get gate details from gates collection
+                    const gateDoc = await db.collection('gates').doc(deviceId).get();
+                    let gateName = gatePermissions.name || `Gate ${deviceId}`;
+                    let location = 'Location not specified';
+                    let online = false;
+                    
+                    if (gateDoc.exists) {
+                        const gateData = gateDoc.data();
+                        gateName = gateData.name || gateName;
+                        location = gateData.location || location;
+                    }
+                    
+                    // Check if device is online
+                    if (registeredDevices.has(deviceId)) {
+                        const device = registeredDevices.get(deviceId);
+                        const timeSinceHeartbeat = Date.now() - (device.lastHeartbeat || 0);
+                        online = timeSinceHeartbeat < 60000; // Online if heartbeat within 60 seconds
+                    }
+                    
+                    accessibleControllers.push({
+                        deviceId: deviceId,
+                        name: gateName,
+                        location: location,
+                        online: online,
+                        relayMask: gatePermissions.relayMask || 15, // Per-gate relay mask!
+                        role: gatePermissions.role || 'user'
+                    });
+                }
+            }
+            
+            console.log(`✅ Mobile login successful: ${userData.name} (${cleanPhone})`);
+            console.log(`   Accessible gates: ${accessibleControllers.length}`);
+            
+            // Return success response with per-gate permissions
+            res.writeHead(200);
+            res.end(JSON.stringify({
+                success: true,
+                token: token,
+                user: {
+                    name: userData.name,
+                    phone: cleanPhone,
+                    email: userData.email,
+                    accessible_controllers: accessibleControllers
+                }
+            }));
+            
+        } catch (error) {
+            console.error('❌ Mobile login error:', error);
+            res.writeHead(500);
             res.end(JSON.stringify({ 
                 success: false, 
-                message: 'Invalid phone number or password' 
+                message: 'Server error during login' 
             }));
-            return;
         }
-        
-        // Get user role
-        const userRole = getUserHighestRole(user.email);
-        
-        // Generate mobile token
-        const token = generateMobileToken(cleanPhone);
-        
-        // Store mobile session
-        mobileSessions.set(token, {
-            phone: cleanPhone,
-            email: user.email,
-            name: user.name,
-            userLevel: user.userLevel,
-            organizationRole: userRole,
-            loginTime: new Date().toISOString()
-        });
-        
-        // Get user's accessible controllers
-        const accessibleControllers = getUserAccessibleControllers(user.email, userRole);
-        
-        // Get relay mask (default to 15 = full access if not specified)
-        const relayMask = user.relayMask || user.relay_mask || 15;
-        
-        console.log(`✅ Mobile login successful: ${user.name} (${cleanPhone})`);
-        console.log(`   Accessible controllers: ${accessibleControllers.length}`);
-        
-        // Return success response
-        res.writeHead(200);
-        res.end(JSON.stringify({
-            success: true,
-            token: token,
-            user: {
-                name: user.name,
-                phone: cleanPhone,
-                email: user.email,
-                relay_mask: relayMask,
-                accessible_controllers: accessibleControllers
-            }
-        }));
     });
     return;
+}
 }
 
 // Mobile Command Endpoint
@@ -4242,6 +4303,7 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/safety-event') && r
                   [cleanPhone]: {
                     name: data.name || 'New User',
                     email: data.email,
+                    password: data.password || 'defaultpass123',
                     relayMask: data.relayMask || 1,
                     userLevel: data.userLevel || 0,
                     role: data.userLevel >= 2 ? 'admin' : (data.userLevel >= 1 ? 'manager' : 'user'),
@@ -4256,6 +4318,7 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/safety-event') && r
                 [`users.${cleanPhone}`]: {
                   name: data.name || 'New User',
                   email: data.email,
+                  password: data.password || 'defaultpass123',
                   relayMask: data.relayMask || 1,
                   userLevel: data.userLevel || 0,
                   role: data.userLevel >= 2 ? 'admin' : (data.userLevel >= 1 ? 'manager' : 'user'),
@@ -4267,6 +4330,9 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/safety-event') && r
             
             // Update or create user permissions document
             await db.collection('userPermissions').doc(cleanPhone).set({
+              name: data.name || 'New User',
+              email: data.email,
+              password: data.password || 'defaultpass123',
               gates: {
                 [deviceId]: {
                   name: `Gate ${deviceId}`,
