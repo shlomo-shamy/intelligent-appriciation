@@ -1166,7 +1166,6 @@ if (req.url === '/api/mobile/login' && req.method === 'POST') {
     });
     return;
 }
-}
 
 // Mobile Command Endpoint
 if (req.url === '/api/command' && req.method === 'POST') {
