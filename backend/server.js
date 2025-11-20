@@ -1121,11 +1121,13 @@ if (req.url === '/api/mobile/login' && req.method === 'POST') {
                         location = gateData.location || location;
                     }
                     
-                    // Check if device is online
+                    // Check if device is online (5-minute timeout like dashboard)
                     if (connectedDevices.has(deviceId)) {
                         const device = connectedDevices.get(deviceId);
-                        const timeSinceHeartbeat = Date.now() - (device.lastHeartbeat || 0);
-                        online = timeSinceHeartbeat < 60000; // Online if heartbeat within 60 seconds
+                        if (device.lastHeartbeat) {
+                            const fiveMinutesAgo = Date.now() - 300000;
+                            online = new Date(device.lastHeartbeat).getTime() > fiveMinutesAgo;
+                        }
                     }
                     
                     accessibleControllers.push({
