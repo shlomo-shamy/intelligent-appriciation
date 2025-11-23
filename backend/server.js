@@ -1,11 +1,10 @@
 console.log('=== SERVER STARTUP DEBUG ===');
-console.log('Node version:', process.version);
+console.log('Node version:', process.version); 
 console.log('Platform:', process.platform);
 console.log('Memory usage:', process.memoryUsage());
 console.log('Environment variables set:', Object.keys(process.env).length);
 console.log('PORT from environment:', process.env.PORT);
 console.log('Current working directory:', process.cwd());
-
 
 // Catch any unhandled errors
 process.on('uncaughtException', (error) => {
@@ -3700,17 +3699,37 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/users') && req.meth
       
       const gateData = gateDoc.data();
       const firestoreUsers = gateData.users || {};
-      
-      const users = Object.keys(firestoreUsers).map(phone => ({
-        phone: phone,
-        email: firestoreUsers[phone].email || '',
-        name: firestoreUsers[phone].name || 'Unknown',
-        relayMask: firestoreUsers[phone].relayMask || 1,
-        userLevel: firestoreUsers[phone].userLevel || 0,
-        active: true
-      }));
-      
-      console.log(`✅ ESP32: Sent ${users.length} users to ${gateId}`);
+
+      // Fetch passwords from userPermissions collection for each user
+      const users = await Promise.all(
+        Object.keys(firestoreUsers).map(async (phone) => {
+          let password = '';
+
+          try {
+            // Try to get password from userPermissions collection
+            const userPermDoc = await db.collection('userPermissions').doc(phone).get();
+            if (userPermDoc.exists) {
+              const permData = userPermDoc.data();
+              // Check for password in main doc or nested in gates
+              password = permData.password || permData.gates?.[gateId]?.password || '';
+            }
+          } catch (err) {
+            console.log(`⚠️ Could not fetch password for ${phone}: ${err.message}`);
+          }
+
+          return {
+            phone: phone,
+            email: firestoreUsers[phone].email || '',
+            name: firestoreUsers[phone].name || 'Unknown',
+            relayMask: firestoreUsers[phone].relayMask || 1,
+            userLevel: firestoreUsers[phone].userLevel || 0,
+            password: password,  // ✅ ADD PASSWORD
+            active: true
+          };
+        })
+      );
+
+      console.log(`✅ ESP32: Sent ${users.length} users (with passwords) to ${gateId}`);
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(users));
