@@ -3876,8 +3876,8 @@ if (req.url.startsWith('/api/gates/') && req.url.endsWith('/users') && req.metho
   }
 
 // ESP32  reporting endpoint (no auth - direct from device)
-if (req.url.startsWith('/api/device/') && req.url.endsWith('/status') && req.method === 'POST') {
-  readBody((data) => {
+if (req.url.startsWith('/api/device/') && req.url.includes('/status') && req.method === 'POST') {
+    readBody((data) => {
     const { 
       deviceId, gateState, lastCommand,
       relay1, relay2, relay3, relay4,
