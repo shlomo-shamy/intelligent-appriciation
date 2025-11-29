@@ -1620,18 +1620,18 @@ const { pathname, query } = parseUrl(req.url);
 const token = query.token || extractTokenFromHeader(req.headers.authorization);
   
 if (pathname === '/api/device/heartbeat' && req.method === 'POST') {
-  readBody((data) => {
+/*  readBody((data) => {
     const deviceId = data.deviceId || 'unknown';
     
     // Optional: Validate token
-//    if (token && !validateDeviceToken(token, deviceId)) {
-//      console.log(`❌ Invalid token for device ${deviceId}`);
-//      res.writeHead(401);
-//      res.end(JSON.stringify({ error: 'Invalid token' }));
-//      return;
+    if (token && !validateDeviceToken(token, deviceId)) {
+      console.log(`❌ Invalid token for device ${deviceId}`);
+      res.writeHead(401);
+      res.end(JSON.stringify({ error: 'Invalid token' }));
+      return;
     }
   console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
-  
+  */
   // Optional: Extract token from query or header
   const token = query.token || extractTokenFromHeader(req.headers.authorization);
   if (token) {
