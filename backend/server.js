@@ -118,6 +118,18 @@ admin.initializeApp({
 }
 const otaHandlers = require('./ota-handlers-nodejs');
 
+// Add near the top after requires
+const url = require('url');
+
+function parseUrl(reqUrl) {
+  const parsedUrl = url.parse(reqUrl, true);
+  return {
+    pathname: parsedUrl.pathname,  // e.g., '/api/device/heartbeat'
+    query: parsedUrl.query          // e.g., { token: 'device_token_...' }
+  };
+}
+
+
 // ==================== DASHBOARD USERS FIREBASE SYNC ====================
 
 // Load dashboard users from Firebase on startup
@@ -640,6 +652,27 @@ const server = http.createServer((req, res) => {
     });
   }
 
+function extractTokenFromHeader(authHeader) {
+  if (!authHeader) return null;
+  if (authHeader.startsWith('Bearer ')) {
+    return authHeader.substring(7);
+  }
+  return null;
+}
+
+function validateDeviceToken(token, deviceId) {
+  if (!token) return false;
+  
+  // Token format: device_token_GC-2025-001_1764373406256
+  if (!token.startsWith('device_token_')) return false;
+  
+  const parts = token.split('_');
+  if (parts.length < 3) return false;
+  
+  const tokenDeviceId = parts[2];
+  return tokenDeviceId === deviceId;
+}
+  
   // Helper function to get session token from cookie
   function getSessionFromCookie(cookieHeader) {
     if (!cookieHeader) return null;
@@ -1583,9 +1616,27 @@ if (req.url.match(/^\/api\/dashboard-users\/[^\/]+$/) && req.method === 'DELETE'
 }
   
 // ESP32 Heartbeat endpoint (no auth required for device communication)
-if (req.url === '/api/device/heartbeat' && req.method === 'POST') {
+const { pathname, query } = parseUrl(req.url);
+const token = query.token || extractTokenFromHeader(req.headers.authorization);
+  
+if (pathname === '/api/device/heartbeat' && req.method === 'POST') {
+  readBody((data) => {
+    const deviceId = data.deviceId || 'unknown';
+    
+    // Optional: Validate token
+    if (token && !validateDeviceToken(token, deviceId)) {
+      console.log(`❌ Invalid token for device ${deviceId}`);
+      res.writeHead(401);
+      res.end(JSON.stringify({ error: 'Invalid token' }));
+      return;
+    }
   console.log(`💓 Heartbeat from ESP32: ${req.method} ${req.url}`);
   
+  // Optional: Extract token from query or header
+  const token = query.token || extractTokenFromHeader(req.headers.authorization);
+  if (token) {
+    console.log(`🔑 Token received: ${token.substring(0, 20)}...`);
+  }
   readBody((data) => {  // ✅ NOT async anymore - no Firebase queries!
     const deviceId = data.deviceId || 'unknown';
     const timestamp = new Date().toISOString();
@@ -1726,12 +1777,19 @@ if (firebaseInitialized && admin) {
   return;
 }
 
-// Receive device settings from ESP32 (no auth - device communication)
-if (req.url === '/api/device/settings' && req.method === 'POST') {
+// Support both /api/device/settings AND /api/device/:deviceId/settings
+if ((pathname === '/api/device/settings' || 
+     pathname.match(/^\/api\/device\/[^/]+\/settings$/)) && 
+    req.method === 'POST') {
+  
   console.log(`⚙️ Device settings report: ${req.method} ${req.url}`);
   
+  // Extract deviceId from URL if present
+  const match = pathname.match(/^\/api\/device\/([^/]+)\/settings$/);
+  const deviceIdFromPath = match ? match[1] : null;
+  
   readBody((data) => {
-    const deviceId = data.deviceId || 'unknown';
+    const deviceId = deviceIdFromPath || data.deviceId || 'unknown'
     
     if (!connectedDevices.has(deviceId)) {
       // Device not connected yet, create entry
