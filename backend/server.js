@@ -1828,7 +1828,7 @@ if ((pathname === '/api/device/settings' ||
 }
   
 // ESP32 Command check endpoint - GET /api/device/{deviceId}/commands (no auth required)
-if (req.url.startsWith('/api/device/') && req.url.endsWith('/commands') && req.method === 'GET') {
+if (req.url.startsWith('/api/device/') && req.url.includes('/commands') && req.method === 'GET') {
   const urlParts = req.url.split('/');
   const deviceId = urlParts[3];
   
