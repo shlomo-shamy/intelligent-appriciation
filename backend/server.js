@@ -3382,6 +3382,44 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/info') && req.metho
     return;
   }
 
+// POST /api/device/:deviceId/ota-complete
+app.post('/api/device/:deviceId/ota-complete', async (req, res) => {
+    const { deviceId } = req.params;
+    const { firmwareVersion, updateStatus, timestamp } = req.body;
+    
+    try {
+        // Update device record in database
+        await db.collection('devices').updateOne(
+            { deviceId: deviceId },
+            {
+                $set: {
+                    currentFirmwareVersion: firmwareVersion,
+                    lastOTAUpdate: new Date(timestamp),
+                    lastOTAStatus: updateStatus,
+                    updatedAt: new Date()
+                }
+            }
+        );
+        
+        // Log the OTA event
+        await db.collection('ota_logs').insertOne({
+            deviceId: deviceId,
+            firmwareVersion: firmwareVersion,
+            status: updateStatus,
+            timestamp: new Date(timestamp),
+            receivedAt: new Date()
+        });
+        
+        console.log(`✅ OTA completion reported: ${deviceId} → ${firmwareVersion} (${updateStatus})`);
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Failed to record OTA completion:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
+  
   // Firebase  endpoint
   if (req.url === '/api/firebase/' && req.method === 'GET') {
     requireAuth((session) => {
