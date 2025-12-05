@@ -3383,41 +3383,54 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/info') && req.metho
   }
 
 // POST /api/device/:deviceId/ota-complete
-app.post('/api/device/:deviceId/ota-complete', async (req, res) => {
-    const { deviceId } = req.params;
-    const { firmwareVersion, updateStatus, timestamp } = req.body;
-    
+if (req.url.startsWith('/api/device/') && req.url.includes('/ota-complete') && req.method === 'POST') {
+  readBody(async (bodyData) => {
     try {
-        // Update device record in database
-        await db.collection('devices').updateOne(
-            { deviceId: deviceId },
-            {
-                $set: {
-                    currentFirmwareVersion: firmwareVersion,
-                    lastOTAUpdate: new Date(timestamp),
-                    lastOTAStatus: updateStatus,
-                    updatedAt: new Date()
-                }
-            }
-        );
-        
-        // Log the OTA event
-        await db.collection('ota_logs').insertOne({
-            deviceId: deviceId,
-            firmwareVersion: firmwareVersion,
-            status: updateStatus,
-            timestamp: new Date(timestamp),
-            receivedAt: new Date()
-        });
-        
-        console.log(`✅ OTA completion reported: ${deviceId} → ${firmwareVersion} (${updateStatus})`);
-        
-        res.json({ success: true });
+      // Extract deviceId from URL: /api/device/GC-2025-001/ota-complete
+      const urlParts = req.url.split('/');
+      const deviceId = urlParts[3];
+      
+      console.log(`📥 OTA completion report from ${deviceId}`);
+      console.log('Data:', bodyData);
+      
+      const { previousVersion, currentVersion, updateStatus, bootTime, freeHeap, macAddress } = bodyData;
+      
+      // Update device document in Firestore
+      const deviceRef = db.collection('devices').doc(deviceId);
+      await deviceRef.update({
+        currentFirmwareVersion: currentVersion,
+        lastOTAUpdate: admin.firestore.FieldValue.serverTimestamp(),
+        lastOTAStatus: updateStatus,
+        lastOTAPreviousVersion: previousVersion,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      // Log OTA event
+      await db.collection('ota_logs').add({
+        deviceId: deviceId,
+        previousVersion: previousVersion,
+        currentVersion: currentVersion,
+        status: updateStatus,
+        bootTime: bootTime,
+        freeHeap: freeHeap,
+        macAddress: macAddress,
+        timestamp: admin.firestore.FieldValue.serverTimestamp()
+      });
+      
+      console.log(`✅ OTA completion logged: ${deviceId} → ${currentVersion} (${updateStatus})`);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+      
     } catch (error) {
-        console.error('Failed to record OTA completion:', error);
-        res.status(500).json({ success: false, error: error.message });
+      console.error('❌ Error processing OTA completion:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: false, error: error.message }));
     }
-});
+  });
+  return;
+}
+
 
   
   // Firebase  endpoint
