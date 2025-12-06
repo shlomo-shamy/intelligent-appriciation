@@ -5,7 +5,7 @@ console.log('Memory usage:', process.memoryUsage());
 console.log('Environment variables set:', Object.keys(process.env).length);
 console.log('PORT from environment:', process.env.PORT);
 console.log('Current working directory:', process.cwd());
-
+ 
 // Catch any unhandled errors
 process.on('uncaughtException', (error) => {
   console.error('UNCAUGHT EXCEPTION:', error);
