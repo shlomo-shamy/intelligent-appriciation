@@ -3477,7 +3477,9 @@ if (req.url.startsWith('/api/device/') && req.url.includes('/ota-complete') && r
       // Update device document in Firestore (use set with merge to create if doesn't exist)
       const deviceRef = db.collection('devices').doc(deviceId);
       await deviceRef.set({
-        currentFirmwareVersion: currentVersion,
+        firmware: currentVersion,              // For dashboard display
+        currentFirmwareVersion: currentVersion, // Alternative field name
+        firmwareVersion: currentVersion,        // Alternative field name
         lastOTAUpdate: admin.firestore.FieldValue.serverTimestamp(),
         lastOTAStatus: updateStatus,
         lastOTAPreviousVersion: previousVersion,
