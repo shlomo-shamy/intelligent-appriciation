@@ -2986,8 +2986,43 @@ if (req.url.startsWith('/api/ota/device/') && !req.url.includes('/status') && re
         // If device is already on target version, clear the OTA command
         if (otaData.target_version && currentVersion &&
             otaData.target_version.toLowerCase() === currentVersion.toLowerCase()) {
+
+          const rolloutId = otaData.rollout_id;
           await deviceOtaRef.remove();
           console.log(`✅ Cleared OTA command for ${serial} (already on target version)`);
+
+          // Check if rollout should be marked as completed
+          if (rolloutId) {
+            try {
+              const rolloutRef = db.ref(`ota/rollouts/${rolloutId}`);
+              const rolloutSnapshot = await rolloutRef.once('value');
+
+              if (rolloutSnapshot.exists()) {
+                const rolloutData = rolloutSnapshot.val();
+                const targetDevices = rolloutData.devices || [];
+
+                // Check if all devices have completed
+                let allCompleted = true;
+                for (const deviceSerial of targetDevices) {
+                  const deviceOtaCheck = await db.ref(`devices/${deviceSerial}/ota`).once('value');
+                  if (deviceOtaCheck.exists()) {
+                    allCompleted = false;
+                    break;
+                  }
+                }
+
+                if (allCompleted) {
+                  await rolloutRef.update({
+                    status: 'completed',
+                    completed_at: Date.now()
+                  });
+                  console.log(`✅ Rollout ${rolloutId} auto-completed (all devices already on target version)`);
+                }
+              }
+            } catch (rolloutError) {
+              console.warn('⚠️ Could not update rollout status:', rolloutError.message);
+            }
+          }
         }
 
         res.writeHead(200);
