@@ -5,7 +5,7 @@ console.log('Memory usage:', process.memoryUsage());
 console.log('Environment variables set:', Object.keys(process.env).length);
 console.log('PORT from environment:', process.env.PORT);
 console.log('Current working directory:', process.cwd());
-  
+
 // Catch any unhandled errors
 process.on('uncaughtException', (error) => {
   console.error('UNCAUGHT EXCEPTION:', error);
@@ -2914,19 +2914,24 @@ if (req.url.match(/^\/api\/ota\/device\/[^\/]+\/dashboard$/) && req.method === '
 // GET /api/ota/device/:serial - ESP32 polls for OTA commands (NO AUTH!)
 if (req.url.startsWith('/api/ota/device/') && !req.url.includes('/status') && req.method === 'GET') {
   const serial = req.url.split('/')[4].split('?')[0];
-  
+
   console.log(`📡 ESP32 polling for OTA: ${serial}`);
-  
+
   if (!firebaseInitialized || !admin) {
     console.log('⚠️ Firebase not initialized');
     res.writeHead(200);
     res.end(JSON.stringify({ command: null }));
     return;
   }
-  
+
   (async () => {
     try {
       const db = admin.database();
+
+      // Get current device version from query params
+      const url = new URL(req.url, `http://${req.headers.host}`);
+      const currentVersion = url.searchParams.get('current_version') || '';
+
       const deviceOtaRef = db.ref(`devices/${serial}/ota`);
       const snapshot = await deviceOtaRef.once('value');
 
@@ -2938,16 +2943,68 @@ if (req.url.startsWith('/api/ota/device/') && !req.url.includes('/status') && re
       }
 
       const otaData = snapshot.val();
-      
+
+      // Check if OTA command should still be active
+      const shouldExecuteOTA = (
+        otaData.command === 'update' &&
+        otaData.status === 'pending' &&
+        otaData.target_version &&
+        currentVersion &&
+        otaData.target_version.toLowerCase() !== currentVersion.toLowerCase()
+      );
+
+      // Check rollout status if rollout_id exists
+      if (shouldExecuteOTA && otaData.rollout_id) {
+        const rolloutRef = db.ref(`ota/rollouts/${otaData.rollout_id}`);
+        const rolloutSnapshot = await rolloutRef.once('value');
+
+        if (rolloutSnapshot.exists()) {
+          const rolloutData = rolloutSnapshot.val();
+          if (rolloutData.status === 'completed' || rolloutData.status === 'cancelled') {
+            console.log(`ℹ️ Rollout ${otaData.rollout_id} is ${rolloutData.status}, clearing OTA command for ${serial}`);
+            // Clear the OTA command
+            await deviceOtaRef.remove();
+            res.writeHead(200);
+            res.end(JSON.stringify({ command: null }));
+            return;
+          }
+        }
+      }
+
+      if (!shouldExecuteOTA) {
+        console.log(`ℹ️ OTA command not applicable for ${serial}:`, {
+          command: otaData.command,
+          status: otaData.status,
+          target: otaData.target_version,
+          current: currentVersion,
+          reason: otaData.target_version && currentVersion &&
+                  otaData.target_version.toLowerCase() === currentVersion.toLowerCase()
+                  ? 'Already on target version (case-insensitive match)'
+                  : 'Invalid command or status'
+        });
+
+        // If device is already on target version, clear the OTA command
+        if (otaData.target_version && currentVersion &&
+            otaData.target_version.toLowerCase() === currentVersion.toLowerCase()) {
+          await deviceOtaRef.remove();
+          console.log(`✅ Cleared OTA command for ${serial} (already on target version)`);
+        }
+
+        res.writeHead(200);
+        res.end(JSON.stringify({ command: null }));
+        return;
+      }
+
       console.log(`✅ Returning OTA command to ESP32 ${serial}:`, {
         command: otaData.command,
         target_version: otaData.target_version,
+        current_version: currentVersion,
         status: otaData.status
       });
 
       res.writeHead(200);
       res.end(JSON.stringify(otaData));
-      
+
     } catch (error) {
       console.error('❌ Error fetching OTA for ESP32:', error);
       res.writeHead(500);
@@ -3389,22 +3446,34 @@ if (req.url.startsWith('/api/device/') && req.url.includes('/ota-complete') && r
       // Extract deviceId from URL: /api/device/GC-2025-001/ota-complete
       const urlParts = req.url.split('/');
       const deviceId = urlParts[3];
-      
+
       console.log(`📥 OTA completion report from ${deviceId}`);
       console.log('Data:', bodyData);
-      
+
       const { previousVersion, currentVersion, updateStatus, bootTime, freeHeap, macAddress } = bodyData;
-      
-      // Update device document in Firestore
+
+      // Clear OTA command from Realtime Database
+      if (firebaseInitialized && admin) {
+        try {
+          const rtdb = admin.database();
+          const deviceOtaRef = rtdb.ref(`devices/${deviceId}/ota`);
+          await deviceOtaRef.remove();
+          console.log(`✅ Cleared OTA command from Realtime DB for ${deviceId}`);
+        } catch (rtdbError) {
+          console.warn('⚠️ Could not clear Realtime DB OTA command:', rtdbError.message);
+        }
+      }
+
+      // Update device document in Firestore (use set with merge to create if doesn't exist)
       const deviceRef = db.collection('devices').doc(deviceId);
-      await deviceRef.update({
+      await deviceRef.set({
         currentFirmwareVersion: currentVersion,
         lastOTAUpdate: admin.firestore.FieldValue.serverTimestamp(),
         lastOTAStatus: updateStatus,
         lastOTAPreviousVersion: previousVersion,
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
-      });
-      
+      }, { merge: true });  // merge: true will create document if it doesn't exist
+
       // Log OTA event
       await db.collection('ota_logs').add({
         deviceId: deviceId,
@@ -3416,12 +3485,12 @@ if (req.url.startsWith('/api/device/') && req.url.includes('/ota-complete') && r
         macAddress: macAddress,
         timestamp: admin.firestore.FieldValue.serverTimestamp()
       });
-      
+
       console.log(`✅ OTA completion logged: ${deviceId} → ${currentVersion} (${updateStatus})`);
-      
+
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true }));
-      
+
     } catch (error) {
       console.error('❌ Error processing OTA completion:', error);
       res.writeHead(500, { 'Content-Type': 'application/json' });
