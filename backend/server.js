@@ -3329,18 +3329,32 @@ if (req.url === '/system') {
 
 // Get device info endpoint (requires auth)
 if (req.url.startsWith('/api/device/') && req.url.endsWith('/info') && req.method === 'GET') {
-  requireAuth((session) => {
+  requireAuth(async (session) => {
     const urlParts = req.url.split('/');
     const deviceId = urlParts[3];
-    
+
     const device = connectedDevices.get(deviceId);
-    
+
     if (!device) {
       res.writeHead(404);
       res.end(JSON.stringify({ error: 'Device not found' }));
       return;
     }
-    
+
+    // Merge with Firestore data to get latest firmware version
+    try {
+      const deviceDoc = await db.collection('devices').doc(deviceId).get();
+      if (deviceDoc.exists) {
+        const firestoreData = deviceDoc.data();
+        // Override firmware version from Firestore (most accurate)
+        device.firmwareVersion = firestoreData.firmware || firestoreData.currentFirmwareVersion || firestoreData.firmwareVersion || device.firmwareVersion;
+        device.lastOTAUpdate = firestoreData.lastOTAUpdate;
+        device.lastOTAStatus = firestoreData.lastOTAStatus;
+      }
+    } catch (err) {
+      console.warn(`⚠️ Could not fetch Firestore data for ${deviceId}:`, err.message);
+    }
+
     res.writeHead(200);
     res.end(JSON.stringify(device));
   });
