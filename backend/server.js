@@ -3452,13 +3452,23 @@ if (req.url.startsWith('/api/device/') && req.url.includes('/ota-complete') && r
 
       const { previousVersion, currentVersion, updateStatus, bootTime, freeHeap, macAddress } = bodyData;
 
-      // Clear OTA command from Realtime Database
+      let rolloutId = null;
+
+      // Get rollout_id before clearing OTA command
       if (firebaseInitialized && admin) {
         try {
           const rtdb = admin.database();
           const deviceOtaRef = rtdb.ref(`devices/${deviceId}/ota`);
-          await deviceOtaRef.remove();
-          console.log(`✅ Cleared OTA command from Realtime DB for ${deviceId}`);
+          const otaSnapshot = await deviceOtaRef.once('value');
+
+          if (otaSnapshot.exists()) {
+            const otaData = otaSnapshot.val();
+            rolloutId = otaData.rollout_id;
+
+            // Clear OTA command
+            await deviceOtaRef.remove();
+            console.log(`✅ Cleared OTA command from Realtime DB for ${deviceId}`);
+          }
         } catch (rtdbError) {
           console.warn('⚠️ Could not clear Realtime DB OTA command:', rtdbError.message);
         }
@@ -3485,6 +3495,42 @@ if (req.url.startsWith('/api/device/') && req.url.includes('/ota-complete') && r
         macAddress: macAddress,
         timestamp: admin.firestore.FieldValue.serverTimestamp()
       });
+
+      // Update rollout status if applicable
+      if (rolloutId && firebaseInitialized && admin) {
+        try {
+          const rtdb = admin.database();
+          const rolloutRef = rtdb.ref(`ota/rollouts/${rolloutId}`);
+          const rolloutSnapshot = await rolloutRef.once('value');
+
+          if (rolloutSnapshot.exists()) {
+            const rolloutData = rolloutSnapshot.val();
+            const targetDevices = rolloutData.devices || [];
+
+            // Check if all devices have completed (by checking if OTA commands are cleared)
+            let allCompleted = true;
+            for (const serial of targetDevices) {
+              const deviceOtaCheck = await rtdb.ref(`devices/${serial}/ota`).once('value');
+              if (deviceOtaCheck.exists()) {
+                allCompleted = false;
+                break;
+              }
+            }
+
+            if (allCompleted) {
+              await rolloutRef.update({
+                status: 'completed',
+                completed_at: Date.now()
+              });
+              console.log(`✅ Rollout ${rolloutId} marked as completed`);
+            } else {
+              console.log(`ℹ️ Rollout ${rolloutId} still in progress (${targetDevices.length} devices total)`);
+            }
+          }
+        } catch (rolloutError) {
+          console.warn('⚠️ Could not update rollout status:', rolloutError.message);
+        }
+      }
 
       console.log(`✅ OTA completion logged: ${deviceId} → ${currentVersion} (${updateStatus})`);
 
