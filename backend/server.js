@@ -4017,7 +4017,259 @@ if (req.url.startsWith('/api/device/') && req.url.endsWith('/users') && req.meth
   })();
   return;
 }
-  
+
+// ============================================================================
+// ESP32 SCHEDULE SYNC ENDPOINT - GET /api/device/{deviceId}/schedules/sync
+// ============================================================================
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/schedules/sync') && req.method === 'GET') {
+  const urlParts = req.url.split('/');
+  const deviceId = urlParts[3];
+
+  console.log(`📅 ESP32 schedule sync request from device: ${deviceId}`);
+
+  (async () => {
+    try {
+      if (!firebaseInitialized) {
+        console.log('⚠️ Firebase not initialized, returning empty schedules array');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+        return;
+      }
+
+      const gateDoc = await db.collection('gates').doc(deviceId).get();
+
+      if (!gateDoc.exists) {
+        console.log(`⚠️ No gate document found for ${deviceId}`);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify([]));
+        return;
+      }
+
+      const gateData = gateDoc.data();
+      const schedules = gateData.schedules || [];
+
+      // Transform schedules for ESP32 (match parseScheduleFromJson expectations)
+      const esp32Schedules = schedules.map(schedule => ({
+        id: schedule.id || 0,
+        name: schedule.name || 'Unnamed',
+        type: schedule.type || 1,
+        enabled: schedule.enabled !== false,
+        days: schedule.days || 0,
+        startHour: schedule.startHour || 0,
+        startMinute: schedule.startMinute || 0,
+        endHour: schedule.endHour || 0,
+        endMinute: schedule.endMinute || 0,
+        relayNumber: schedule.relayNumber || 0,
+        relayMask: schedule.relayMask || 0,
+        userId: schedule.userId || "0"
+      }));
+
+      console.log(`✅ ESP32: Sent ${esp32Schedules.length} schedules to ${deviceId}`);
+
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(esp32Schedules));
+
+    } catch (error) {
+      console.error('❌ Error fetching schedules:', error);
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: error.message }));
+    }
+  })();
+  return;
+}
+
+// ============================================================================
+// SCHEDULE EXECUTION LOG - POST /api/device/{deviceId}/schedule-execution
+// ============================================================================
+if (req.url.match(/^\/api\/device\/[^\/]+\/schedule-execution$/) && req.method === 'POST') {
+  const deviceId = req.url.split('/')[3];
+
+  console.log(`⏰ Schedule execution log from ${deviceId}`);
+
+  readBody(async (data) => {
+    const { scheduleId, scheduleName, relayNumber, timestamp } = data;
+
+    console.log(`✅ Schedule executed: ${scheduleName} (relay ${relayNumber})`);
+
+    // Log to Firestore
+    if (firebaseInitialized) {
+      try {
+        await db.collection('gates').doc(deviceId).collection('scheduleLogs').add({
+          scheduleId: scheduleId,
+          scheduleName: scheduleName,
+          relayNumber: relayNumber,
+          executedAt: admin.firestore.FieldValue.serverTimestamp(),
+          deviceTimestamp: timestamp
+        });
+        console.log(`💾 Schedule execution logged to Firestore`);
+      } catch (error) {
+        console.error('❌ Failed to log schedule execution:', error);
+      }
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, message: 'Execution logged' }));
+  });
+  return;
+}
+
+// ============================================================================
+// OTA COMPLETION REPORT - POST /api/device/{deviceId}/ota-complete
+// ============================================================================
+if (req.url.match(/^\/api\/device\/[^\/]+\/ota-complete$/) && req.method === 'POST') {
+  const deviceId = req.url.split('/')[3];
+
+  console.log(`🎉 OTA completion report from ${deviceId}`);
+
+  readBody(async (data) => {
+    const { previousVersion, currentVersion, updateStatus, bootTime, freeHeap, macAddress } = data;
+
+    console.log(`  Previous: ${previousVersion} → Current: ${currentVersion}`);
+    console.log(`  Status: ${updateStatus}, Boot time: ${bootTime}ms, Heap: ${freeHeap}`);
+
+    // Update device firmware version in Firestore
+    if (firebaseInitialized) {
+      try {
+        await db.collection('gates').doc(deviceId).update({
+          firmwareVersion: currentVersion,
+          lastOTAUpdate: admin.firestore.FieldValue.serverTimestamp(),
+          lastBootTime: bootTime,
+          freeHeap: freeHeap
+        });
+
+        // Log OTA completion
+        await db.collection('gates').doc(deviceId).collection('otaLogs').add({
+          previousVersion: previousVersion,
+          currentVersion: currentVersion,
+          status: updateStatus,
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+          bootTime: bootTime,
+          freeHeap: freeHeap,
+          macAddress: macAddress
+        });
+
+        console.log(`✅ OTA completion logged to Firestore`);
+      } catch (error) {
+        console.error('❌ Failed to log OTA completion:', error);
+      }
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true, message: 'OTA completion recorded' }));
+  });
+  return;
+}
+
+// ============================================================================
+// DEVICE STATUS REPORT - POST /api/device/{deviceId}/status
+// ============================================================================
+if (req.url.match(/^\/api\/device\/[^\/]+\/status$/) && req.method === 'POST') {
+  const deviceId = req.url.split('/')[3];
+
+  readBody(async (data) => {
+    console.log(`📊 Status update from ${deviceId}: ${data.gateState}`);
+
+    // Update device status in memory cache
+    if (!connectedDevices.has(deviceId)) {
+      connectedDevices.set(deviceId, {});
+    }
+
+    const device = connectedDevices.get(deviceId);
+    Object.assign(device, data);
+    device.lastStatusUpdate = new Date().toISOString();
+    connectedDevices.set(deviceId, device);
+
+    // Optionally save to Firestore
+    if (firebaseInitialized) {
+      try {
+        await db.collection('gates').doc(deviceId).update({
+          currentState: data.gateState || 'UNKNOWN',
+          lastCommand: data.lastCommand || 'NONE',
+          lastStatusUpdate: admin.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (error) {
+        // Ignore Firestore errors for status updates (high frequency)
+      }
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true }));
+  });
+  return;
+}
+
+// ============================================================================
+// COMMAND RESULT - POST /api/device/{deviceId}/command-result
+// ============================================================================
+if (req.url.match(/^\/api\/device\/[^\/]+\/command-result$/) && req.method === 'POST') {
+  const deviceId = req.url.split('/')[3];
+
+  readBody((data) => {
+    const { command, success, message } = data;
+    console.log(`📝 Command result from ${deviceId}: ${command} - ${success ? 'SUCCESS' : 'FAILED'}`);
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true }));
+  });
+  return;
+}
+
+// ============================================================================
+// SAFETY EVENT - POST /api/device/{deviceId}/safety-event
+// ============================================================================
+if (req.url.match(/^\/api\/device\/[^\/]+\/safety-event$/) && req.method === 'POST') {
+  const deviceId = req.url.split('/')[3];
+
+  readBody(async (data) => {
+    const { eventType, details } = data;
+    console.log(`🚨 Safety event from ${deviceId}: ${eventType} - ${details}`);
+
+    // Log to Firestore
+    if (firebaseInitialized) {
+      try {
+        await db.collection('gates').doc(deviceId).collection('safetyEvents').add({
+          eventType: eventType,
+          details: details,
+          timestamp: admin.firestore.FieldValue.serverTimestamp(),
+          resolved: false
+        });
+      } catch (error) {
+        console.error('❌ Failed to log safety event:', error);
+      }
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true }));
+  });
+  return;
+}
+
+// ============================================================================
+// SETTINGS REPORT - POST /api/device/{deviceId}/settings
+// ============================================================================
+if (req.url.match(/^\/api\/device\/[^\/]+\/settings$/) && req.method === 'POST') {
+  const deviceId = req.url.split('/')[3];
+
+  console.log(`⚙️ Settings report from ${deviceId}`);
+
+  readBody(async (data) => {
+    // Cache settings in memory
+    if (!connectedDevices.has(deviceId)) {
+      connectedDevices.set(deviceId, {});
+    }
+
+    const device = connectedDevices.get(deviceId);
+    device.settings = data;
+    connectedDevices.set(deviceId, device);
+
+    console.log(`✅ Cached settings for ${deviceId}`);
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ success: true }));
+  });
+  return;
+}
+
 // Get device users endpoint - READ FROM FIREBASE
 if (req.url.startsWith('/api/gates/') && req.url.endsWith('/users') && req.method === 'GET') {
   requireAuth(async (session) => {
