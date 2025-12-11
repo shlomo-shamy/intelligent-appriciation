@@ -3180,12 +3180,12 @@ if (req.url === '/devices') {
   return;
 }
 
-  // Manufacturing page - Updated to fetch from Firebase gates collection
+  // Manufacturing page
 if (req.url === '/manufacturing') {
-  requireAuth(async (session) => {
+  requireAuth((session) => {
     // 🔒 UPDATED ACCESS CONTROL - Using role-based check
     const userRole = getUserHighestRole(session.email);
-
+    
     if (userRole !== 'superadmin') {
       res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
       res.end(renderTemplate('access-denied', {
@@ -3196,49 +3196,15 @@ if (req.url === '/manufacturing') {
       return;
     }
     // ✅ END OF ACCESS CONTROL CHECK
-
-    // Fetch devices from Firebase gates collection
-    let devicesArray = [];
-
-    if (firebaseInitialized) {
-      try {
-        const gatesSnapshot = await db.collection('gates').get();
-
-        devicesArray = gatesSnapshot.docs.map(doc => {
-          const data = doc.data();
-          return {
-            deviceId: doc.id,  // MAC address (e.g., "30EDA0A94790")
-            macAddress: data.macAddress || doc.id,  // Formatted MAC (e.g., "30:ED:A0:A9:47:90")
-            serialNumber: data.serialNumber || 'Unknown',
-            password: data.password || 'N/A',
-            status: data.status || 'Unknown',
-            manufacturedAt: data.manufacturedAt ? data.manufacturedAt.toDate().toISOString() : null,
-            activatedAt: data.activatedAt ? data.activatedAt.toDate().toISOString() : null,
-            activatedBy: data.activatedBy || null,
-            name: data.name || null,
-            location: data.location || null,
-            firmwareVersion: data.firmwareVersion || 'Unknown'
-          };
-        });
-
-        console.log(`✅ Loaded ${devicesArray.length} devices from Firebase gates collection`);
-      } catch (error) {
-        console.error('❌ Error fetching devices from Firebase:', error);
-        devicesArray = [];
-      }
-    }
-
+    
+    // Your existing code continues below (unchanged)
     const manufacturingData = {
       userName: session.name,
       userEmail: session.email,
-      organizationName: session.organization || 'Default Org',
-      userRole: userRole,
-      isSuperAdmin: userRole === 'superadmin',
-      showSuperAdminFeatures: userRole === 'superadmin' ? 'block' : 'none',
-      showAdminFeatures: ['admin', 'superadmin'].includes(userRole) ? 'block' : 'none',
-      manufacturingDevicesData: JSON.stringify(devicesArray)
+      showAdminFeatures: 'block',  // ✅ ADD THIS LINE
+      manufacturingDevicesData: JSON.stringify(Array.from(manufacturingDevices.entries()))
     };
-
+    
     const manufacturingHtml = renderTemplate('manufacturing', manufacturingData);
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
     res.end(manufacturingHtml);
