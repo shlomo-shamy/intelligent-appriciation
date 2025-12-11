@@ -845,36 +845,64 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
     }
     const cleanPhone = phoneValidation.cleanPhone;
     
-    // 1. Check manufacturing database
-    const device = manufacturingDevices.get(serial);
-    if (!device) {
-      res.writeHead(404);
-      res.end(JSON.stringify({ 
-        success: false, 
-        error: 'Device not found in manufacturing database' 
-      }));
-      return;
-    }
+// NEW CODE (ADD):
+// 1. Look up device by serial number
+if (!firebaseInitialized) {
+  res.writeHead(503);
+  res.end(JSON.stringify({
+    success: false,
+    error: 'Firebase not initialized'
+  }));
+  return;
+}
+
+// Look up MAC address from serial number
+const serialDoc = await db.collection('deviceSerials').doc(serial).get();
+if (!serialDoc.exists) {
+  res.writeHead(404);
+  res.end(JSON.stringify({
+    success: false,
+    error: 'Device serial number not found'
+  }));
+  return;
+}
+
+const macAddress = serialDoc.data().macAddress;
+const deviceDoc = await db.collection('gates').doc(macAddress).get();
+
+if (!deviceDoc.exists) {
+  res.writeHead(404);
+  res.end(JSON.stringify({
+    success: false,
+    error: 'Device not found in database'
+  }));
+  return;
+}
+
+const device = deviceDoc.data();
     
-    // 2. Verify activation code
-    if (device.pin !== activationCode && device.activationCode !== activationCode) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ 
-        success: false, 
-        error: 'Invalid activation code' 
-      }));
-      return;
-    }
+// NEW CODE (ADD):
+// 2. Verify password
+if (device.password !== activationCode) {
+  res.writeHead(400);
+  res.end(JSON.stringify({
+    success: false,
+    error: 'Invalid password'
+  }));
+  return;
+}
     
-    // 3. Check if already activated
-    if (device.activated) {
-      res.writeHead(400);
-      res.end(JSON.stringify({ 
-        success: false, 
-        error: `Device already activated on ${device.activationDate}` 
-      }));
-      return;
-    }
+// NEW CODE (ADD):
+// 3. Check if already activated
+if (device.status === 'Activated') {
+  const activatedDate = device.activatedAt ? device.activatedAt.toDate().toISOString() : 'Unknown';
+  res.writeHead(400);
+  res.end(JSON.stringify({
+    success: false,
+    error: `Device already activated on ${activatedDate}`
+  }));
+  return;
+}
     
     // 4. Get user info (or create basic profile if user doesn't exist)
     let installer = authorizedUsers.get(cleanPhone);
@@ -888,12 +916,15 @@ if (req.url === '/api/device/activate' && req.method === 'POST') {
       console.log(`New user created during activation: ${cleanPhone}`);
     }
     
-    // 5. Update manufacturing database
-    device.activated = true;
-    device.activatedBy = cleanPhone;
-    device.activationDate = new Date().toISOString();
-    device.name = deviceName || `Gate ${serial}`;
-    device.location = location || 'Location not specified';
+// 5. Update device in Firebase
+await db.collection('gates').doc(macAddress).update({
+  status: 'Activated',
+  activatedBy: cleanPhone,
+  activatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  name: deviceName || `Gate ${serial}`,
+  location: location || 'Location not specified',
+  installerPhone: cleanPhone
+});
     
 // 6. AUTO-ASSIGN TO PLATFORM ORGANIZATION
 const platformOrg = organizations.get('platform_org');
@@ -912,31 +943,6 @@ if (platformOrg) {
     // 7. Create Firebase gate document
     if (firebaseInitialized) {
       try {
-        await db.collection('gates').doc(serial).set({
-          serial: serial,
-          name: device.name,
-          location: device.location,
-          timezone: 'Asia/Jerusalem',
-          hardwareVersion: device.hardwareVersion || 'v1.0',
-          firmwareVersion: device.firmwareVersion || '1.0.0',
-          manufactureDate: device.manufactureDate || new Date().toISOString(),
-          activatedBy: cleanPhone,
-          activationDate: admin.firestore.FieldValue.serverTimestamp(),
-          owner: 'platform_org',  // Platform is primary owner
-          organizations: ['platform_org'],  // Start with platform only
-          admins: [cleanPhone],
-          users: {
-            [cleanPhone]: {
-              name: installer.name,
-              email: installer.email,
-              relayMask: 15,
-              userLevel: 2,
-              role: 'admin',
-              addedBy: 'activation',
-              addedDate: admin.firestore.FieldValue.serverTimestamp()
-            }
-          }
-        });
         
         // Create user permissions
         await db.collection('userPermissions').doc(cleanPhone).set({
@@ -1001,6 +1007,169 @@ if (platformOrg) {
   });
   return;
 }
+
+// =============================================================================
+// DEVICE SELF-REGISTRATION - POST /api/device/register
+// =============================================================================
+if (req.url === '/api/device/register' && req.method === 'POST') {
+  readBody(async (data) => {
+    const { macAddress, deviceId, serialNumber, password, firmwareVersion } = data;
+
+    console.log(`🏭 Device self-registration: MAC ${macAddress}`);
+
+    if (!macAddress || !deviceId) {
+      res.writeHead(400);
+      res.end(JSON.stringify({ error: 'MAC address and device ID required' }));
+      return;
+    }
+
+    if (!firebaseInitialized) {
+      res.writeHead(503);
+      res.end(JSON.stringify({ error: 'Firebase not initialized' }));
+      return;
+    }
+
+    try {
+      // Check if device already exists
+      const deviceDoc = await db.collection('gates').doc(deviceId).get();
+
+      if (deviceDoc.exists) {
+        const deviceData = deviceDoc.data();
+        console.log(`Device already registered: ${deviceData.serialNumber} (Status: ${deviceData.status})`);
+
+        res.writeHead(200);
+        res.end(JSON.stringify({
+          success: true,
+          message: 'Device already registered',
+          serialNumber: deviceData.serialNumber,
+          status: deviceData.status,
+          activated: deviceData.status === 'Activated'
+        }));
+        return;
+      }
+
+      // Generate sequential serial number
+      const counterRef = db.collection('counters').doc('deviceSerial');
+      const newSerial = await db.runTransaction(async (transaction) => {
+        const counterDoc = await transaction.get(counterRef);
+
+        const currentYear = new Date().getFullYear();
+        const yearShort = currentYear.toString().slice(-2);  // Get last 2 digits: "2025" → "25"
+        let count = 1;
+
+        if (counterDoc.exists) {
+          const counterData = counterDoc.data();
+          if (counterData.year === currentYear) {
+            count = counterData.count + 1;
+          }
+        }
+
+        transaction.set(counterRef, { year: currentYear, count: count });
+
+        // Format: GC-25-00001
+        const serial = `GC-${yearShort}-${String(count).padStart(5, '0')}`;
+        return serial;
+      });
+
+      console.log(`✅ Generated serial number: ${newSerial}`);
+
+      // Generate 6-digit password if not provided
+      const devicePassword = password || String(Math.floor(100000 + Math.random() * 900000));
+
+      // Create device document in gates collection
+      await db.collection('gates').doc(deviceId).set({
+        macAddress: macAddress,
+        deviceId: deviceId,
+        serialNumber: newSerial,
+        password: devicePassword,
+        status: 'Pending',
+        manufacturedAt: admin.firestore.FieldValue.serverTimestamp(),
+        firmwareVersion: firmwareVersion || 'Unknown',
+        activatedAt: null,
+        activatedBy: null,
+        name: null,
+        location: null,
+        installerPhone: null,
+        // Initialize empty arrays for later
+        users: {},
+        schedules: []
+      });
+
+      // Create lookup entry in deviceSerials collection
+      await db.collection('deviceSerials').doc(newSerial).set({
+        macAddress: deviceId
+      });
+
+      console.log(`✅ Device registered successfully: ${newSerial}`);
+
+      res.writeHead(201);
+      res.end(JSON.stringify({
+        success: true,
+        message: 'Device registered successfully',
+        serialNumber: newSerial,
+        password: devicePassword,
+        status: 'Pending',
+        activated: false
+      }));
+
+    } catch (error) {
+      console.error('Device registration error:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: error.message }));
+    }
+  });
+  return;
+}
+
+// =============================================================================
+// ACTIVATION STATUS CHECK - GET /api/device/{deviceId}/activation-status
+// =============================================================================
+if (req.url.startsWith('/api/device/') && req.url.endsWith('/activation-status') && req.method === 'GET') {
+  const urlParts = req.url.split('/');
+  const deviceId = urlParts[3];
+
+  (async () => {
+    try {
+      if (!firebaseInitialized) {
+        res.writeHead(503);
+        res.end(JSON.stringify({ error: 'Firebase not initialized' }));
+        return;
+      }
+
+      const deviceDoc = await db.collection('gates').doc(deviceId).get();
+
+      if (!deviceDoc.exists) {
+        res.writeHead(404);
+        res.end(JSON.stringify({
+          activated: false,
+          status: 'Unknown',
+          message: 'Device not found'
+        }));
+        return;
+      }
+
+      const deviceData = deviceDoc.data();
+      const isActivated = deviceData.status === 'Activated';
+
+      res.writeHead(200);
+      res.end(JSON.stringify({
+        activated: isActivated,
+        status: deviceData.status,
+        serialNumber: deviceData.serialNumber,
+        name: deviceData.name || null,
+        location: deviceData.location || null
+      }));
+
+    } catch (error) {
+      console.error('Activation status check error:', error);
+      res.writeHead(500);
+      res.end(JSON.stringify({ error: error.message }));
+    }
+  })();
+  return;
+}
+
+  
   
   // Dashboard login endpoint
 if (req.url === '/dashboard/login' && req.method === 'POST') {
