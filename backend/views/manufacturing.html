@@ -201,9 +201,13 @@
         </div>
     </div>
 
+    <!-- Hidden data container -->
+    <script type="application/json" id="devicesData">{{manufacturingDevicesData}}</script>
+
     <script>
-        // Parse devices data from server
-        const devicesData = {{{manufacturingDevicesData}}};
+        // Parse devices data from hidden element
+        const devicesDataElement = document.getElementById('devicesData');
+        const devicesData = JSON.parse(devicesDataElement.textContent);
         console.log('Devices received:', devicesData);
 
         // Navigation
