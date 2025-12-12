@@ -449,13 +449,34 @@ document.getElementById('pageTitle').textContent = '🏭 Setup'; // Example
             </div>
         </div>
     </div>
-
+/*
     <script>
         // Parse JSON data from server
         let manufacturingDevicesJSON = `{{manufacturingDevicesData}}`;
         let manufacturingDevices = JSON.parse(manufacturingDevicesJSON);
         let filteredDevices = [...manufacturingDevices];
         let selectedDevices = new Set();
+*/
+
+        <script>
+    // Parse JSON data from server
+    let manufacturingDevicesJSON = `{{manufacturingDevicesData}}`;
+    console.log('Raw JSON from server:', manufacturingDevicesJSON);
+
+    let manufacturingDevices = [];
+    try {
+        manufacturingDevices = JSON.parse(manufacturingDevicesJSON);
+        console.log('✅ Parsed devices:', manufacturingDevices);
+    } catch (error) {
+        console.error('❌ JSON Parse Error:', error);
+        console.error('Failed to parse:', manufacturingDevicesJSON);
+        manufacturingDevices = [];
+    }
+
+    let filteredDevices = [...manufacturingDevices];
+    let selectedDevices = new Set();
+
+
         
         function navigateTo(path) {
             window.location.href = path;
