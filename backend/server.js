@@ -3697,14 +3697,26 @@ if (req.url.startsWith('/api/device/') && req.url.includes('/ota-complete') && r
     try {
       // Extract deviceId from URL: /api/device/GC-2025-001/ota-complete
       const urlParts = req.url.split('/');
-      const deviceId = urlParts[3];
-
-      console.log(`📥 OTA completion report from ${deviceId}`);
-      console.log('Data:', bodyData);
+      let deviceId = urlParts[3];
 
       const { previousVersion, currentVersion, updateStatus, bootTime, freeHeap, macAddress } = bodyData;
 
+      // If deviceId is empty, use macAddress from body (remove colons)
+      if (!deviceId || deviceId.trim() === '') {
+        if (macAddress) {
+          deviceId = macAddress.replace(/:/g, ''); // Convert "50:78:7D:14:4D:28" → "50787D144D28"
+          console.log(`📥 OTA completion report (using macAddress): ${deviceId}`);
+        } else {
+          throw new Error('No deviceId in URL and no macAddress in body');
+        }
+      } else {
+        console.log(`📥 OTA completion report from ${deviceId}`);
+      }
+
+      console.log('Data:', bodyData);
+
       let rolloutId = null;
+
 
       // Get rollout_id before clearing OTA command
       if (firebaseInitialized && admin) {
